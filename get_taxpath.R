@@ -31,14 +31,15 @@ taxpath <- getTaxonomy(assembly_summary$V7, '/home/chh/Documents/Projects/NCBI_t
 # repeat taxon name if na
 taxpath_parsed <- taxpath %>% 
   mutate(
-    superkingdom = paste0("k__", superkingdom),
-    phylum = paste0("p__", ifelse(is.na(phylum), gsub("k__", "", superkingdom), phylum)),
+    superkingdom = paste0("d__", superkingdom),
+    phylum = paste0("p__", ifelse(is.na(phylum), gsub("d__", "", superkingdom), phylum)),
     class = paste0("c__", ifelse(is.na(class), gsub("p__", "", phylum), class)),
     order = paste0("o__", ifelse(is.na(order), gsub("c__", "", class), order)),
     family = paste0("f__", ifelse(is.na(family), gsub("o__", "", order), family)),
     genus = paste0("g__", genus),
     species = paste0("s__", species)
   ) %>% 
+  # mutate( root = "root", .before = superkingdom) %>% 
   unite("path", sep = ";") %>% 
   mutate(
     accnos = assembly_summary$V1,
