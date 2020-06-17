@@ -26,7 +26,7 @@ wget -q ${FTP_SERVER}"/genomes/genbank/$library_name/assembly_summary.txt"
 mv assembly_summary.txt assembly_summary_genbank.txt
 
 # filter genbank assemblies by
-#   assembly_level != Contig
+#   assembly_level != Contig (remove don't be as stringest here...)
 #   genome_rep == Full
 #   version_status == latest
 #   redundant information with refseq
