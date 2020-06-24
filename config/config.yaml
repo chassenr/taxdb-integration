@@ -1,0 +1,16 @@
+# Basic dirs
+wdir: "/vol/cloud/christiane/Repos/taxdb-integration"
+rdir: "/vol/cloud/christiane/NCBI_taxdb_integration/Testing2"
+
+# Default parameters
+threads: 1
+
+# Parameters for processing NCBI genomes
+library_name: "fungi" # this will later become a wildcard (similar to sample list)
+assembly_level: "Complete Genome"
+download_threads: 16
+
+# Parameters for dereplicating genomes
+derep_script: "/vol/cloud/christiane/Repos/Metagenomics-Index-Correction/dereplicate_assemblies.py"
+derep_threshold: 0.005
+derep_threads: 16

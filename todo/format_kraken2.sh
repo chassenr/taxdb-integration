@@ -25,6 +25,10 @@ mkdir kraken2_db/taxonomy
 cp nodes.dmp kraken2_db/taxonomy/
 cp names.dmp kraken2_db/taxonomy/
 
+# replace 'domain' with 'superkingdom
+sed -i -e 's/domain/superkingdom/g' nodes.dmp
+# required for kaiju
+
 # create kraken2 database
 # for snakemake, use: https://github.com/leylabmpi/Struo/blob/f8fdf3d6f04678502fb8d6b094cb4135b7c361e3/bin/kraken2/Snakefile
 for fa in ./kraken2_genomes/*.fa
@@ -33,3 +37,10 @@ do
 done
 kraken2-build --build --threads 1 --db kraken2_db
 # error with more than 1 thread
+
+# testing with random fungal metagenome
+cd /home/chh/Documents/Projects/NCBI_taxdb_integration/Testing
+kraken2 --db ../kraken2_db --threads 4 --report test.kreport --output test.kraken  SRR7771653.fastq
+
+
+
