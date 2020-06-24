@@ -25,15 +25,15 @@ workdir: config["wdir"]
 '''
 
 rule all:
-    input:
-        genome_assemblies = config["rdir"] + config["library_name"] + "/assembly_summary_combined.txt",
-        download_complete = config["rdir"] + config["library_name"] + "/genomes/done",
-        genome_taxonomy = config["rdir"] + config["library_name"] + "/assembly_taxonomy.txt",
-        derep_taxonomy = config["rdir"] + config["library_name"] + "/derep_assembly_taxonomy.txt"
+	input:
+		genome_assemblies = config["rdir"] + "/" + config["library_name"] + "/assembly_summary_combined.txt",
+		download_complete = config["rdir"] + "/" + config["library_name"] + "/genomes/done",
+		genome_taxonomy = config["rdir"] + "/" + config["library_name"] + "/assembly_taxonomy.txt",
+		derep_taxonomy = config["rdir"] + "/" + config["library_name"] + "/derep_assembly_taxonomy.txt"
         
 
 '''
 ##### load rules #####
 '''
-include: "rules/process_ncbi_genomes"
+include: "rules/process_ncbi_genomes.smk"
 

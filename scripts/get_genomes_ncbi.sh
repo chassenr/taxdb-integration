@@ -12,17 +12,16 @@ library_name=$2 # has to be one of: fungi, invertebrate, plant, protozoa, verteb
 assembly_level=$3 # has to be one of Contig, Scaffold, Chromosome, Complete Genome (indicates minimum assembly level, i.e. if "Contig" all assemblies will be included)
 
 # set download options
-NCBI_SERVER="ftp.ncbi.nlm.nih.gov"
-FTP_SERVER="ftp://$NCBI_SERVER"
+NCBI_SERVER="http://ftp.ncbi.nlm.nih.gov"
 
 # set up directory for each library
-mkdir "${library_dir}"/"${library_name}"
+mkdir -p "${library_dir}"/"${library_name}"
 
 # get list of refseq assembly locations from assembly summary file
-aria2c --max-tries=20 --retry-wait=5 --dir "${library_dir}"/"${library_name}" --out assembly_summary_refseq.txt "${FTP_SERVER}"/genomes/refseq/"${library_name}"/assembly_summary.txt
+aria2c --max-tries=20 --retry-wait=5 --dir "${library_dir}"/"${library_name}" --out assembly_summary_refseq.txt "${NCBI_SERVER}"/genomes/refseq/"${library_name}"/assembly_summary.txt
 
 # get list of genbank assembly locations from assembly summary file
-aria2c --max-tries=20 --retry-wait=5 --dir "${library_dir}"/"${library_name}" --out assembly_summary_genbank.txt "${FTP_SERVER}"/genomes/genbank/"${library_name}"/assembly_summary.txt
+aria2c --max-tries=20 --retry-wait=5 --dir "${library_dir}"/"${library_name}" --out assembly_summary_genbank.txt "${NCBI_SERVER}"/genomes/genbank/"${library_name}"/assembly_summary.txt
 
 # remove genbank genomes from list, which are redundant with refseq
 sed '/^\#/d' "${library_dir}"/"${library_name}"/assembly_summary_refseq.txt | cut -f1 | grep -v -f - "${library_dir}"/"${library_name}"/assembly_summary_genbank.txt > "${library_dir}"/"${library_name}"/assembly_summary_genbank_nr.txt
@@ -54,6 +53,6 @@ sed '/^\#/d' "${library_dir}"/"${library_name}"/assembly_summary_refseq.txt > "$
 cat "${library_dir}"/"${library_name}"/assembly_summary_genbank_filt.txt >> "${library_dir}"/"${library_name}"/assembly_summary_combined.txt
 
 # format input file for aria2
-cut -f20 "${library_dir}"/"${library_name}"/assembly_summary_combined.txt | sed -e 's/.*\///' -e 's/$/_genomic.fna.gz/' | paste -d'/' <(cut -f20 "${library_dir}"/"${library_name}"/assembly_summary_combined.txt) - > "${library_dir}"/"${library_name}"/assembly_url_genomic.txt
+cut -f20 "${library_dir}"/"${library_name}"/assembly_summary_combined.txt | sed -e 's/.*\///' -e 's/$/_genomic.fna.gz/' | paste -d'/' <(cut -f20 "${library_dir}"/"${library_name}"/assembly_summary_combined.txt) - | sed 's/^ftp/http/' > "${library_dir}"/"${library_name}"/assembly_url_genomic.txt
 
 

@@ -1,3 +1,5 @@
+#!/usr/bin/env Rscript
+
 # parse taxonomic path for NCBI genomes
 
 ### setting up environment ####
