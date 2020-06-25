@@ -6,7 +6,6 @@ rdir: "/vol/cloud/christiane/NCBI_taxdb_integration/Testing2"
 threads: 1
 
 # Parameters for processing NCBI genomes
-library_name: "fungi" # this will later become a wildcard (similar to sample list)
 assembly_level: "Complete Genome"
 download_threads: 16
 

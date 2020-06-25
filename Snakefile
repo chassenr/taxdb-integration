@@ -23,13 +23,15 @@ workdir: config["wdir"]
 '''
  The list of samples to be processed
 '''
+LIBRARY_NAME = ["fungi","invertebrate","viral"]
+# LIBRARY_NAME = ["fungi","invertebrate","plant","protozoa","vertebrate_mammalian","vertebrate_other","viral"]
 
 rule all:
 	input:
-		genome_assemblies = config["rdir"] + "/" + config["library_name"] + "/assembly_summary_combined.txt",
-		download_complete = config["rdir"] + "/" + config["library_name"] + "/genomes/done",
-		genome_taxonomy = config["rdir"] + "/" + config["library_name"] + "/assembly_taxonomy.txt",
-		derep_taxonomy = config["rdir"] + "/" + config["library_name"] + "/derep_assembly_taxonomy.txt"
+		genome_assemblies = expand(config["rdir"] + "/" + "{library_name}" + "/assembly_summary_combined.txt", library_name = LIBRARY_NAME),
+		download_complete = expand(config["rdir"] + "/" + "{library_name}" + "/genomes/done", library_name = LIBRARY_NAME),
+		genome_taxonomy = expand(config["rdir"] + "/" + "{library_name}" + "/assembly_taxonomy.txt", library_name = LIBRARY_NAME),
+		derep_taxonomy = expand(config["rdir"] + "/" + "{library_name}" + "/derep_assembly_taxonomy.txt", library_name = LIBRARY_NAME)
         
 
 '''
