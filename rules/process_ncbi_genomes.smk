@@ -11,7 +11,7 @@ rule get_genomes_ncbi:
                 config["wdir"] + "/envs/download.yaml"
 	shell:
 		"""
-		{params.script} {params.library_dir} {params.library_name} {params.assembly_level}
+		{params.script} "{params.library_dir}" "{params.library_name}" "{params.assembly_level}"
 		"""
 
 rule download_genomes_ncbi:
@@ -72,6 +72,7 @@ rule get_taxpath:
 
 rule derep_genomes:
 	input:
+		download_complete = config["rdir"] + "/" + config["library_name"] + "/genomes/done",
 		taxonomy = config["rdir"] + "/" + config["library_name"] + "/assembly_taxonomy.txt"
 	output:
 		derep_taxonomy = config["rdir"] + "/" + config["library_name"] + "/derep_assembly_taxonomy.txt"
