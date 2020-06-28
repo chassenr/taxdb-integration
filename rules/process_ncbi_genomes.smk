@@ -89,7 +89,21 @@ rule derep_genomes:
 		{params.derep_script} --threads {threads} --threshold {params.derep_threshold} {params.indir} {params.outdir} {input.taxonomy}
 		# only select dereplicated genomes from taxonomy table for further processing
 		find {params.outdir} -type f -name '*.gz' | xargs -n1 basename | sed 's/\\([0-9]\\)_.*/\\1/' | grep -F -f - {input.taxonomy} > {output.derep_taxonomy}
-		find {params.indir} -type f -name '*.gz' | xargs -n 1 -P {threads} rm
+		# delete non-dereplicated genomes (keep for now in case derep.threshold will be adjusted
+		# find {params.indir} -type f -name '*.gz' | xargs -n 1 -P {threads} rm
 		"""
 
-# collect all genomes (from GTDB and NCBI) and associated taxonomy file in common directory
+rule collect_ncbi_genomes:
+ 	input:
+ 		derep_taxonomy = config["rdir"] + "/{library_name}/derep_assembly_taxonomy.txt"
+ 	output:
+ 		tax = config["rdir"] + "/derep_combined/{library_name}_derep_taxonomy.txt"
+	params:
+		indir = config["rdir"] + "/{library_name}/derep_genomes",
+		outdir = config["rdir"] + "/derep_combined/"
+	shell:
+		"""
+		cp {params.indir}/*.gz {params.outdir}
+		cp {input.derep_taxonomy} {output.tax}
+		"""
+

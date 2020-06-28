@@ -11,3 +11,4 @@ dependencies:
   - r-taxonomizr
   - r-data.table
   - r-purrr
+  - r-scales

@@ -1,13 +1,18 @@
 # Basic dirs
 wdir: "/vol/cloud/christiane/Repos/taxdb-integration"
-rdir: "/vol/cloud/christiane/NCBI_taxdb_integration/Testing2"
+rdir: "/vol/cloud/christiane/NCBI_taxdb_integration/Testing3"
 
 # Default parameters
 threads: 1
 
-# Parameters for processing NCBI genomes
-assembly_level: "Complete Genome"
+# Parameters for downloading files
 download_threads: 16
+
+# Parameters for processing NCBI genomes
+assembly_level: "Contig"
+
+# Parameters for processing GTDB genomes
+gtdb_link: "https://data.ace.uq.edu.au/public/gtdb/data/releases/latest"
 
 # Parameters for dereplicating genomes
 derep_script: "/vol/cloud/christiane/Repos/Metagenomics-Index-Correction/dereplicate_assemblies.py"
