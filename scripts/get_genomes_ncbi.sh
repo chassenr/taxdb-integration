@@ -27,7 +27,8 @@ aria2c --max-tries=20 --retry-wait=5 --dir "${library_dir}"/"${library_name}" --
 sed '/^\#/d' "${library_dir}"/"${library_name}"/assembly_summary_refseq.txt | cut -f1 | grep -v -f - "${library_dir}"/"${library_name}"/assembly_summary_genbank.txt > "${library_dir}"/"${library_name}"/assembly_summary_genbank_nr.txt
 
 # only use the latest assembly version of genbank assemblies with full genome representation
-sed '/^\#/d' "${library_dir}"/"${library_name}"/assembly_summary_genbank_nr.txt | awk -v FS='\t' -v OFS='\t' '$11 == "latest" && $14 == "Full"' > "${library_dir}"/"${library_name}"/assembly_summary_genbank_clean.txt
+# also remove genomes with missing links
+sed '/^\#/d' "${library_dir}"/"${library_name}"/assembly_summary_genbank_nr.txt | awk -v FS='\t' -v OFS='\t' '$11 == "latest" && $14 == "Full" && $20 != "na"' > "${library_dir}"/"${library_name}"/assembly_summary_genbank_clean.txt
 
 # filter genbank assemblies further by assembly_level
 # (I did not know how to nicely make this selection in one condition...)
@@ -48,8 +49,8 @@ then
   awk -v FS='\t' -v OFS='\t' '$12 == "Complete Genome"' "${library_dir}"/"${library_name}"/assembly_summary_genbank_clean.txt > "${library_dir}"/"${library_name}"/assembly_summary_genbank_filt.txt
 fi
 
-# combine assembly summary tables
-sed '/^\#/d' "${library_dir}"/"${library_name}"/assembly_summary_refseq.txt > "${library_dir}"/"${library_name}"/assembly_summary_combined.txt
+# combine assembly summary tables (and check for missing links in refseq file
+sed '/^\#/d' "${library_dir}"/"${library_name}"/assembly_summary_refseq.txt | awk -v FS='\t' -v OFS='\t' '$20 != "na"' > "${library_dir}"/"${library_name}"/assembly_summary_combined.txt
 cat "${library_dir}"/"${library_name}"/assembly_summary_genbank_filt.txt >> "${library_dir}"/"${library_name}"/assembly_summary_combined.txt
 
 # format input file for aria2
