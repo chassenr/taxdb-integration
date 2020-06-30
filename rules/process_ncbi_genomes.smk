@@ -7,6 +7,8 @@ rule get_genomes_ncbi:
 		library_name = "{library_name}",
 		assembly_level = config["assembly_level"],
 		script = config["wdir"] + "/scripts/get_genomes_ncbi.sh"
+	wildcard_constraints:
+		library_name = '|'.join([re.escape(x) for x in LIBRARY_NAME])
 	conda:
                 config["wdir"] + "/envs/download.yaml"
 	shell:
@@ -70,7 +72,7 @@ rule get_taxpath:
 		{params.script} -i {input.genomes} -t "{params.outdir}/ncbi_taxdump" -s "{params.outdir}/ncbi_taxdump/accessionTaxa.sql" -o {output.taxonomy}
 		"""
 
-rule derep_genomes:
+rule derep_ncbi:
 	input:
 		download_complete = config["rdir"] + "/{library_name}/genomes/done",
 		taxonomy = config["rdir"] + "/{library_name}/assembly_taxonomy.txt"
@@ -89,21 +91,21 @@ rule derep_genomes:
 		{params.derep_script} --threads {threads} --threshold {params.derep_threshold} {params.indir} {params.outdir} {input.taxonomy}
 		# only select dereplicated genomes from taxonomy table for further processing
 		find {params.outdir} -type f -name '*.gz' | xargs -n1 basename | sed 's/\\([0-9]\\)_.*/\\1/' | grep -F -f - {input.taxonomy} > {output.derep_taxonomy}
-		# delete non-dereplicated genomes (keep for now in case derep.threshold will be adjusted
-		# find {params.indir} -type f -name '*.gz' | xargs -n 1 -P {threads} rm
+		# delete non-dereplicated genomes
+		find {params.indir} -type f -name '*.gz' | xargs -n 1 -P {threads} rm
 		"""
 
 rule collect_ncbi_genomes:
  	input:
  		derep_taxonomy = config["rdir"] + "/{library_name}/derep_assembly_taxonomy.txt"
  	output:
- 		tax = config["rdir"] + "/derep_combined/{library_name}_derep_taxonomy.txt"
+ 		tax = config["rdir"] + "/tax_combined/{library_name}_derep_taxonomy.txt"
 	params:
 		indir = config["rdir"] + "/{library_name}/derep_genomes",
 		outdir = config["rdir"] + "/derep_combined/"
 	shell:
 		"""
-		cp {params.indir}/*.gz {params.outdir}
+		find {params.indir} -type f -name '*.gz' | xargs -n 1 mv -t {params.outdir}
 		cp {input.derep_taxonomy} {output.tax}
 		"""
 

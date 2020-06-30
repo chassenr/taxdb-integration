@@ -18,3 +18,13 @@ gtdb_link: "https://data.ace.uq.edu.au/public/gtdb/data/releases/latest"
 derep_script: "/vol/cloud/christiane/Repos/Metagenomics-Index-Correction/dereplicate_assemblies.py"
 derep_threshold: 0.005
 derep_threads: 16
+
+# Parameters for formatting taxonomy
+tax_script: "/vol/cloud/christiane/Repos/Metagenomics-Index-Correction/tax_from_gtdb.py"
+
+# Parameters for building krakendb
+krakenbuild_threads: 1
+kmer_len: 27
+minimizer_len: 25
+minimizer_spaces: 4
+

@@ -35,7 +35,7 @@ rule parse_gtdb_metadata:
 		genomes_genbank = config["rdir"] + "/gtdb/metadata/genomes_genbank.tsv"
 	output:
 		gtdb_links = config["rdir"] + "/gtdb/metadata/gtdb_download_info.txt",
-		uba = config["rdir"] + "/gtdb/metadata/gtdb_uba.txt.txt"
+		uba = config["rdir"] + "/gtdb/metadata/gtdb_uba.txt"
 	params:
 		outdir = config["rdir"] + "/gtdb/metadata",
 		script = config["wdir"] + "/scripts/prepare_files_gtdb.R"
@@ -43,7 +43,7 @@ rule parse_gtdb_metadata:
 		config["wdir"] + "/envs/r.yaml"
 	shell:
 		"""
-		{script} -a {input.ar_meta} -b {input.bac_meta} -A {input.ar_tax} -B {input.bac_tax} -c {input.sp_cluster} -r {input.genomes_refseq} -g {input.genomes_genbank} -o {params.outdir}
+		{params.script} -a {input.ar_meta} -b {input.bac_meta} -A {input.ar_tax} -B {input.bac_tax} -c {input.sp_cluster} -r {input.genomes_refseq} -g {input.genomes_genbank} -o {params.outdir}
 		"""	
 	
 rule download_gtdb_ncbi:
@@ -58,7 +58,7 @@ rule download_gtdb_ncbi:
 		config["wdir"] + "/envs/download.yaml"
 	shell:
 		"""
-		cut -f2,4 {input.gtdb_links} | awk -v FS="\\t" -v OFS="\\t" '{{print $1"\n out="$2}}' > "{params.outdir}/links"
+		cut -f2,4 {input.gtdb_links} | awk -v FS="\\t" -v OFS="\\t" '{{print $1"\\n out="$2}}' > "{params.outdir}/links"
 		aria2c -i "{params.outdir}/links" -c -l "{params.outdir}/links.log" --dir {params.outdir} --max-tries=20 --retry-wait=5 --max-connection-per-server=1 --max-concurrent-downloads={threads}
 		# We need to verify all files are there
 		cut -f4 {input.gtdb_links} | sort > "{params.outdir}/tmp1" 
@@ -69,12 +69,12 @@ rule download_gtdb_ncbi:
 		fi
 		rm "{params.outdir}/links" "{params.outdir}/links.log" "{params.outdir}/tmp1" "{params.outdir}/tmp2"
 		# In case we also want to get the md5 files
-		# cut -f5,1 {input.gtdb_links} | awk '{print $2"\n out="$1".md5"}' > "{params.outdir}/links_md5"
+		# cut -f5,1 {input.gtdb_links} | awk '{{print $2"\\n out="$1".md5"}}' > "{params.outdir}/links_md5"
 		"""
 
 rule download_gtdb_uba:
 	input:
-		uba = config["rdir"] + "/gtdb/metadata/gtdb_uba.txt.txt"
+		uba = config["rdir"] + "/gtdb/metadata/gtdb_uba.txt"
 	output:
 		config["rdir"] + "/gtdb/genomes_uba/done"
 	params:
@@ -84,24 +84,24 @@ rule download_gtdb_uba:
 		"""
 		wget -O "{params.outdir}/genomes_uba/gtdb_uba_mags_arc.tar.gz" "{params.gtdb_link}/gtdb_uba_mags_arc.tar.gz"
 		wget -O "{params.outdir}/genomes_uba/gtdb_uba_mags.tar.gz" "{params.gtdb_link}/gtdb_uba_mags.tar.gz"
-		tar -vxfz "{params.outdir}/genomes_uba/gtdb_uba_mags_arc.tar.gz"
-		tar -xvfz "{params.outdir}/genomes_uba/gtdb_uba_mags.tar.gz"
+		tar -xzvf "{params.outdir}/genomes_uba/gtdb_uba_mags_arc.tar.gz" -C "{params.outdir}/genomes_uba"
+		tar -xzvf "{params.outdir}/genomes_uba/gtdb_uba_mags.tar.gz" -C "{params.outdir}/genomes_uba"
 		rm "{params.outdir}/genomes_uba/gtdb_uba_mags_arc.tar.gz" "{params.outdir}/genomes_uba/gtdb_uba_mags.tar.gz"
 		# only keep those UBA listed in the metadata (some UBA genomes are available already on NCBI, and this will avoid duplication)
-		cut -f1 {input.uba} | sed 's/$/\\./' | grep -v -F -f - <(ls -1 "{params.outdir}/genomes_uba/") | xargs -n 1 rm
-		gzip "{params.outdir}/genomes_uba/UBA*"
-		mv "{params.outdir}/genomes_uba/*.gz" "{params.outdir}/genomes/" 
+		cut -f1 {input.uba} | sed 's/$/\\./' | grep -v -F -f - <(find "{params.outdir}/genomes_uba" -name 'UBA*') | xargs -n 1 rm
+		gzip {params.outdir}/genomes_uba/UBA*
+		mv {params.outdir}/genomes_uba/*.gz {params.outdir}/genomes/ 
 		touch "{params.outdir}/genomes_uba/done"
 		"""
 
-rule derep_genomes:
+rule derep_gtdb:
 	input:
 		download_complete_ncbi = config["rdir"] + "/gtdb/genomes/done",
 		download_complete_uba = config["rdir"] + "/gtdb/genomes_uba/done",
 		tax_ncbi = config["rdir"] + "/gtdb/metadata/gtdb_download_info.txt",
 		tax_uba = config["rdir"] + "/gtdb/metadata/gtdb_uba.txt"
 	output:
-		taxonomy = config["rdir"] + "/gtdb/metadata/gtdb_taxonomy.txt"
+		taxonomy = config["rdir"] + "/gtdb/metadata/gtdb_taxonomy.txt",
 		derep_taxonomy = config["rdir"] + "/gtdb/metadata/gtdb_derep_taxonomy.txt"
 	params:
 		indir = config["rdir"] + "/gtdb/genomes",
@@ -118,22 +118,22 @@ rule derep_genomes:
 		cut -f6,7 {input.tax_ncbi} >> {output.taxonomy}
 		{params.derep_script} --threads {threads} --threshold {params.derep_threshold} {params.indir} {params.outdir} {output.taxonomy}
 		# only select dereplicated genomes from taxonomy table for further processing
-		find {params.outdir} -type f -name '*.gz' | xargs -n1 basename | sed 's/\\..*/\\./' | grep -F -f - {output.taxonomy} > {output.derep_taxonomy}
-		# delete non-dereplicated genomes (keep for now in case derep.threshold will be adjusted
-		# find {params.indir} -type f -name '*.gz' | xargs -n 1 -P {threads} rm
+		find {params.outdir} -type f -name '*.gz' | xargs -n1 basename | sed 's/\\.f.*//' | cut -d'_' -f1,2 | grep -w -F -f - {output.taxonomy} > {output.derep_taxonomy}
+		# delete non-dereplicated genomes
+		find {params.indir} -type f -name '*.gz' | xargs -n 1 -P {threads} rm
 		"""
 
 rule collect_gtdb_genomes:
  	input:
  		derep_taxonomy = config["rdir"] + "/gtdb/metadata/gtdb_derep_taxonomy.txt"
  	output:
- 		tax = config["rdir"] + "/derep_combined/gtdb_derep_taxonomy.txt"
+ 		tax = config["rdir"] + "/tax_combined/gtdb_derep_taxonomy.txt"
 	params:
 		indir = config["rdir"] + "/gtdb/derep_genomes",
 		outdir = config["rdir"] + "/derep_combined/"
 	shell:
 		"""
-		cp {params.indir}/*.gz {params.outdir}
+		find {params.indir} -type f -name '*.gz' | xargs -n 1 mv -t {params.outdir}
 		cp {input.derep_taxonomy} {output.tax}
 		"""
 

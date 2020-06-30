@@ -10,3 +10,10 @@ process_ncbi_genomes:
   nodes: 1
   ntasks_per_node: 16
   partition: debug
+
+process_gtdb_genomes:
+  time: 1000:00:00
+  nodes: 1
+  ntasks_per_node: 16
+  partition: debug
+
