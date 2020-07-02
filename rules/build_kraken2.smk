@@ -1,11 +1,12 @@
-rule format_taxonomy:
+checkpoint format_taxonomy:
 	input:
 		expand(config["rdir"] + "/tax_combined/{library_name}_derep_taxonomy.txt", library_name = LIBRARY_NAME),
 		config["rdir"] + "/tax_combined/gtdb_derep_taxonomy.txt"
 	output:
 		tax_combined = config["rdir"] + "/tax_combined/derep_taxonomy_combined.txt",
 		nodes = config["rdir"] + "/kraken2_db/taxonomy/nodes.dmp",
-		names = config["rdir"] + "/kraken2_db/taxonomy/names.dmp"
+		names = config["rdir"] + "/kraken2_db/taxonomy/names.dmp",
+		krakendir = directory(config["rdir"] + "/kraken2_genomes")
 	params:
 		krakendir = config["rdir"] + "/kraken2_genomes",
 		genomedir = config["rdir"] + "/derep_combined",
@@ -37,10 +38,16 @@ rule add_krakendb:
 		kraken2-build --db {params.dbdir} --add-to-library {input.fasta}
 		touch {output}
 		"""
-GENOMES, = glob_wildcards(config["rdir"] + "/kraken2_genomes/added/{genome}.done")
+
+def aggregate_input(wildcards):
+	checkpoint_output = checkpoints.format_taxonomy.get(**wildcards).output.krakendir
+	genome_names = expand(config["rdir"] + "/kraken2_genomes/added/{genome}.done",
+	genome = glob_wildcards(os.path.join(checkpoint_output,"/added/{genome}.done")).genome) 
+	return genome_names
+
 rule build_krakendb:
 	input:
-		expand(config["rdir"] + "/kraken2_genomes/added/{genome}.done", genome = GENOMES)
+		aggregate_input
 	output:
 		hash = config["rdir"] + "/kraken2_db/hash.k2d",
 		opts = config["rdir"] + "/kraken2_db/opts.k2d",
