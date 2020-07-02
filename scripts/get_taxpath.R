@@ -140,18 +140,27 @@ taxpath_parsed <- taxpath %>%
     order = paste0("o__", ifelse(is.na(order), gsub("c__", "", class), order)),
     family = paste0("f__", ifelse(is.na(family), gsub("o__", "", order), family)),
     genus = paste0("g__", ifelse(is.na(genus), gsub("f__", "", family), genus)),
-    species = ifelse(
-      grepl("^\\[", species), 
-      paste0(gsub("g__", "", genus), " ", species), 
-      species
-    ),
-    species = ifelse(
-      gsub(" .*", "", species) != gsub("g__", "", genus),
-      paste0(gsub("g__", "", genus), " [", species, "]"),
-      species
-    ),
     species = paste0("s__", species)
-  ) %>% 
+  )
+
+# fix duplicate tax levels
+# adapt for tidyverse later
+taxpath_df <- as.data.frame(taxpath_parsed)
+taxpath_fixed <- taxpath_df
+for(j in 2:ncol(taxpath_df)) {
+  for(i in unique(taxpath_df[, j])) {
+    tmp1 <- taxpath_df[taxpath_df[, j] == i, j-1]
+    if(length(unique(tmp1)) > 1) {
+      tmp2 <- as.factor(tmp1)
+      levels(tmp2) <- LETTERS[1:length(unique(tmp1))]
+      taxpath_fixed[taxpath_df[, j] == i, j] <- paste0(taxpath_df[taxpath_df[, j] == i, j], "_", as.character(tmp2))
+    }
+  }
+} 
+
+# remove unknown domain and format path
+taxpath_out <- taxpath_fixed %>% 
+  as_tibble() %>% 
   # mutate( root = "root", .before = superkingdom) %>% 
   unite("path", sep = ";") %>% 
   mutate(
@@ -162,7 +171,7 @@ taxpath_parsed <- taxpath %>%
 
 # write output table
 write_delim(
-  taxpath_parsed,
+  taxpath_out,
   opt$output,
   delim = "\t",
   col_names = F
