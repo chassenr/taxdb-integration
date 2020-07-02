@@ -120,7 +120,8 @@ read.nodes.sql(
 assembly_summary <- fread(
   opt$input,
   h = F,
-  sep = "\t"
+  sep = "\t",
+  quote = ""
 )
 
 # map taxid
@@ -138,7 +139,17 @@ taxpath_parsed <- taxpath %>%
     class = paste0("c__", ifelse(is.na(class), gsub("p__", "", phylum), class)),
     order = paste0("o__", ifelse(is.na(order), gsub("c__", "", class), order)),
     family = paste0("f__", ifelse(is.na(family), gsub("o__", "", order), family)),
-    genus = paste0("g__", genus),
+    genus = paste0("g__", ifelse(is.na(genus), gsub("f__", "", family), genus)),
+    species = ifelse(
+      grepl("^\\[", species), 
+      paste0(gsub("g__", "", genus), " ", species), 
+      species
+    ),
+    species = ifelse(
+      gsub(" .*", "", species) != gsub("g__", "", genus),
+      paste0(gsub("g__", "", genus), " [", species, "]"),
+      species
+    ),
     species = paste0("s__", species)
   ) %>% 
   # mutate( root = "root", .before = superkingdom) %>% 
@@ -146,7 +157,8 @@ taxpath_parsed <- taxpath %>%
   mutate(
     accnos = assembly_summary$V1,
     .before = path
-  )
+  ) %>% 
+  filter(!is.na(taxpath$superkingdom))
 
 # write output table
 write_delim(
