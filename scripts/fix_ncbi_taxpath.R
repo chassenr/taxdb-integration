@@ -9,7 +9,6 @@ package.list <- c(
   "crayon",
   "optparse",
   "config",
-  "taxonomizr",
   "tidyverse",
   "data.table",
   "purrr"
@@ -72,20 +71,6 @@ option_list <- list(
     metavar = "character"
   ),
   make_option(
-    c("-t", "--taxdump"), 
-    type = "character", 
-    default = NULL,
-    help = "directory containing NCBI nodes.dmp and names.dmp", 
-    metavar = "character"
-  ),
-  make_option(
-    c("-s", "--sql"), 
-    type = "character", 
-    default = NULL,
-    help = "location and name of sql database that will be generated from the taxdump", 
-    metavar = "character"
-  ),
-  make_option(
     c("-o", "--output"), 
     type = "character", 
     default = NULL,
@@ -95,64 +80,58 @@ option_list <- list(
 )
 opt_parser <- OptionParser(option_list = option_list)
 opt <- parse_args(opt_parser)
-if (is.null(opt$input) | is.null(opt$output) | is.null(opt$taxdump) | is.null(opt$sql)) {
+if (is.null(opt$input) | is.null(opt$output)) {
   print_help(opt_parser)
   stop(
-    "You need to provide the assembly summary table, the location of the taxdump files and sql database, and the name of the output file.\n", 
+    "You need to provide the input and output taxonomy files.\n", 
     call. = FALSE
   )
 }
 
 
-### retrieve taxonomy ####
+### fix NCBI duplicate tax levels ####
 
-# format NCBI taxdump database
-read.names.sql(
-  paste0(opt$taxdump, "/names.dmp"),
-  opt$sql
-)
-read.nodes.sql(
-  paste0(opt$taxdump, "/nodes.dmp"),
-  opt$sql
-)
-
-# read assembly summary
-assembly_summary <- fread(
+taxpath <- fread(
   opt$input,
   h = F,
   sep = "\t",
-  quote = ""
-)
+  quote = "",
+  col.names = c("accnos", "path")
+) %>% 
+  separate(
+    path,
+    sep = ";",
+    into = c("superkingdom", "phylum", "class", "order", "family", "genus", "species")
+  )
 
-# map taxid
-taxpath <- getTaxonomy(assembly_summary$V7, opt$sql) %>% 
-  as_tibble()
+# add index for duplicated tax names
+# adapt for tidyverse later
+taxpath_df <- as.data.frame(taxpath)
+taxpath_fixed <- taxpath_df
+for(j in 3:ncol(taxpath_df)) {
+  for(i in unique(taxpath_df[, j])) {
+    tmp1 <- taxpath_df[taxpath_df[, j] == i, j-1]
+    if(length(unique(tmp1)) > 1) {
+      tmp2 <- as.factor(tmp1)
+      levels(tmp2) <- LETTERS[1:length(unique(tmp1))]
+      taxpath_fixed[taxpath_df[, j] == i, j] <- paste0(taxpath_df[taxpath_df[, j] == i, j], "_", as.character(tmp2))
+    }
+  }
+} 
 
-# parse taxonomic path
-# qiime format:
-# e.g. d__Archaea;p__Halobacterota;c__Methanosarcinia;o__Methanosarcinales;f__Methanosarcinaceae;g__Methanosarcina;s__Methanosarcina mazei
-# repeat taxon name if na for intermediate ranks
-taxpath_parsed <- taxpath %>% 
-  mutate(
-    superkingdom = paste0("d__", superkingdom),
-    phylum = paste0("p__", ifelse(is.na(phylum), gsub("d__", "", superkingdom), phylum)),
-    class = paste0("c__", ifelse(is.na(class), gsub("p__", "", phylum), class)),
-    order = paste0("o__", ifelse(is.na(order), gsub("c__", "", class), order)),
-    family = paste0("f__", ifelse(is.na(family), gsub("o__", "", order), family)),
-    genus = paste0("g__", ifelse(is.na(genus), gsub("f__", "", family), genus)),
-    species = paste0("s__", species)
-  ) %>% 
-  # mutate( root = "root", .before = superkingdom) %>% 
+# remove unknown domain and format path
+taxpath_out <- taxpath_fixed %>% 
+  as_tibble() %>% 
+  select(-accnos) %>% 
   unite("path", sep = ";") %>% 
   mutate(
-    accnos = assembly_summary$V1,
+    accnos = taxpath_fixed$accnos,
     .before = path
-  ) %>% 
-  filter(!is.na(taxpath$superkingdom))
+  )
 
-# write output table
+# write output
 write_delim(
-  taxpath_parsed,
+  taxpath_out,
   opt$output,
   delim = "\t",
   col_names = F
