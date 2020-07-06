@@ -109,3 +109,21 @@ rule collect_ncbi_genomes:
 		cp {input.derep_taxonomy} {output.tax}
 		"""
 
+rule fix_ncbi_taxpath:
+	input:
+		ncbi = expand(config["rdir"] + "/tax_combined/{library_name}_derep_taxonomy.txt", library_name = LIBRARY_NAME),
+		gtdb = config["rdir"] + "/tax_combined/gtdb_derep_taxonomy.txt"
+	output:
+		ncbi_tax = config["rdir"] + "/tax_combined/ncbi_derep_taxonomy.txt"
+	params:
+		outdir = config["rdir"] + "/tax_combined",
+		script = config["wdir"] + "/scripts/fix_ncbi_taxpath.R"
+	conda:
+		config["wdir"] + "/envs/r.yaml"
+	shell:
+		"""
+		cat {input.ncbi} > "{params.outdir}/tmp"
+		{params.script} -i "{params.outdir}/tmp" -g {input.gtdb} -o {output.ncbi_tax}
+		rm "{params.outdir}/tmp"
+		"""
+

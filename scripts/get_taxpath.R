@@ -140,7 +140,16 @@ taxpath_parsed <- taxpath %>%
     order = paste0("o__", ifelse(is.na(order), gsub("c__", "", class), order)),
     family = paste0("f__", ifelse(is.na(family), gsub("o__", "", order), family)),
     genus = paste0("g__", ifelse(is.na(genus), gsub("f__", "", family), genus)),
-    species = paste0("s__", species)
+    species = ifelse(
+      is.na(species), 
+      paste0("s__", gsub("g__", "", genus), " unclassified"),
+      paste0("s__", species)
+    ),
+    species = ifelse(
+      !grepl(" ", species),
+      paste0(species, " unknown species"),
+      species
+    )
   ) %>% 
   # mutate( root = "root", .before = superkingdom) %>% 
   unite("path", sep = ";") %>% 

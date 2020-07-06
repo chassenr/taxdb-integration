@@ -1,6 +1,6 @@
 checkpoint format_taxonomy:
 	input:
-		expand(config["rdir"] + "/tax_combined/{library_name}_derep_taxonomy.txt", library_name = LIBRARY_NAME),
+		config["rdir"] + "/tax_combined/ncbi_derep_taxonomy.txt",
 		config["rdir"] + "/tax_combined/gtdb_derep_taxonomy.txt"
 	output:
 		tax_combined = config["rdir"] + "/tax_combined/derep_taxonomy_combined.txt",

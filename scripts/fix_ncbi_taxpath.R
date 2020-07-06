@@ -67,20 +67,27 @@ option_list <- list(
     c("-i", "--input"), 
     type = "character", 
     default = NULL,
-    help = "NCBI-style assembly summary table", 
+    help = "ncbi taxonomy file", 
+    metavar = "character"
+  ),
+  make_option(
+    c("-g", "--gtdb"), 
+    type = "character", 
+    default = NULL,
+    help = "gtdb taxonoy file",
     metavar = "character"
   ),
   make_option(
     c("-o", "--output"), 
     type = "character", 
     default = NULL,
-    help = "GTDB-style formatted taxid to taxonomy map",
+    help = "ncbi taxonomy with duplicates resolved",
     metavar = "character"
   )
 )
 opt_parser <- OptionParser(option_list = option_list)
 opt <- parse_args(opt_parser)
-if (is.null(opt$input) | is.null(opt$output)) {
+if (is.null(opt$input) | is.null(opt$gtdb) | is.null(opt$output)) {
   print_help(opt_parser)
   stop(
     "You need to provide the input and output taxonomy files.\n", 
@@ -104,7 +111,20 @@ taxpath <- fread(
     into = c("superkingdom", "phylum", "class", "order", "family", "genus", "species")
   )
 
-# add index for duplicated tax names
+gtdb <- fread(
+  opt$gtdb,
+  h = F,
+  sep = "\t",
+  quote = "",
+  col.names = c("accnos", "path")
+) %>% 
+  separate(
+    path,
+    sep = ";",
+    into = c("superkingdom", "phylum", "class", "order", "family", "genus", "species")
+  )
+
+# add index for duplicated tax names within NCBI taxonomy
 # adapt for tidyverse later
 taxpath_df <- as.data.frame(taxpath)
 taxpath_fixed <- taxpath_df
@@ -119,9 +139,16 @@ for(j in 3:ncol(taxpath_df)) {
   }
 } 
 
-# remove unknown domain and format path
+# add index for duplicated tax names in GTDB by modifying NCBI path and format path
 taxpath_out <- taxpath_fixed %>% 
   as_tibble() %>% 
+  mutate(
+    phylum = ifelse(phylum %in% gtdb$phylum, paste0(phylum, "_A"), phylum),
+    class = ifelse(class %in% gtdb$class, paste0(class, "_A"), class),
+    order = ifelse(order %in% gtdb$order, paste0(order, "_A"), order),
+    family = ifelse(family %in% gtdb$family, paste0(family, "_A"), family),
+    genus = ifelse(genus %in% gtdb$genus, paste0(genus, "_A"), genus),
+  ) %>% 
   select(-accnos) %>% 
   unite("path", sep = ";") %>% 
   mutate(
