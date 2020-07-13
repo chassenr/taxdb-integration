@@ -64,37 +64,17 @@ msg_sub <- function(X){
 # define command line options
 option_list <- list(
   make_option(
-    c("-a", "--ar_metadata"),
-    type = "character", default = NULL,
-    help = "GTDB Archaea metadata", 
-    metavar = "character"
-  ),
-  make_option(
-    c("-b", "--bac_metadata"),
-    type = "character", 
-    default = NULL, 
-    help = "GTDB Bacteria metadata", 
-    metavar = "character"
-  ),
-  make_option(
-    c("-A", "--ar_taxonomy"),
+    c("-a", "--ar_taxonomy"),
     type = "character", 
     default = NULL, 
     help = "GTDB Archaea taxonomy",
     metavar = "character"
   ),
   make_option(
-    c("-B", "--bac_taxonomy"),
+    c("-b", "--bac_taxonomy"),
     type = "character",
     default = NULL, 
     help = "GTDB Bacteria taxonomy", 
-    metavar = "character"
-  ),
-  make_option(
-    c("-c", "--gtdb_clusters"),
-    type = "character", 
-    default = NULL, 
-    help = "GTDB clusters",
     metavar = "character"
   ),
   make_option(
@@ -123,52 +103,15 @@ option_list <- list(
 opt_parser <- OptionParser(option_list = option_list)
 opt <- parse_args(opt_parser)
 
-if (is.null(opt$ar_metadata) | is.null(opt$bac_metadata) |
-    is.null(opt$ar_taxonomy) | is.null(opt$bac_taxonomy) |
-    is.null(opt$gtdb_clusters) | is.null(opt$refseq) |
-    is.null(opt$genbank) | is.null(opt$outdir)) {
+if (is.null(opt$ar_taxonomy) | is.null(opt$bac_taxonomy) |
+    is.null(opt$refseq) | is.null(opt$genbank) | 
+    is.null(opt$outdir)) {
   print_help(opt_parser)
   stop("All parameters are mandatory.\n", call. = FALSE)
 }
 
 
 ### Get necessary files ####
-
-# Get GTDB clusters
-msg("Reading GTDB clusters...")
-sp_clusters <- read_tsv(
-  file = opt$gtdb_clusters, 
-  col_names = TRUE, 
-  na = "N/A", 
-  col_types = cols()
-) %>% 
-  select(1, 10) %>%
-  setNames(c("rep_genome", "cl_genomes")) %>%
-  separate_rows(sep = ",", cl_genomes) %>%
-  select(cl_genomes) %>%
-  separate(
-    col = cl_genomes,
-    into = c("class", "acc"), 
-    extra = "merge", 
-    remove = FALSE, 
-    fill = "left"
-  ) %>%
-  mutate(class = ifelse(grepl("UBA", cl_genomes), "UBA", class)) %>%
-  separate(
-    acc,
-    into = "acc_short",
-    sep = "\\.", 
-    remove = FALSE, 
-    extra = "drop"
-  )
-cat(" done\n")
-
-# Get GTDB metadata
-msg("Reading GTDB metadata...")
-bac_metadata <- read_tsv(file = opt$bac_metadata, col_names = TRUE, na = "N/A", col_types = cols())
-arc_metadata <- read_tsv(file = opt$ar_metadata, col_names = TRUE, na = "N/A", col_types = cols())
-gtdb_metadata <- bind_rows(bac_metadata, arc_metadata)
-cat(" done\n")
 
 # Get GTDB taxonomy
 msg("Reading GTDB taxonomy...")
@@ -216,8 +159,21 @@ arc_taxonomy <- read_tsv(
     remove = FALSE, 
     extra = "drop"
   )
-gtdb_taxonomy <- bind_rows(bac_taxonomy, arc_taxonomy)
+gtdb_taxonomy_cat <- bind_rows(bac_taxonomy, arc_taxonomy)
 cat(" done\n")
+
+# CAUTION: there are duplicated accessions in gtdb
+# pick most recent assembly based on version number
+gtdb_taxonomy <- gtdb_taxonomy_cat %>%
+  mutate(
+    accnos = gsub("GCA_|GCF_", "", acc_short),
+    version = gsub(".*\\.", "", acc)
+  ) %>% 
+  group_by(accnos) %>% 
+  arrange(desc(version), .by_group = T) %>% 
+  filter(!duplicated(accnos)) %>% 
+  ungroup() %>% 
+  select(-accnos, -version)
 
 # Report some numbers
 msg(paste("Entries in GTDB taxonomy:", comma(nrow(gtdb_taxonomy)), "\n"))
@@ -232,22 +188,7 @@ refseq_metadata <- read_tsv(
   na = "na",
   col_types = cols()
 ) %>% 
-  setNames(c("acc1", "acc2", "link"))
-cat(" done\n")
-
-# Get GenBank data
-msg("Reading GenBank assembly summaries...")
-genbank_metadata <- read_tsv(
-  file = opt$genbank,
-  col_names = FALSE, 
-  na = "na",
-  col_types = cols()
-) %>% 
-  setNames(c("acc1", "acc2", "link"))
-cat(" done\n")
-
-# parse NCBI metadata
-ncbi_metadata <- bind_rows(genbank_metadata, refseq_metadata) %>%
+  setNames(c("acc1", "acc2", "link")) %>% 
   separate(
     acc1,
     into = "acc1_short", 
@@ -262,78 +203,91 @@ ncbi_metadata <- bind_rows(genbank_metadata, refseq_metadata) %>%
     remove = FALSE, 
     extra = "drop"
   )
+cat(" done\n")
+
+# Get GenBank data
+msg("Reading GenBank assembly summaries...")
+genbank_metadata <- read_tsv(
+  file = opt$genbank,
+  col_names = FALSE, 
+  na = "na",
+  col_types = cols()
+) %>% 
+  setNames(c("acc1", "acc2", "link")) %>% 
+  separate(
+    acc1,
+    into = "acc1_short", 
+    sep = "\\.", 
+    remove = FALSE, 
+    extra = "drop"
+  ) %>%
+  separate(
+    acc2,
+    into = "acc2_short", 
+    sep = "\\.", 
+    remove = FALSE, 
+    extra = "drop"
+  )
+cat(" done\n")
+
+# parse NCBI metadata
 msg(paste("Entries in RefSeq file:", comma(nrow(refseq_metadata)), "\n"))
 msg(paste("Entries in GenBank file:", comma(nrow(genbank_metadata)), "\n"))
 
 
 ### Find overlaps between GTDB and NCBI ####
+
 msg("Identifying common genomes between GTDB and RefSeq/GenBank data...")
-gtdb_ncbi_tmp <- bind_rows(
-  ncbi_metadata %>% inner_join(gtdb_taxonomy, by = c(acc1_short = "acc_short")),
-  ncbi_metadata %>% inner_join(gtdb_taxonomy, by = c(acc2_short = "acc_short"))
-) %>%
-  arrange(gtdb_genome) %>%
-  separate(
-    acc,
-    into = "acc_short", 
-    sep = "\\.", 
-    remove = FALSE,
-    extra = "drop"
-  )
-cat(" done\n")
-
-# Find duplicated entries, because mix between genbank and refseq, we will keep the ones from GTDB
-gtdb_ncbi_tmp_dup <- gtdb_ncbi_tmp %>%
-  group_by(gtdb_genome) %>%
-  count() %>%
-  filter(n > 1)
-gtdb_ncbi_tmp_sng <- gtdb_ncbi_tmp %>%
-  group_by(gtdb_genome) %>%
-  count() %>%
-  filter(n == 1)
-msg(paste("We found", comma(nrow(gtdb_ncbi_tmp_dup)), "duplicated entries between GTDB/NCBI files\n"))
-msg(paste("We found", comma(nrow(gtdb_ncbi_tmp_sng)), "singleton entries between GTDB/NCBI files\n"))
-
-msg("Filtering out duplicates...")
-# Find those that the GTDB accession is the same as the primary accession
-gtdb_ncbi_tmp_1 <- gtdb_ncbi_tmp %>%
-  filter(gtdb_genome %in% gtdb_ncbi_tmp_dup$gtdb_genome) %>%
-  filter(acc_short == acc1_short)
-
-# Find the singletons
-gtdb_ncbi_tmp_2 <- gtdb_ncbi_tmp %>%
-  filter(gtdb_genome %in% gtdb_ncbi_tmp_sng$gtdb_genome)
-
-# check if each duplicate has 1 representative (empty character expected)
-diff_acc <- setdiff(gtdb_ncbi_tmp_dup$gtdb_genome, gtdb_ncbi_tmp_1$gtdb_genome) %>%
-  unique()
-
-cat(" done\n")
+# search first based on primary accession
+gtdb_ncbi_acc1 <- bind_rows(
+  inner_join(gtdb_taxonomy, refseq_metadata, by = c("acc_short" = "acc1_short")),
+  inner_join(gtdb_taxonomy, genbank_metadata, by = c("acc_short" = "acc1_short"))
+)
+# if not found, also consider secondary accession
+gtdb_ncbi_acc2 <- bind_rows(
+  gtdb_taxonomy %>% 
+    filter(!acc_short %in% gtdb_ncbi_acc1$acc_short) %>% 
+    inner_join(refseq_metadata, by = c("acc_short" = "acc2_short")),
+  gtdb_taxonomy %>% 
+    filter(!acc_short %in% gtdb_ncbi_acc1$acc_short) %>% 
+    inner_join(genbank_metadata, by = c("acc_short" = "acc2_short"))
+)
+msg(paste("We found", comma(sum(nrow(gtdb_ncbi_acc1), nrow(gtdb_ncbi_acc2))), "GTDB entries in NCBI\n"))
 
 # Which GTDB genomes are not in NCBI
 gtdb_ncbi_missing <- gtdb_taxonomy %>%
   filter(class != "UBA") %>%
-  filter(!(gtdb_genome %in% c(gtdb_ncbi_tmp_dup$gtdb_genome, gtdb_ncbi_tmp_sng$gtdb_genome))) %>%
+  filter(!(gtdb_genome %in% c(gtdb_ncbi_acc1$gtdb_genome, gtdb_ncbi_acc2$gtdb_genome))) %>%
   mutate(
     acc_short_mod = case_when(
       grepl("GCF", acc_short) ~ gsub("GCF", "GCA", acc_short),
       grepl("GCA", acc_short) ~ gsub("GCA", "GCF", acc_short)
     )
   )
-
 msg(paste("We are missing", comma(nrow(gtdb_ncbi_missing)), "entries in NCBI (might be updated, removed...)\n"))
 
 # rescue some missing genomes by taking their modified accession number
-gtdb_ncbi_tmp_3 <- bind_rows(
-  ncbi_metadata %>% inner_join(gtdb_ncbi_missing, by = c(acc1_short = "acc_short_mod")),
-  ncbi_metadata %>% inner_join(gtdb_ncbi_missing, by = c(acc2_short = "acc_short_mod"))
-) %>%
-  arrange(gtdb_genome) %>%
-  filter(!is.na(link))
+gtdb_ncbi_rescued1 <- bind_rows(
+  inner_join(gtdb_ncbi_missing, refseq_metadata, by = c("acc_short_mod" = "acc1_short")),
+  inner_join(gtdb_ncbi_missing, genbank_metadata, by = c("acc_short_mod" = "acc1_short"))
+)
+gtdb_ncbi_rescued2 <- bind_rows(
+  gtdb_ncbi_missing %>% 
+    filter(!acc_short_mod %in% gtdb_ncbi_rescued1$acc_short_mod) %>% 
+    inner_join(refseq_metadata, by = c("acc_short_mod" = "acc2_short")),
+  gtdb_ncbi_missing %>% 
+    filter(!acc_short_mod %in% gtdb_ncbi_rescued1$acc_short_mod) %>% 
+    inner_join(genbank_metadata, by = c("acc_short_mod" = "acc2_short"))
+)
 
 # concatenate download links
-gtdb_links <- bind_rows(gtdb_ncbi_tmp_1, gtdb_ncbi_tmp_2, gtdb_ncbi_tmp_3) %>%
-  select(gtdb_genome, link, tax_string) %>%
+gtdb_links <- bind_rows(
+  gtdb_ncbi_acc1 %>% select(gtdb_genome, link, tax_string),
+  gtdb_ncbi_acc2 %>% select(gtdb_genome, link, tax_string),
+  gtdb_ncbi_rescued1 %>% select(gtdb_genome, link, tax_string),
+  gtdb_ncbi_rescued2 %>% select(gtdb_genome, link, tax_string)
+) %>% 
+  filter(!is.na(link)) %>% 
   bind_rows(
     gtdb_taxonomy %>% 
       filter(class == "UBA") %>%
@@ -343,16 +297,9 @@ gtdb_links <- bind_rows(gtdb_ncbi_tmp_1, gtdb_ncbi_tmp_2, gtdb_ncbi_tmp_3) %>%
 
 msg(paste("Generating", comma(nrow(gtdb_links %>% filter(!grepl("UBA", gtdb_genome)))), "links for download..."))
 
+
 ### Create necessary files For downloading fasta files ####
 out_file_links <- gtdb_links %>%
-  # Is there any particular reason for changing from GCF to GCA here?
-  # mutate(
-  #   link = ifelse(
-  #     grepl("GCF_001865635", gtdb_genome), 
-  #     "ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/001/865/635/GCA_001865635.3_ASM186563v3",
-  #     link
-  #   )
-  # ) %>%
   filter(!grepl("UBA", gtdb_genome)) %>%
   select(gtdb_genome, link, tax_string) %>%
   mutate(

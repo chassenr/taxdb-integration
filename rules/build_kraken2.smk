@@ -1,12 +1,11 @@
-checkpoint format_taxonomy:
+rule format_taxonomy:
 	input:
 		config["rdir"] + "/tax_combined/ncbi_derep_taxonomy.txt",
 		config["rdir"] + "/tax_combined/gtdb_derep_taxonomy.txt"
 	output:
 		tax_combined = config["rdir"] + "/tax_combined/derep_taxonomy_combined.txt",
 		nodes = config["rdir"] + "/kraken2_db/taxonomy/nodes.dmp",
-		names = config["rdir"] + "/kraken2_db/taxonomy/names.dmp",
-		krakendir = directory(config["rdir"] + "/kraken2_genomes")
+		names = config["rdir"] + "/kraken2_db/taxonomy/names.dmp"
 	params:
 		krakendir = config["rdir"] + "/kraken2_genomes",
 		genomedir = config["rdir"] + "/derep_combined",
@@ -20,11 +19,13 @@ checkpoint format_taxonomy:
 		# replace 'domain' with 'superkingdom (required for kaiju) to ensure that the same nodes.dmp and names.dmp files can be used for both databases
 		sed -i -e 's/domain/superkingdom/g' {output.nodes}
 		"""
+# depending on the number and size of the genomes, it may be required to delete the zipped fna in the derep directory
 
 # adapted from: https://github.com/leylabmpi/Struo/blob/f8fdf3d6f04678502fb8d6b094cb4135b7c361e3/bin/kraken2/Snakefile
+GENOMES, = glob_wildcards(config["rdir"] + "/kraken2_genomes/{genome}.fa")
 rule add_krakendb:
 	input:
-		fasta = config["rdir"] + "/kraken2_genomes/{genome}.gz",
+		fasta = config["rdir"] + "/kraken2_genomes/{genome}.fa",
 		nodes = config["rdir"] + "/kraken2_db/taxonomy/nodes.dmp",
 		names = config["rdir"] + "/kraken2_db/taxonomy/names.dmp"
 	output:
@@ -39,15 +40,11 @@ rule add_krakendb:
 		touch {output}
 		"""
 
-def aggregate_input(wildcards):
-	checkpoint_output = checkpoints.format_taxonomy.get(**wildcards).output.krakendir
-	genome_names = expand(config["rdir"] + "/kraken2_genomes/added/{genome}.done",
-	genome = glob_wildcards(os.path.join(checkpoint_output,"/added/{genome}.done")).genome) 
-	return genome_names
-
+# depending on the number and size of the genomes, it may be required to delete the output of the tax_from_gtdb.py script (i.e. the kraken2_genomes directory)
+# by adding these genomes to the kraken database, they will be copied to the krakendir anyway
 rule build_krakendb:
 	input:
-		aggregate_input
+		expand(config["rdir"] + "/kraken2_genomes/added/{genome}.done", genome = GENOMES)
 	output:
 		hash = config["rdir"] + "/kraken2_db/hash.k2d",
 		opts = config["rdir"] + "/kraken2_db/opts.k2d",

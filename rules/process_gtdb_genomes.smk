@@ -43,7 +43,7 @@ rule parse_gtdb_metadata:
 		config["wdir"] + "/envs/r.yaml"
 	shell:
 		"""
-		{params.script} -a {input.ar_meta} -b {input.bac_meta} -A {input.ar_tax} -B {input.bac_tax} -c {input.sp_cluster} -r {input.genomes_refseq} -g {input.genomes_genbank} -o {params.outdir}
+		{params.script} -a {input.ar_tax} -b {input.bac_tax} -r {input.genomes_refseq} -g {input.genomes_genbank} -o {params.outdir}
 		"""	
 	
 rule download_gtdb_ncbi:
