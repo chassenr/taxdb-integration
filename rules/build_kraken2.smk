@@ -1,13 +1,13 @@
-rule format_taxonomy:
+checkpoint format_taxonomy:
 	input:
 		config["rdir"] + "/tax_combined/ncbi_derep_taxonomy.txt",
 		config["rdir"] + "/tax_combined/gtdb_derep_taxonomy.txt"
 	output:
+		krakendir = directory(config["rdir"] + "/kraken2_genomes"),
 		tax_combined = config["rdir"] + "/tax_combined/derep_taxonomy_combined.txt",
 		nodes = config["rdir"] + "/kraken2_db/taxonomy/nodes.dmp",
 		names = config["rdir"] + "/kraken2_db/taxonomy/names.dmp"
 	params:
-		krakendir = config["rdir"] + "/kraken2_genomes",
 		genomedir = config["rdir"] + "/derep_combined",
 		tax_script = config["tax_script"]
 	conda:
@@ -15,21 +15,20 @@ rule format_taxonomy:
 	shell:
 		"""
 		cat {input} > {output.tax_combined}
-		{params.tax_script} --gtdb {output.tax_combined} --assemblies {params.genomedir} --nodes {output.nodes} --names {output.names} --kraken_dir {params.krakendir}
+		{params.tax_script} --gtdb {output.tax_combined} --assemblies {params.genomedir} --nodes {output.nodes} --names {output.names} --kraken_dir {output.krakendir}
 		# replace 'domain' with 'superkingdom (required for kaiju) to ensure that the same nodes.dmp and names.dmp files can be used for both databases
 		sed -i -e 's/domain/superkingdom/g' {output.nodes}
 		"""
 # depending on the number and size of the genomes, it may be required to delete the zipped fna in the derep directory
 
 # adapted from: https://github.com/leylabmpi/Struo/blob/f8fdf3d6f04678502fb8d6b094cb4135b7c361e3/bin/kraken2/Snakefile
-GENOMES, = glob_wildcards(config["rdir"] + "/kraken2_genomes/{genome}.fa")
 rule add_krakendb:
 	input:
-		fasta = config["rdir"] + "/kraken2_genomes/{genome}.fa",
+		fasta = config["rdir"] + "/kraken2_genomes/{acc}.fa",
 		nodes = config["rdir"] + "/kraken2_db/taxonomy/nodes.dmp",
 		names = config["rdir"] + "/kraken2_db/taxonomy/names.dmp"
 	output:
-		config["rdir"] + "/kraken2_genomes/added/{genome}.done"
+		config["rdir"] + "/kraken2_genomes/added/{acc}.done"
 	params:
 		dbdir = config["rdir"] + "/kraken2_db"
 	conda:
@@ -42,9 +41,17 @@ rule add_krakendb:
 
 # depending on the number and size of the genomes, it may be required to delete the output of the tax_from_gtdb.py script (i.e. the kraken2_genomes directory)
 # by adding these genomes to the kraken database, they will be copied to the krakendir anyway
+
+def aggregate_input(wildcards):
+        checkpoint_output = checkpoints.format_taxonomy.get(**wildcards).output.krakendir
+        file_names = expand(config["rdir"] + "/kraken2_genomes/added/{acc}.done", 
+        acc = glob_wildcards(os.path.join(checkpoint_output,"{acc}.fa")).acc)
+        return file_names
+
 rule build_krakendb:
 	input:
-		expand(config["rdir"] + "/kraken2_genomes/added/{genome}.done", genome = GENOMES)
+		# genome = expand(config["rdir"] + "/kraken2_genomes/added/{acc}.done", acc = ACC)
+		aggregate_input
 	output:
 		hash = config["rdir"] + "/kraken2_db/hash.k2d",
 		opts = config["rdir"] + "/kraken2_db/opts.k2d",
