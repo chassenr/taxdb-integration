@@ -20,11 +20,8 @@ Working directory
 '''
 workdir: config["wdir"]
 # message("The current working directory is " + WDIR)
-'''
- The list of samples to be processed
-'''
-# LIBRARY_NAME = ["fungi","plant"]
-LIBRARY_NAME = ["fungi","invertebrate","plant","protozoa","vertebrate_mammalian","vertebrate_other","viral"]
+
+LIBRARY_NAME = config["library_name"]
 
 # minimize rule all input further?
 rule all:

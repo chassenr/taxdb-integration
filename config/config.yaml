@@ -5,25 +5,50 @@ rdir: "/vol/cloud/christiane/NCBI_taxdb_integration/Testing4"
 # Default parameters
 threads: 1
 
+# Define wildcard values for NCBI partitions
+library_name:
+        - fungi
+        - invertebrate
+        - plant
+        - protozoa
+        - vertebrate_mammalian
+        - vertebrate_other
+        - viral
+
 # Parameters for downloading files
 download_threads: 16
 
 # Parameters for processing NCBI genomes
-assembly_level: "Contig"
+assembly_level:
+        fungi: "Contig"
+        invertebrate: "Contig"
+        plant: "Contig"
+        protozoa: "Contig"
+        vertebrate_mammalian: "Contig"
+        vertebrate_other: "Contig"
+        viral: "Contig"
 
 # Parameters for processing GTDB genomes
 gtdb_link: "https://data.ace.uq.edu.au/public/gtdb/data/releases/latest"
 
 # Parameters for dereplicating genomes
 derep_script: "/vol/cloud/christiane/Repos/Metagenomics-Index-Correction/dereplicate_assemblies.py"
-derep_threshold: 0.005
 derep_threads: 16
+derep_threshold_gtdb: 0.005
+derep_threshold_ncbi:
+        fungi: 0.005
+        invertebrate: 0.01
+        plant: 0.01
+        protozoa: 0.005
+        vertebrate_mammalian: 0.01
+        vertebrate_other: 0.01
+        viral: 0.005
 
 # Parameters for formatting taxonomy
 tax_script: "/vol/cloud/christiane/Repos/Metagenomics-Index-Correction/tax_from_gtdb.py"
 
 # Parameters for building krakendb
-krakenbuild_threads: 1
+krakenbuild_threads: 32
 kmer_len: 27
 minimizer_len: 25
 minimizer_spaces: 4

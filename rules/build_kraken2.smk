@@ -12,10 +12,12 @@ checkpoint format_taxonomy:
 		tax_script = config["tax_script"]
 	conda:
 		config["wdir"] + "/envs/derep.yaml"
+	log:
+                config["rdir"] + "/logs/format_taxonomy_checkpoint.log"
 	shell:
 		"""
 		cat {input} > {output.tax_combined}
-		{params.tax_script} --gtdb {output.tax_combined} --assemblies {params.genomedir} --nodes {output.nodes} --names {output.names} --kraken_dir {output.krakendir}
+		{params.tax_script} --gtdb {output.tax_combined} --assemblies {params.genomedir} --nodes {output.nodes} --names {output.names} --kraken_dir {output.krakendir} &>> {log}
 		# replace 'domain' with 'superkingdom (required for kaiju) to ensure that the same nodes.dmp and names.dmp files can be used for both databases
 		sed -i -e 's/domain/superkingdom/g' {output.nodes}
 		"""
@@ -64,8 +66,10 @@ rule build_krakendb:
 	threads: config["krakenbuild_threads"]
 	conda:
 		config["wdir"] + "/envs/kraken2.yaml"
+	log:
+                config["rdir"] + "/logs/build_kraken.log"
 	shell:
 		"""
-		kraken2-build --build --threads {threads} --db {params.dbdir} --kmer-len {params.kmer_len} --minimizer-len {params.min_len} --minimizer-spaces {params.min_spaces}
+		kraken2-build --build --threads {threads} --db {params.dbdir} --kmer-len {params.kmer_len} --minimizer-len {params.min_len} --minimizer-spaces {params.min_spaces} &>> {log}
 		"""
 
