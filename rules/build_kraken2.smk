@@ -50,7 +50,6 @@ def aggregate_input(wildcards):
 
 rule build_krakendb:
 	input:
-		# genome = expand(config["rdir"] + "/kraken2_genomes/added/{acc}.done", acc = ACC)
 		aggregate_input
 	output:
 		hash = config["rdir"] + "/kraken2_db/hash.k2d",

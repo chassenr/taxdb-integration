@@ -133,6 +133,7 @@ rule collect_gtdb_genomes:
 		outdir = config["rdir"] + "/derep_combined/"
 	shell:
 		"""
+		mkdir -p {params.outdir}
 		find {params.indir} -type f -name '*.gz' | xargs -n 1 mv -t {params.outdir}
 		cp {input.derep_taxonomy} {output.tax}
 		"""
