@@ -92,10 +92,10 @@ option_list <- list(
     metavar = "character"
   ),
   make_option(
-    c("-o", "--outdir"),
+    c("-o", "--output"),
     type = "character",
     default = NULL, 
-    help = "Output folder", 
+    help = "Name of output files with download links and taxonomy", 
     metavar = "character"
   )
 )
@@ -162,7 +162,7 @@ arc_taxonomy <- read_tsv(
 gtdb_taxonomy_cat <- bind_rows(bac_taxonomy, arc_taxonomy)
 cat(" done\n")
 
-# CAUTION: there are duplicated accessions in gtdb
+# CAUTION: there may be duplicated accessions in gtdb
 # pick most recent assembly based on version number
 gtdb_taxonomy <- gtdb_taxonomy_cat %>%
   mutate(
@@ -177,8 +177,7 @@ gtdb_taxonomy <- gtdb_taxonomy_cat %>%
 
 # Report some numbers
 msg(paste("Entries in GTDB taxonomy:", comma(nrow(gtdb_taxonomy)), "\n"))
-msg(paste("Entries in GTDB metadata:", comma(nrow(gtdb_taxonomy)), "\n"))
-msg(paste(comma(nrow(gtdb_taxonomy %>% filter(class == "UBA"))), "are UBA entries\n"))
+# no UBA anymore in version 95
 
 # Get RefSeq data
 msg("Reading RefSeq assembly summaries...")
@@ -287,24 +286,16 @@ gtdb_links <- bind_rows(
   gtdb_ncbi_rescued1 %>% select(gtdb_genome, link, tax_string),
   gtdb_ncbi_rescued2 %>% select(gtdb_genome, link, tax_string)
 ) %>% 
-  filter(!is.na(link)) %>% 
-  bind_rows(
-    gtdb_taxonomy %>% 
-      filter(class == "UBA") %>%
-      mutate(link = NA) %>%
-      select(gtdb_genome, link, tax_string)
-    )
+  filter(!is.na(link))
 
 msg(paste("Generating", comma(nrow(gtdb_links %>% filter(!grepl("UBA", gtdb_genome)))), "links for download..."))
 
 
 ### Create necessary files For downloading fasta files ####
 out_file_links <- gtdb_links %>%
-  filter(!grepl("UBA", gtdb_genome)) %>%
-  select(gtdb_genome, link, tax_string) %>%
   mutate(
     link = gsub("^ftp", "http", link),
-    filename = paste0(gsub("^.*/", "", link), "_genomic.fna.gz"),
+    filename = paste0(basename(link), "_genomic.fna.gz"),
     download_link = paste(link, filename, sep = "/"),
     outfile = paste0(gsub("GB_|RS_", "", gtdb_genome), "_genomic.fna.gz"),
     acc = gsub("GB_|RS_", "", gtdb_genome),
@@ -314,23 +305,10 @@ out_file_links <- gtdb_links %>%
 
 write_tsv(
   out_file_links,
-  path = file.path(opt$outdir, "gtdb_download_info.txt"),
+  opt$output,
   col_names = FALSE
 )
 cat(" done\n")
-
-msg(paste("Exporting accessions for", comma(nrow(gtdb_links %>% filter(grepl("UBA", gtdb_genome)))), "UBA genomes..."))
-
-out_file_uba <- gtdb_links %>%
-  filter(grepl("UBA", gtdb_genome)) %>%
-  select(gtdb_genome, tax_string)
-
-write_tsv(
-  out_file_uba,
-  path = file.path(opt$outdir, "gtdb_uba.txt"),
-  col_names = FALSE
-)
-cat(" done\n\n")
 
 # summarizing stats for missing genomes
 found <- nrow(gtdb_links)

@@ -31,7 +31,6 @@ rule all:
 		# genome_taxonomy = expand(config["rdir"] + "/{library_name}/assembly_taxonomy.txt", library_name = LIBRARY_NAME),
 		# derep_taxonomy = expand(config["rdir"] + "/{library_name}/derep_assembly_taxonomy.txt", library_name = LIBRARY_NAME),
 		# download_gtdb = config["rdir"] + "/gtdb/genomes/done",
-		# download_uba = config["rdir"] + "/gtdb/genomes_uba/done",
 		gtdb_derep_tax = config["rdir"] + "/tax_combined/gtdb_derep_taxonomy.txt",
 		# ncbi_derep_tax = expand(config["rdir"] + "/tax_combined/{library_name}_derep_taxonomy.txt", library_name = LIBRARY_NAME),
 		ncbi_derep_tax = config["rdir"] + "/tax_combined/ncbi_derep_taxonomy.txt",
