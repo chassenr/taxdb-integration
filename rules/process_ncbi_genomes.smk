@@ -1,21 +1,24 @@
 rule get_genomes_ncbi:
 	output: 
-		config["rdir"] + "/{library_name}/assembly_url_genomic.txt",
-		config["rdir"] + "/{library_name}/assembly_summary_combined.txt"
+		links = config["rdir"] + "/{library_name}/assembly_url_genomic.txt",
+		summary = config["rdir"] + "/{library_name}/assembly_summary_combined.txt"
 	params:
 		library_dir = config["rdir"],
 		library_name = "{library_name}",
 		assembly_level = lambda wildcards: config["assembly_level"][wildcards.library_name],
-		script = config["wdir"] + "/scripts/get_genomes_ncbi.sh"
+		script = config["wdir"] + "/scripts/prepare_files_ncbi.R",
+		ncbi_server = config["ncbi_server"]
 	wildcard_constraints:
 		library_name = '|'.join([re.escape(x) for x in LIBRARY_NAME])
 	conda:
-                config["wdir"] + "/envs/download.yaml"
+                config["wdir"] + "/envs/r.yaml"
 	log:
 		config["rdir"] + "/logs/get_genomes_ncbi_{library_name}.log"
 	shell:
 		"""
-		{params.script} "{params.library_dir}" "{params.library_name}" "{params.assembly_level}" &>> {log}
+		wget -O "{params.library_dir}/{params.library_name}/assembly_summary_refseq.txt" "{params.ncbi_server}/genomes/refseq/{params.library_name}/assembly_summary.txt" &>> {log}
+		wget -O "{params.library_dir}/{params.library_name}/assembly_summary_genbank.txt" "{params.ncbi_server}/genomes/genbank/{params.library_name}/assembly_summary.txt" &>> {log}
+		{params.script} -r "{params.library_dir}/{params.library_name}/assembly_summary_refseq.txt" -g "{params.library_dir}/{params.library_name}/assembly_summary_genbank.txt" -a "{params.assembly_level}" -o "{output.links}" -s "{output.summary}" &>> {log}
 		"""
 
 rule download_genomes_ncbi:

@@ -19,14 +19,15 @@ library_name:
 download_threads: 16
 
 # Parameters for processing NCBI genomes
+ncbi_server: "http://ftp.ncbi.nlm.nih.gov"
 assembly_level:
-        fungi: "Contig"
-        invertebrate: "Contig"
-        plant: "Contig"
-        protozoa: "Contig"
-        vertebrate_mammalian: "Contig"
-        vertebrate_other: "Contig"
-        viral: "Contig"
+        fungi: "variable"
+        invertebrate: "variable"
+        plant: "variable"
+        protozoa: "variable"
+        vertebrate_mammalian: "variable"
+        vertebrate_other: "variable"
+        viral: "Complete Genome"
 
 # Parameters for processing GTDB genomes
 gtdb_link: "https://data.ace.uq.edu.au/public/gtdb/data/releases/latest"
@@ -34,15 +35,15 @@ gtdb_link: "https://data.ace.uq.edu.au/public/gtdb/data/releases/latest"
 # Parameters for dereplicating genomes
 derep_script: "/vol/cloud/christiane/Repos/Metagenomics-Index-Correction/dereplicate_assemblies.py"
 derep_threads: 16
-derep_threshold_gtdb: 0.005
+derep_threshold_gtdb: 0.01
 derep_threshold_ncbi:
-        fungi: 0.005
-        invertebrate: 0.01
-        plant: 0.01
-        protozoa: 0.005
-        vertebrate_mammalian: 0.01
-        vertebrate_other: 0.01
-        viral: 0.005
+        fungi: 0.03
+        invertebrate: 0.03
+        plant: 0.03
+        protozoa: 0.03
+        vertebrate_mammalian: 0.03
+        vertebrate_other: 0.03
+        viral: 0.05
 
 # Parameters for formatting taxonomy
 tax_script: "/vol/cloud/christiane/Repos/Metagenomics-Index-Correction/tax_from_gtdb.py"

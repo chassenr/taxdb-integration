@@ -105,7 +105,7 @@ opt <- parse_args(opt_parser)
 
 if (is.null(opt$ar_taxonomy) | is.null(opt$bac_taxonomy) |
     is.null(opt$refseq) | is.null(opt$genbank) | 
-    is.null(opt$outdir)) {
+    is.null(opt$output)) {
   print_help(opt_parser)
   stop("All parameters are mandatory.\n", call. = FALSE)
 }
