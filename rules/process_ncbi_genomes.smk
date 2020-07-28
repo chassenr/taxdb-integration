@@ -8,8 +8,8 @@ rule get_genomes_ncbi:
 		assembly_level = lambda wildcards: config["assembly_level"][wildcards.library_name],
 		script = config["wdir"] + "/scripts/prepare_files_ncbi.R",
 		ncbi_server = config["ncbi_server"]
-	wildcard_constraints:
-		library_name = '|'.join([re.escape(x) for x in LIBRARY_NAME])
+	# wildcard_constraints:
+		# library_name = '|'.join([re.escape(x) for x in LIBRARY_NAME])
 	conda:
                 config["wdir"] + "/envs/r.yaml"
 	log:
