@@ -5,15 +5,27 @@ __default__:
   partition: debug
   cpus_per_task: 1
 
-process_ncbi_genomes:
-  time: 1000:00:00
-  nodes: 1
-  ntasks_per_node: 16
+download_genomes_ncbi:
+  ntasks_per_node: 32
   partition: debug
 
-process_gtdb_genomes:
-  time: 1000:00:00
-  nodes: 1
-  ntasks_per_node: 16
+derep_ncbi:
+  ntasks_per_node: 32
+  partition: debug
+
+download_gtdb_ncbi:
+  ntasks_per_node: 32
+  partition: debug
+
+derep_gtdb:
+  ntasks_per_node: 32
+  partition: debug
+
+add_krakendb:
+  ntasks_per_node: 32
+  partition: debug
+
+build_krakendb:
+  ntasks_per_node: 32
   partition: debug
 

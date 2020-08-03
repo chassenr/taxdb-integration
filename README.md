@@ -68,5 +68,5 @@ touch done
 rm links retry_links tmp1 tmp2 tmp3
 ```
 
-If you encounter any other bugs, please don't hesitate to open an issue on the issue tracking of this repository.
+If you encounter any other bugs, please don't hesitate to open an issue.
 
