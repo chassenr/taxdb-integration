@@ -24,6 +24,7 @@ rule all:
 		ncbi_derep_tax = config["rdir"] + "/tax_combined/ncbi_derep_taxonomy.txt",
 		nodes = config["rdir"] + "/kraken2_db/taxonomy/nodes.dmp",
 		names = config["rdir"] + "/kraken2_db/taxonomy/names.dmp",
+		univec = config["rdir"] + "/kraken2_db/library/" + config["univec"] + "/library.fna" if config["univec"] else [],
 		hash = config["rdir"] + "/kraken2_db/hash.k2d",
 		opts = config["rdir"] + "/kraken2_db/opts.k2d",
 		map  = config["rdir"] + "/kraken2_db/seqid2taxid.map",

@@ -48,6 +48,11 @@ derep_threshold_ncbi:
 # Parameters for formatting taxonomy
 tax_script: "/vol/cloud/christiane/Repos/Metagenomics-Index-Correction/tax_from_gtdb.py"
 
+# Include UniVec databases
+univec: "UniVec_Core"
+scan_script: "/vol/cloud/christiane/Repos/kraken2/scripts/scan_fasta_file.pl"
+mask_script: "/vol/cloud/christiane/Repos/kraken2/scripts/mask_low_complexity.sh"
+
 # Parameters for building krakendb
 krakenbuild_threads: 32
 kmer_len: 27
