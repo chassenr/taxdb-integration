@@ -8,11 +8,11 @@ threads: 1
 # Define wildcard values for NCBI partitions
 library_name:
         - fungi
-        - invertebrate
-        - plant
-        - protozoa
-        - vertebrate_mammalian
-        - vertebrate_other
+          #- invertebrate
+          #- plant
+          #- protozoa
+          #- vertebrate_mammalian
+          #- vertebrate_other
         - viral
 
 # Parameters for downloading files
@@ -22,11 +22,11 @@ download_threads: 16
 ncbi_server: "http://ftp.ncbi.nlm.nih.gov"
 assembly_level:
         fungi: "variable"
-        invertebrate: "variable"
-        plant: "variable"
-        protozoa: "variable"
-        vertebrate_mammalian: "variable"
-        vertebrate_other: "variable"
+        #invertebrate: "variable"
+        #plant: "variable"
+        #protozoa: "variable"
+        #vertebrate_mammalian: "variable"
+        #vertebrate_other: "variable"
         viral: "Complete Genome"
 
 # Parameters for processing GTDB genomes
@@ -38,11 +38,11 @@ derep_threads: 16
 derep_threshold_gtdb: 0.01
 derep_threshold_ncbi:
         fungi: 0.03
-        invertebrate: 0.03
-        plant: 0.03
-        protozoa: 0.03
-        vertebrate_mammalian: 0.03
-        vertebrate_other: 0.03
+        #invertebrate: 0.03
+        #plant: 0.03
+        #protozoa: 0.03
+        #vertebrate_mammalian: 0.03
+        #vertebrate_other: 0.03
         viral: 0.05
 
 # Parameters for formatting taxonomy
@@ -50,10 +50,9 @@ tax_script: "/vol/cloud/christiane/Repos/Metagenomics-Index-Correction/tax_from_
 
 # Include UniVec databases
 univec: "UniVec_Core"
-scan_script: "/vol/cloud/christiane/Repos/kraken2/scripts/scan_fasta_file.pl"
-mask_script: "/vol/cloud/christiane/Repos/kraken2/scripts/mask_low_complexity.sh"
 
 # Parameters for building krakendb
+masking_threads: 32
 krakenbuild_threads: 32
 kmer_len: 27
 minimizer_len: 25

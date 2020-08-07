@@ -4,3 +4,4 @@ channels:
   - defaults
 dependencies:
   - kraken2
+  - parallel
