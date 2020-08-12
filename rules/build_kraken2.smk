@@ -14,7 +14,7 @@ rule format_taxonomy:
 	conda:
 		config["wdir"] + "/envs/derep.yaml"
 	log:
-                config["rdir"] + "/logs/format_taxonomy.log"
+		config["rdir"] + "/logs/format_taxonomy.log"
 	shell:
 		"""
 		cat {input} > {output.tax_combined}
@@ -28,13 +28,13 @@ rule format_taxonomy:
 rule masking_ncbi:
 	input:
 		file_list = config["rdir"] + "/kraken2_genomes/file_names_derep_genomes.txt",
-                ncbi = config["rdir"] + "/tax_combined/{library_name}_derep_taxonomy.txt",
-                nodes = config["rdir"] + "/kraken2_db/taxonomy/nodes.dmp",
-                names = config["rdir"] + "/kraken2_db/taxonomy/names.dmp"
+		ncbi = config["rdir"] + "/tax_combined/{library_name}_derep_taxonomy.txt",
+		nodes = config["rdir"] + "/kraken2_db/taxonomy/nodes.dmp",
+		names = config["rdir"] + "/kraken2_db/taxonomy/names.dmp"
 	output:
 		fasta = config["rdir"] + "/kraken2_db/library/{library_name}/library.fna"
 	conda:
-                config["wdir"] + "/envs/kraken2.yaml"
+		config["wdir"] + "/envs/kraken2.yaml"
 	threads: config["masking_threads"]
 	shell:
 		"""
@@ -43,19 +43,19 @@ rule masking_ncbi:
 
 rule masking_gtdb:
 	input:
-                file_list = config["rdir"] + "/kraken2_genomes/file_names_derep_genomes.txt",
-                gtdb = config["rdir"] + "/tax_combined/gtdb_derep_taxonomy.txt",
-                nodes = config["rdir"] + "/kraken2_db/taxonomy/nodes.dmp",
-                names = config["rdir"] + "/kraken2_db/taxonomy/names.dmp"
+		file_list = config["rdir"] + "/kraken2_genomes/file_names_derep_genomes.txt",
+		gtdb = config["rdir"] + "/tax_combined/gtdb_derep_taxonomy.txt",
+		nodes = config["rdir"] + "/kraken2_db/taxonomy/nodes.dmp",
+		names = config["rdir"] + "/kraken2_db/taxonomy/names.dmp"
 	output:
 		fasta = config["rdir"] + "/kraken2_db/library/gtdb/library.fna"
 	conda:
 		config["wdir"] + "/envs/kraken2.yaml"
 	threads: config["masking_threads"]
 	shell:
-                """
-                cut -f1 {input.gtdb} | grep -F -f - {input.file_list} | parallel -j{threads} 'dustmasker -in {{}} -outfmt fasta' | sed -e '/^>/!s/[a-z]/x/g' >> {output.fasta}
-                """
+		"""
+		cut -f1 {input.gtdb} | grep -F -f - {input.file_list} | parallel -j{threads} 'dustmasker -in {{}} -outfmt fasta' | sed -e '/^>/!s/[a-z]/x/g' >> {output.fasta}
+		"""
 
 rule prelim_map_ncbi:
 	input:
@@ -65,9 +65,9 @@ rule prelim_map_ncbi:
 	params:
 		libdir = config["rdir"] + "/kraken2_db/library/{library_name}"
 	conda:
-                config["wdir"] + "/envs/kraken2.yaml"
+		config["wdir"] + "/envs/kraken2.yaml"
 	shell:
-                """
+		"""
 		LC_ALL=C grep '^>' {input.fasta} | sed 's/^>//' > {params.libdir}/tmp.accnos
 		NSEQ=$(wc -l {params.libdir}/tmp.accnos | cut -d' ' -f1)
 		printf 'TAXID\\n%.0s' $(seq 1 $NSEQ) | paste - {params.libdir}/tmp.accnos | paste - <(cut -d'|' -f3 {params.libdir}/tmp.accnos) > {output.map}
@@ -75,20 +75,20 @@ rule prelim_map_ncbi:
 		"""
 
 rule prelim_map_gtdb:
-        input:  
-                fasta = config["rdir"] + "/kraken2_db/library/gtdb/library.fna"
-        output:
-                map = config["rdir"] + "/kraken2_db/library/gtdb/prelim_map.txt"
-        params: 
-                libdir = config["rdir"] + "/kraken2_db/library/gtdb"
-        conda:
-                config["wdir"] + "/envs/kraken2.yaml"
-        shell:
-                """
+	input:  
+		fasta = config["rdir"] + "/kraken2_db/library/gtdb/library.fna"
+	output:
+		map = config["rdir"] + "/kraken2_db/library/gtdb/prelim_map.txt"
+	params: 
+		libdir = config["rdir"] + "/kraken2_db/library/gtdb"
+	conda:
+		config["wdir"] + "/envs/kraken2.yaml"
+	shell:
+		"""
 		LC_ALL=C grep '^>' {input.fasta} | sed 's/^>//' > {params.libdir}/tmp.accnos
 		NSEQ=$(wc -l {params.libdir}/tmp.accnos | cut -d' ' -f1)
 		printf 'TAXID\\n%.0s' $(seq 1 $NSEQ) | paste - {params.libdir}/tmp.accnos | paste - <(cut -d'|' -f3 {params.libdir}/tmp.accnos) > {output.map}
-        	rm {params.libdir}/tmp.accnos
+		rm {params.libdir}/tmp.accnos
 		"""
 
 # to avoid ftp issue, recreate kraken2 code for adding UniVec files
@@ -114,9 +114,9 @@ if config["univec"]:
 			dustmasker -in "{params.libdir}/tmp.fna" -outfmt fasta | sed -e '/^>/!s/[a-z]/x/g' > {output.fasta}
 			rm "{params.libdir}/tmp.fna"
 			grep '^>' {output.fasta} | sed 's/^>//' > {params.libdir}/tmp.accnos
-	                NSEQ=$(wc -l {params.libdir}/tmp.accnos | cut -d' ' -f1)
-	                printf 'TAXID\\n%.0s' $(seq 1 $NSEQ) | paste - {params.libdir}/tmp.accnos | paste - <(cut -d'|' -f3 {params.libdir}/tmp.accnos) > {output.map}
-        	        rm {params.libdir}/tmp.accnos
+			NSEQ=$(wc -l {params.libdir}/tmp.accnos | cut -d' ' -f1)
+			printf 'TAXID\\n%.0s' $(seq 1 $NSEQ) | paste - {params.libdir}/tmp.accnos | paste - <(cut -d'|' -f3 {params.libdir}/tmp.accnos) > {output.map}
+			rm {params.libdir}/tmp.accnos
 			"""
 
 rule build_krakendb:
@@ -141,7 +141,7 @@ rule build_krakendb:
 	conda:
 		config["wdir"] + "/envs/kraken2.yaml"
 	log:
-                config["rdir"] + "/logs/build_kraken.log"
+		config["rdir"] + "/logs/build_kraken.log"
 	shell:
 		"""
 		kraken2-build --build --threads {threads} --db {params.dbdir} --kmer-len {params.kmer_len} --minimizer-len {params.min_len} --minimizer-spaces {params.min_spaces} &>> {log}

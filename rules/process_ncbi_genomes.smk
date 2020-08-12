@@ -88,18 +88,24 @@ rule derep_ncbi:
 	output:
 		derep_taxonomy = config["rdir"] + "/{library_name}/derep_assembly_taxonomy.txt"
 	params:
+		dir = config["rdir"] + "/{library_name}",
 		indir = config["rdir"] + "/{library_name}/genomes",
 		outdir = config["rdir"] + "/{library_name}/derep_genomes",
-		derep_script = config["derep_script"],
-		derep_threshold = lambda wildcards: config["derep_threshold_ncbi"][wildcards.library_name]
+		derep_wrapper = config["wdir"] + "/scripts/dereplicate_ncbi_wrapper.sh",
+		derep_lineage = lambda wildcards: config["derep_lineage"][wildcards.library_name],
+		derep_taxlevel_main = lambda wildcards: config["derep_taxlevel_ncbi_main"][wildcards.library_name],
+		derep_taxlevel_sub = lambda wildcards: config["derep_taxlevel_ncbi_sub"][wildcards.library_name],
+		derep_threshold_main = lambda wildcards: config["derep_threshold_ncbi_main"][wildcards.library_name],
+		derep_threshold_sub = lambda wildcards: config["derep_threshold_ncbi_sub"][wildcards.library_name],
+		derep_script = config["derep_script"]
 	threads: config["derep_threads"]
 	conda:
 		config["wdir"] + "/envs/derep.yaml"
 	log:
-                config["rdir"] + "/logs/derep_ncbi_{library_name}.log"
+		config["rdir"] + "/logs/derep_ncbi_{library_name}.log"
 	shell:
 		"""
-		{params.derep_script} --threads {threads} --threshold {params.derep_threshold} {params.indir} {params.outdir} {input.taxonomy} &>> {log}
+		{params.derep_wrapper} "{params.derep_lineage}" {params.derep_taxlevel_main} {params.derep_taxlevel_sub} {params.derep_threshold_main} {params.derep_threshold_sub} {params.derep_script} {input.taxonomy} {params.dir} {threads} &>> {log}
 		# only select dereplicated genomes from taxonomy table for further processing
 		find {params.outdir} -type f -name '*.gz' | xargs -n1 basename | sed 's/\\([0-9]\\)_.*/\\1/' | grep -F -f - {input.taxonomy} > {output.derep_taxonomy}
 		# delete non-dereplicated genomes
@@ -107,10 +113,10 @@ rule derep_ncbi:
 		"""
 
 rule collect_ncbi_genomes:
- 	input:
- 		derep_taxonomy = config["rdir"] + "/{library_name}/derep_assembly_taxonomy.txt"
- 	output:
- 		tax = config["rdir"] + "/tax_combined/{library_name}_derep_taxonomy.txt"
+	input:
+		derep_taxonomy = config["rdir"] + "/{library_name}/derep_assembly_taxonomy.txt"
+	output:
+		tax = config["rdir"] + "/tax_combined/{library_name}_derep_taxonomy.txt"
 	params:
 		indir = config["rdir"] + "/{library_name}/derep_genomes",
 		outdir = config["rdir"] + "/derep_combined/"
@@ -133,7 +139,7 @@ rule fix_ncbi_taxpath:
 	conda:
 		config["wdir"] + "/envs/r.yaml"
 	log:
-                config["rdir"] + "/logs/fix_ncbi_taxpath.log"
+		config["rdir"] + "/logs/fix_ncbi_taxpath.log"
 	shell:
 		"""
 		cat {input.ncbi} > "{params.outdir}/tmp"
