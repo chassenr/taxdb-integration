@@ -24,7 +24,12 @@ rule all:
 		ncbi_derep_tax = config["rdir"] + "/tax_combined/ncbi_derep_taxonomy.txt",
 		nodes = config["rdir"] + "/kraken2_db/taxonomy/nodes.dmp",
 		names = config["rdir"] + "/kraken2_db/taxonomy/names.dmp",
-		univec = config["rdir"] + "/kraken2_db/library/" + config["univec"] + "/library.fna" if config["univec"] else [],
+		gtdb_map = config["rdir"] + "/kraken2_db/library/gtdb/prelim_map.txt",
+		gtdb_fasta = config["rdir"] + "/kraken2_db/library/gtdb/library.fna",
+		ncbi_map = expand(config["rdir"] + "/kraken2_db/library/{library_name}/prelim_map.txt", library_name = LIBRARY_NAME),
+		ncbi_fasta = expand(config["rdir"] + "/kraken2_db/library/{library_name}/library.fna", library_name = LIBRARY_NAME),
+		univec_map = config["rdir"] + "/kraken2_db/library/" + config["univec"] + "/prelim_map.txt" if config["univec"] else [],
+		univec_fasta = config["rdir"] + "/kraken2_db/library/" + config["univec"] + "/library.fna" if config["univec"] else []
 		hash = config["rdir"] + "/kraken2_db/hash.k2d",
 		opts = config["rdir"] + "/kraken2_db/opts.k2d",
 		map  = config["rdir"] + "/kraken2_db/seqid2taxid.map",

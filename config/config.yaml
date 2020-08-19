@@ -1,8 +1,8 @@
 # Basic dirs
-# wdir: "/vol/cloud/christiane/Repos/taxdb-integration"
-# rdir: "/vol/cloud/christiane/NCBI_taxdb_integration/Testing4"
-wdir: "/home/chh/Documents/Repos/taxdb-integration"
-rdir: "/home/chh/Documents/Projects/NCBI_taxdb_integration/Testing7"
+wdir: "/vol/cloud/christiane/Repos/taxdb-integration"
+rdir: "/vol/cloud/christiane/NCBI_taxdb_integration/Testing4"
+# wdir: "/home/chh/Documents/Repos/taxdb-integration"
+# rdir: "/home/chh/Documents/Projects/NCBI_taxdb_integration/Testing7"
 
 # Default parameters
 threads: 1

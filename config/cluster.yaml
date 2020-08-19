@@ -21,7 +21,19 @@ derep_gtdb:
   ntasks_per_node: 32
   partition: debug
 
-add_krakendb:
+masking_ncbi:
+  ntasks_per_node: 32
+  partition: debug
+
+masking_gtdb:
+  ntasks_per_node: 32
+  partition: debug
+
+prelim_map_ncbi:
+  ntasks_per_node: 32
+  partition: debug
+
+prelim_map_gtdb:
   ntasks_per_node: 32
   partition: debug
 

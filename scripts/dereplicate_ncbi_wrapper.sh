@@ -11,7 +11,7 @@ DIR=$8
 CPU=$9
 
 # if sub lineage specified, split taxonomy file and run dereplication separately
-if [[ -v LIN ]]
+if [[ $LIN != "" ]]
 then
   grep -v "$LIN" $TAX > $DIR/assembly_taxonomy_main.txt
   grep "$LIN" $TAX > $DIR/assembly_taxonomy_sub.txt
@@ -31,7 +31,7 @@ fi
 $DEREP --threads $CPU --threshold $ANI_main $DIR/genomes/ $DIR/derep_genomes/ $DIR/assembly_taxonomy_main_tl.txt
 
 # process sub taxonomy genomes
-if [[ -v LIN ]]
+if [[ $LIN != "" ]]
 then
   if [[ $TL_SUB -eq 7 ]]
   then
