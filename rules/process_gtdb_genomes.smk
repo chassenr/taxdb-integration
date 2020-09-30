@@ -3,7 +3,9 @@ rule get_gtdb_metadata:
 		ar_tax = config["rdir"] + "/gtdb/metadata/ar_tax.tsv",
 		bac_tax = config["rdir"] + "/gtdb/metadata/bac_tax.tsv",
 		genomes_refseq = config["rdir"] + "/gtdb/metadata/genomes_refseq.tsv",
-		genomes_genbank = config["rdir"] + "/gtdb/metadata/genomes_genbank.tsv"
+		genomes_genbank = config["rdir"] + "/gtdb/metadata/genomes_genbank.tsv",
+		ar_meta = config["rdir"] + "/gtdb/metadata/ar_meta.tsv",
+		bac_meta = config["rdir"] + "/gtdb/metadata/bac_meta.tsv"
 	params:
 		outdir = config["rdir"] + "/gtdb/metadata",
 		gtdb_link = config["gtdb_link"]
@@ -13,6 +15,13 @@ rule get_gtdb_metadata:
 		"""
 		wget -O {output.ar_tax} "{params.gtdb_link}/ar122_taxonomy.tsv" &>> {log}
 		wget -O {output.bac_tax} "{params.gtdb_link}/bac120_taxonomy.tsv" &>> {log}
+		wget -O "{params.outdir}/tmp_ar.tar.gz" "{params.gtdb_link}/ar122_metadata.tar.gz" &>> {log}
+		wget -O "{params.outdir}/tmp_bac.tar.gz" "{params.gtdb_link}/bac120_metadata.tar.gz" &>> {log}
+		tar -xzf "{params.outdir}/tmp_ar.tar.gz"
+		tar -xzf "{params.outdir}/tmp_bac.tar.gz"
+		rm "{params.outdir}/tmp_ar.tar.gz" "{params.outdir}/tmp_bac.tar.gz"
+		mv "{params.outdir}/ar122_metadata*" {output.ar_meta}
+		mv "{params.outdir}/bac120_metadata*" {output.bac_meta}
 		wget -O "{params.outdir}/assembly_summary_refseq.txt" http://ftp.ncbi.nlm.nih.gov/genomes/refseq/assembly_summary_refseq.txt &>> {log}
 		wget -O "{params.outdir}/assembly_summary_genbank.txt" http://ftp.ncbi.nlm.nih.gov/genomes/genbank/assembly_summary_genbank.txt &>> {log}
 		# parse NCBI data
@@ -25,9 +34,12 @@ rule parse_gtdb_metadata:
 		ar_tax = config["rdir"] + "/gtdb/metadata/ar_tax.tsv",
 		bac_tax = config["rdir"] + "/gtdb/metadata/bac_tax.tsv",
 		genomes_refseq = config["rdir"] + "/gtdb/metadata/genomes_refseq.tsv",
-		genomes_genbank = config["rdir"] + "/gtdb/metadata/genomes_genbank.tsv"
+		genomes_genbank = config["rdir"] + "/gtdb/metadata/genomes_genbank.tsv",
+		ar_meta = config["rdir"] + "/gtdb/metadata/ar_meta.tsv",
+                bac_meta = config["rdir"] + "/gtdb/metadata/bac_meta.tsv"
 	output:
-		gtdb_links = config["rdir"] + "/gtdb/metadata/gtdb_download_info.txt"
+		gtdb_links = config["rdir"] + "/gtdb/metadata/gtdb_download_info.txt",
+		gtdb_meta = config["rdir"] + "/gtdb/metadata/gtdb_metadata.tsv"
 	params:
 		script = config["wdir"] + "/scripts/prepare_files_gtdb.R"
 	conda:
@@ -36,7 +48,7 @@ rule parse_gtdb_metadata:
                 config["rdir"] + "/logs/parse_gtdb_metadata.log"
 	shell:
 		"""
-		{params.script} -a {input.ar_tax} -b {input.bac_tax} -r {input.genomes_refseq} -g {input.genomes_genbank} -o {output.gtdb_links} &>> {log}
+		{params.script} -a {input.ar_tax} -b {input.bac_tax} -A {input.ar_meta} -B {input.bac_meta} -r {input.genomes_refseq} -g {input.genomes_genbank} -o {output.gtdb_links} -m {output.gtdb_meta} &>> {log}
 		"""	
 	
 rule download_gtdb_ncbi:

@@ -78,6 +78,20 @@ option_list <- list(
     metavar = "character"
   ),
   make_option(
+    c("-A", "--ar_metadata"),
+    type = "character", 
+    default = NULL, 
+    help = "GTDB Archaea metadata",
+    metavar = "character"
+  ),
+  make_option(
+    c("-B", "--bac_metadata"),
+    type = "character",
+    default = NULL, 
+    help = "GTDB Bacteria metadata", 
+    metavar = "character"
+  ),
+  make_option(
     c("-r", "--refseq"),
     type = "character",
     default = NULL, 
@@ -95,7 +109,14 @@ option_list <- list(
     c("-o", "--output"),
     type = "character",
     default = NULL, 
-    help = "Name of output files with download links and taxonomy", 
+    help = "Name of output file with download links and taxonomy", 
+    metavar = "character"
+  ),
+  make_option(
+    c("-m", "--metadata-output"),
+    type = "character",
+    default = NULL, 
+    help = "Name of output file with assembly metadata", 
     metavar = "character"
   )
 )
@@ -104,8 +125,9 @@ opt_parser <- OptionParser(option_list = option_list)
 opt <- parse_args(opt_parser)
 
 if (is.null(opt$ar_taxonomy) | is.null(opt$bac_taxonomy) |
+    is.null(opt$ar_metadata) | is.null(opt$bac_metadata) |
     is.null(opt$refseq) | is.null(opt$genbank) | 
-    is.null(opt$output)) {
+    is.null(opt$output) | is.null(opt$'metadata-output')) {
   print_help(opt_parser)
   stop("All parameters are mandatory.\n", call. = FALSE)
 }
@@ -159,21 +181,23 @@ arc_taxonomy <- read_tsv(
     remove = FALSE, 
     extra = "drop"
   )
-gtdb_taxonomy_cat <- bind_rows(bac_taxonomy, arc_taxonomy)
+# gtdb_taxonomy_cat <- bind_rows(bac_taxonomy, arc_taxonomy)
+gtdb_taxonomy <- bind_rows(bac_taxonomy, arc_taxonomy)
 cat(" done\n")
 
 # CAUTION: there may be duplicated accessions in gtdb
 # pick most recent assembly based on version number
-gtdb_taxonomy <- gtdb_taxonomy_cat %>%
-  mutate(
-    accnos = gsub("GCA_|GCF_", "", acc_short),
-    version = gsub(".*\\.", "", acc)
-  ) %>% 
-  group_by(accnos) %>% 
-  arrange(desc(version), .by_group = T) %>% 
-  filter(!duplicated(accnos)) %>% 
-  ungroup() %>% 
-  select(-accnos, -version)
+# This bug seems to have been fixed in release 95
+# gtdb_taxonomy <- gtdb_taxonomy_cat %>%
+#   mutate(
+#     accnos = gsub("GCA_|GCF_", "", acc_short),
+#     version = gsub(".*\\.", "", acc)
+#   ) %>% 
+#   group_by(accnos) %>% 
+#   arrange(desc(version), .by_group = T) %>% 
+#   filter(!duplicated(accnos)) %>% 
+#   ungroup() %>% 
+#   select(-accnos, -version)
 
 # Report some numbers
 msg(paste("Entries in GTDB taxonomy:", comma(nrow(gtdb_taxonomy)), "\n"))
@@ -229,7 +253,6 @@ genbank_metadata <- read_tsv(
   )
 cat(" done\n")
 
-# parse NCBI metadata
 msg(paste("Entries in RefSeq file:", comma(nrow(refseq_metadata)), "\n"))
 msg(paste("Entries in GenBank file:", comma(nrow(genbank_metadata)), "\n"))
 
@@ -303,10 +326,58 @@ out_file_links <- gtdb_links %>%
   ) %>%
   select(gtdb_genome, download_link, filename, outfile, md5file, acc, tax_string)
 
+
+### get assembly metadata ####
+msg("Reading GTDB metadata...")
+bac_metadata <- fread(
+  opt$bac_metadata, 
+  h = T, 
+  sep = "\t"
+) %>%
+  as_tibble() %>% 
+  select(
+    accession,
+    checkm_completeness,
+    checkm_contamination,
+    checkm_strain_heterogeneity,
+    contig_count,
+    genome_size,
+    longest_contig,
+    n50_contigs,
+    protein_count
+  )
+ar_metadata <- fread(
+  opt$ar_metadata, 
+  h = T, 
+  sep = "\t"
+) %>%
+  as_tibble() %>% 
+  select(
+    accession,
+    checkm_completeness,
+    checkm_contamination,
+    checkm_strain_heterogeneity,
+    contig_count,
+    genome_size,
+    longest_contig,
+    n50_contigs,
+    protein_count
+  )
+gtdb_metadata <- bind_rows(bac_metadata, ar_metadata)
+gtdb_metadata <- gtdb_metadata[match(out_file_links$gtdb_genome, gtdb_metadata$accession), ]
+
+
+### write final output ####
+msg("writing output...")
 write_tsv(
   out_file_links,
   opt$output,
   col_names = FALSE
+)
+write_tsv(
+  gtdb_metadata,
+  opt$'metadata-output',
+  col_names = TRUE
 )
 cat(" done\n")
 
