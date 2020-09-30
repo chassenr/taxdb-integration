@@ -56,6 +56,9 @@ rm tmp1 tmp2
 MGSIM communities sim_genomes_table.txt sim_out
 MGSIM reads --sr-seq-depth 1e7 --art-paired -n 16 sim_genomes_table.txt sim_out_abund.txt sim_out_reads
 
+# simulate shorter reads (80bp single-end)
+MGSIM reads --sr-seq-depth 1e7 --art-len=80 --art-mflen=0 -n 16 sim_genomes_table.txt sim_out_abund.txt sim_out_reads_short_SE
+
 
 ### create a database subset with low resolution for euks and high resolution for microbes
 cat ../tax_combined/gtdb_derep_taxonomy.txt ../tax_combined/viral_derep_taxonomy.txt ../tax_combined/fungi_derep_taxonomy.txt ../tax_combined/protozoa_derep_taxonomy.txt | cut -f1 > db_subset_micro.accnos
@@ -111,73 +114,29 @@ rm kraken2_db1/library/class/tmp.accnos
 scontrol -o show nodes
 salloc --cpus-per-task=28 --nodelist="bibigrid-worker1-3-jdzmrjtottq9ctr" bash
 conda activate source-tracking
-srun /usr/bin/time -v kraken2-build --build --threads 26 --db kraken2_db1 --kmer-len 31 --minimizer-len 25 --minimizer-spaces 5 --max-db-size 460000000000
-#Creating sequence ID to taxonomy ID map (step 1)...
-#Sequence ID to taxonomy ID map complete. [50.440s]
-#Estimating required capacity (step 2)...
-#Estimated hash table requirement: 281012681872 bytes
-#Capacity estimation complete. [3h19m7.301s]
-#Building database files (step 3)...
-#Taxonomy parsed and converted.
-#CHT created with 17 bits reserved for taxid.
-#Completed processing of 75247056 sequences, 432105004922 bp
-#Writing data to disk...  complete.
-#Database files completed. [9h27m13.416s]
-#Database construction complete. [Total: 12h47m11.299s]
-#        Command being timed: "kraken2-build --build --threads 26 --db kraken2_db1 --kmer-len 31 --minimizer-len 25 --minimizer-spaces 5 --max-db-size 460000000000"
-#        User time (seconds): 757244.79
-#        System time (seconds): 2446.90
-#        Percent of CPU this job got: 1650%
-#        Elapsed (wall clock) time (h:mm:ss or m:ss): 12:47:11
-#        Average shared text size (kbytes): 0
-#        Average unshared data size (kbytes): 0
-#        Average stack size (kbytes): 0
-#        Average total size (kbytes): 0
-#        Maximum resident set size (kbytes): 349795148
-#        Average resident set size (kbytes): 0
-#        Major (requiring I/O) page faults: 54
-#        Minor (reclaiming a frame) page faults: 150870106
-#        Voluntary context switches: 57123202
-#        Involuntary context switches: 29074168
-#        Swaps: 0
-#        File system inputs: 1758394488
-#        File system outputs: 566472936
-#        Socket messages sent: 0
-#        Socket messages received: 0
-#        Signals delivered: 0
-#        Page size (bytes): 4096
-#        Exit status: 0
+srun /usr/bin/time -v kraken2-build --build --threads 26 --db kraken2_db1 --kmer-len 31 --minimizer-len 25 --minimizer-spaces 5 --max-db-size 460000000000 >>db1_build.log 2>&1
 
 # run classification
-/usr/bin/time -v kraken2 --db kraken2_db1 --threads 10 --report sim_v1.kreport --output sim_v1.kraken --paired sim_out_reads/1/R1.fq sim_out_reads/1/R2.fq
-#Loading database information... done.
-#9674824 sequences (2902.45 Mbp) processed in 132.503s (4381.0 Kseq/m, 1314.29 Mbp/m).
-#  9674310 sequences classified (99.99%)
-#  514 sequences unclassified (0.01%)
-#        Command being timed: "kraken2 --db kraken2_db1 --threads 10 --report sim_v1.kreport --output sim_v1.kraken --paired sim_out_reads/1/R1.fq sim_out_reads/1/R2.fq"
-#        User time (seconds): 497.27
-#        System time (seconds): 372.01
-#        Percent of CPU this job got: 29%
-#        Elapsed (wall clock) time (h:mm:ss or m:ss): 49:18.13
-#        Average shared text size (kbytes): 0
-#        Average unshared data size (kbytes): 0
-#        Average stack size (kbytes): 0
-#        Average total size (kbytes): 0
-#        Maximum resident set size (kbytes): 275129108
-#        Average resident set size (kbytes): 0
-#        Major (requiring I/O) page faults: 0
-#        Minor (reclaiming a frame) page faults: 69200750
-#        Voluntary context switches: 1221554
-#        Involuntary context switches: 29415
-#        Swaps: 0
-#        File system inputs: 450498208
-#        File system outputs: 6367728
-#        Socket messages sent: 0
-#        Socket messages received: 0
-#        Signals delivered: 0
-#        Page size (bytes): 4096
-#        Exit status: 0
+/usr/bin/time -v kraken2 --db kraken2_db1 --threads 10 --report sim_v1.kreport --output sim_v1.kraken --paired sim_out_reads/1/R1.fq sim_out_reads/1/R2.fq >>sim_v1_classify.log 2>&1
+/usr/bin/time -v kraken2 --db kraken2_db1 --threads 10 --report sim_v1_short.kreport --output sim_v1_short.kraken sim_out_reads_short_SE/1/R1.fq >>sim_v1_short_classify.log 2>&1
 
 
+# with memory limitation
+# also build size limited database to be run on 256GB RAM nodes
+mkdir kraken2_db2
+mv kraken2_db1/taxonomy/ kraken2_db2/
+mv kraken2_db1/library/ kraken2_db2/
+scontrol -o show nodes
+salloc --cpus-per-task=28 --nodelist="bibigrid-worker1-3-jdzmrjtottq9ctr" bash
+conda activate source-tracking
+srun /usr/bin/time -v kraken2-build --build --threads 26 --db kraken2_db2 --kmer-len 31 --minimizer-len 25 --minimizer-spaces 5 --max-db-size 200000000000 >>db2_build.log 2>&1
+/usr/bin/time -v kraken2 --db kraken2_db2 --threads 10 --report sim_v2.kreport --output sim_v2.kraken --paired sim_out_reads/1/R1.fq sim_out_reads/1/R2.fq >>sim_v2_classify.log 2>&1
+/usr/bin/time -v kraken2 --db kraken2_db2 --threads 10 --report sim_v2_short.kreport --output sim_v2_short.kraken sim_out_reads_short_SE/1/R1.fq >>sim_v2_short_classify.log 2>&1
 
-# with memory limitation (70% of input file size) 
+
+### inspecting results 
+# calculate individual ANI
+mkdir Check_output
+mash sketch -p 16 -o Check_output/Galdieria_sulphuraria -s 10000 genomes/GCA_001704855.1_ASM170485v1_genomic.fna ../kraken2_genomes/genome_files/GCA_006232545.1.fa
+mash dist -p 16 Check_output/Galdieria_sulphuraria.msh Check_output/Galdieria_sulphuraria.msh > Check_output/Galdieria_sulphuraria_dist.txt
+fastANI -q genomes/GCA_001704855.1_ASM170485v1_genomic.fna -r ../kraken2_genomes/genome_files/GCA_006232545.1.fa -o Check_output/Galdieria_sulphuraria_fastani.txt

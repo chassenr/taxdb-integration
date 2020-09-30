@@ -81,6 +81,9 @@ rule get_taxpath:
 		{params.script} -i {input.genomes} -t "{params.outdir}/ncbi_taxdump" -s "{params.outdir}/ncbi_taxdump/accessionTaxa.sql" -o {output.taxonomy} &>> {log}
 		"""
 
+# check for delnodes and merged! --> not included in taxonomizr
+# include fix ncbi taxonomy here!
+
 rule derep_ncbi:
 	input:
 		download_complete = config["rdir"] + "/{library_name}/genomes/done",
