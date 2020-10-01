@@ -15,9 +15,6 @@ As well as [kraken2](https://genomebiology.biomedcentral.com/articles/10.1186/s1
 * Step 3: Parse parse taxonomy using [tax_from_gtdb.py](https://github.com/rrwick/Metagenomics-Index-Correction/blob/master/tax_from_gtdb.py) and build kraken2 database with all genomes (gtdb plus ncbi).
 
 ### Next steps and ToDos:
-* rule to calculate genome size, longest contig, and N50 for non-GTDB genomes
-* rule to download feature_count table for non-GTDB genomes and extract protein-coding gene count
-* rule to parse assembly metadata (see previous bullet points) for non-GTDB genomes
 * replace taxonomizr with different tool (e.g. TaxonKit) that also takes merged and deleted taxids into account
 
 Later:
