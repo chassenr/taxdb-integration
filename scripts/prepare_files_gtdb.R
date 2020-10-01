@@ -337,6 +337,7 @@ bac_metadata <- fread(
   as_tibble() %>% 
   select(
     accession,
+    gtdb_representative,
     checkm_completeness,
     checkm_contamination,
     checkm_strain_heterogeneity,
@@ -354,6 +355,7 @@ ar_metadata <- fread(
   as_tibble() %>% 
   select(
     accession,
+    gtdb_representative,
     checkm_completeness,
     checkm_contamination,
     checkm_strain_heterogeneity,
