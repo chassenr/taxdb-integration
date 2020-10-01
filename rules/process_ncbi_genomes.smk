@@ -44,6 +44,71 @@ rule download_genomes_ncbi:
 		rm "{params.outdir}/links.log" "{params.outdir}/tmp1" "{params.outdir}/tmp2"
 		"""
 
+rule download_feature_count:
+	input:
+		url = config["rdir"] + "/{library_name}/assembly_url_genomic.txt"
+	output:
+		feature_url = config["rdir"] + "/{library_name}/assembly_url_feature_count.txt",
+		download_complete = config["rdir"] + "/{library_name}/feature_counts/done"
+	params:
+		outdir = config["rdir"] + "/{library_name}/feature_counts"
+	threads: config["download_threads"]
+	conda:
+		config["wdir"] + "/envs/download.yaml"
+	log:
+		config["rdir"] + "/logs/download_feature_count_{library_name}.log"
+	shell:
+		"""
+		sed 's/_genomic\.fna\.gz/_feature_count\.txt\.gz/' {input.url} > {output.feature_url}
+		aria2c -i {output.feature_url} -c -l "{params.outdir}/links.log" --dir {params.outdir} --max-tries=20 --retry-wait=5 --max-connection-per-server=1 --max-concurrent-downloads={threads} &>> {log}
+		# We need to verify all files are there
+		cat {output.feature_url} | xargs -n 1 basename | sort > "{params.outdir}/tmp1"
+		find {params.outdir} -type f -name '*.gz' | xargs -n 1 basename | sort > "{params.outdir}/tmp2"
+		if diff "{params.outdir}/tmp1" "{params.outdir}/tmp2"
+		then
+		  touch "{params.outdir}/done"
+		fi
+		rm "{params.outdir}/links.log" "{params.outdir}/tmp1" "{params.outdir}/tmp2"
+		"""
+
+rule calculate_contig_stats:
+	input:
+		download_genomes = config["rdir"] + "/{library_name}/genomes/done",
+	output:
+		contig_stats = config["rdir"] + "/{library_name}/metadata/stats_bbmap.txt"
+	params:
+		genome_dir = config["rdir"] + "/{library_name}/genomes"
+	conda:
+		config["wdir"] + "/envs/bbmap.yaml"
+	log:
+		config["rdir"] + "/logs/calculate_contig_stats_{library_name}.log"
+	shell:
+		"""
+		statswrapper.sh "{params.genome_dir}/*.gz" format=5 > {output.contig_stats} 2> {log}
+		"""
+
+rule parse_genome_metadata:
+	input:
+		download_feature_counts = config["rdir"] + "/{library_name}/feature_counts/done",
+		contig_stats = config["rdir"] + "/{library_name}/metadata/stats_bbmap.txt",
+		summary = config["rdir"] + "/{library_name}/assembly_summary_combined.txt"
+	output:
+		metadata = config["rdir"] + "/{library_name}/metadata/genome_metadata.txt"
+	params:
+		outdir = config["rdir"] + "/{library_name}/metadata",
+		feature_dir = config["rdir"] + "/{library_name}/feature_counts",
+		script = config["wdir"] + "/scripts/parse_genome_metadata.R"
+	conda:
+		config["wdir"] + "/envs/r.yaml"
+	log:
+		config["rdir"] + "/logs/parse_genome_metadata_{library_name}.log"
+	shell:
+		"""
+		zcat {params.feature_dir}/*.gz | sed '/^\#/d' | awk -v FS="\\t" -v OFS="\\t" '$1 == "gene" && $2 == "protein_coding"' > "{params.outdir}/stats_gene_count.txt"
+		{params.script} -g "{params.outdir}/stats_gene_count.txt" -c {input.contig_stats} -s {input.summary} -o {output.metadata} &>> {log}
+		# optional: delete feature counts directoy again (not implemented at the moment.
+		"""
+
 rule get_taxdump:
 	output:
 		nodes = config["rdir"] + "/ncbi_taxdump/nodes.dmp",
@@ -86,6 +151,7 @@ rule get_taxpath:
 
 rule derep_ncbi:
 	input:
+		metadata = config["rdir"] + "/{library_name}/metadata/genome_metadata.txt",
 		download_complete = config["rdir"] + "/{library_name}/genomes/done",
 		taxonomy = config["rdir"] + "/{library_name}/assembly_taxonomy.txt"
 	output:
