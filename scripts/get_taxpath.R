@@ -10,6 +10,7 @@ package.list <- c(
   "optparse",
   "config",
   "taxonomizr",
+  "rentrez",
   "tidyverse",
   "data.table",
   "purrr"
@@ -95,6 +96,7 @@ option_list <- list(
 )
 opt_parser <- OptionParser(option_list = option_list)
 opt <- parse_args(opt_parser)
+
 if (is.null(opt$input) | is.null(opt$output) | is.null(opt$taxdump) | is.null(opt$sql)) {
   print_help(opt_parser)
   stop(
@@ -126,13 +128,33 @@ assembly_summary <- fread(
 
 # map taxid
 taxpath <- getTaxonomy(assembly_summary$V7, opt$sql) %>% 
-  as_tibble()
+  as_tibble() %>% 
+  mutate(accnos = assembly_summary$V1)
+
+# if no taxonomic path found (i.e. deleted or merged taxids that were not updated in the assembly summary file),
+# retrieve correct taxid, and repeat getTaxonomy command
+if(anyNA(taxpath$superkingdom)) {
+  taxpath_new <- assembly_summary %>% 
+    filter(is.na(taxpath$superkingdom)) %>% 
+    pull(1) %>% 
+    map_dfr(., function(X) {
+      out_search <- entrez_search(db = "assembly", term = X)
+      out_links <- entrez_link(dbfrom = "assembly", id = out_search$ids[1], db = "all")
+      taxid_new <- out_links$links$assembly_taxonomy[1]
+      getTaxonomy(taxid_new, opt$sql) %>% 
+        as_tibble() %>% 
+        mutate(accnos = X)
+    }) %>% 
+    rows_update(taxpath, ., by = "accnos", copy = T)
+} else {
+  taxpath_new <- taxpath
+}
 
 # parse taxonomic path
 # qiime format:
 # e.g. d__Archaea;p__Halobacterota;c__Methanosarcinia;o__Methanosarcinales;f__Methanosarcinaceae;g__Methanosarcina;s__Methanosarcina mazei
 # repeat taxon name if na for intermediate ranks
-taxpath_parsed <- taxpath %>% 
+taxpath_parsed <- taxpath_new %>% 
   mutate(
     superkingdom = paste0("d__", superkingdom),
     phylum = paste0("p__", ifelse(is.na(phylum), gsub("d__", "", superkingdom), phylum)),
@@ -152,12 +174,9 @@ taxpath_parsed <- taxpath %>%
     )
   ) %>% 
   # mutate( root = "root", .before = superkingdom) %>% 
-  unite("path", sep = ";") %>% 
-  mutate(
-    accnos = assembly_summary$V1,
-    .before = path
-  ) %>% 
-  filter(!is.na(taxpath$superkingdom))
+  unite("path", -accnos, sep = ";") %>% 
+  relocate(accnos, .before = path) %>% 
+  filter(!is.na(taxpath_new$superkingdom))
 
 # write output table
 write_delim(
