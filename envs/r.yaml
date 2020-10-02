@@ -12,3 +12,4 @@ dependencies:
   - r-data.table
   - r-purrr
   - r-scales
+  - r-rentrez
