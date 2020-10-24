@@ -15,10 +15,10 @@ As well as [kraken2](https://genomebiology.biomedcentral.com/articles/10.1186/s1
 * Step 3: Parse parse taxonomy using [tax_from_gtdb.py](https://github.com/rrwick/Metagenomics-Index-Correction/blob/master/tax_from_gtdb.py) and build kraken2 database with all genomes (gtdb plus ncbi).
 
 ### Next steps and ToDos:
-* replace taxonomizr with different tool (e.g. TaxonKit) that also takes merged and deleted taxids into account
-
-Later:
-* Create Bracken database
+* Include dynamic dereplication approach based on ANI network.
+* Create Bracken and KrakenUniq databases.
+* Configure workflow to create 2 databases: coarse for sorting reads by lineages of interest, high-resolution for specific taxonomic assignment.
+* Systematic parameter sweep to fine-tune defaults and assess sensitivity and specificity of databse.
 * Use dereplicated genome selection to format database for [kaiju](https://github.com/bioinformatics-centre/kaiju) relying on available annotation for eukaryotic and viral genomes, but updating prokaryotic annotation.
 
 # Workflow description
