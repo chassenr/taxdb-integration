@@ -98,6 +98,7 @@ if (is.null(opt$input) | is.null(opt$gtdb) | is.null(opt$output)) {
 
 ### fix NCBI duplicate tax levels ####
 
+# this includes NCBI taxonomy for euks and viruses
 taxpath <- fread(
   opt$input,
   h = F,
@@ -156,9 +157,17 @@ taxpath_out <- taxpath_fixed %>%
     .before = path
   )
 
+# combine both gtdb and ncbi taxonomy
+taxpath_all <- bind_rows(
+  taxpath_out,
+  gtdb %>%
+    unite("path", -accnos, sep = ";") %>% 
+    relocate(accnos, .before = path)
+)
+
 # write output
 write_delim(
-  taxpath_out,
+  taxpath_all,
   opt$output,
   delim = "\t",
   col_names = F

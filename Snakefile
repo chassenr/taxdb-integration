@@ -20,10 +20,11 @@ LIBRARY_NAME = config["library_name"]
 rule all:
 	input:
 		genome_assemblies = expand(config["rdir"] + "/{library_name}/assembly_summary_combined.txt", library_name = LIBRARY_NAME),
-		download_complete_gtdb = config["rdir"] + "/gtdb/genomes/done",
+		#download_complete_gtdb = config["rdir"] + "/gtdb/genomes/done",
 		#download_complete_ncbi = expand(config["rdir"] + "/{library_name}/genomes/done", library_name = LIBRARY_NAME),
 		#download_feature_counts = expand(config["rdir"] + "/{library_name}/feature_counts/done", library_name = LIBRARY_NAME),
 		#metadata = expand(config["rdir"] + "/{library_name}/metadata/genome_metadata.txt", library_name = LIBRARY_NAME),
+		derep_meta = config["rdir"] + "/gtdb/metadata/gtdb_derep_taxonomy_meta.txt",
 		#gtdb_derep_tax = config["rdir"] + "/tax_combined/gtdb_derep_taxonomy.txt",
 		#ncbi_derep_tax = config["rdir"] + "/tax_combined/ncbi_derep_taxonomy.txt",
 		nodes = config["rdir"] + "/kraken2_db/taxonomy/nodes.dmp",
@@ -42,6 +43,6 @@ rule all:
 '''
 ##### load rules #####
 '''
-include: "rules/process_ncbi_genomes.smk"
+#include: "rules/process_ncbi_genomes.smk"
 include: "rules/process_gtdb_genomes.smk"
 #include: "rules/build_kraken2.smk"

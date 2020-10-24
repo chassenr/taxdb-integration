@@ -79,46 +79,53 @@ rule download_gtdb_ncbi:
 		# cut -f5,1 {input.gtdb_links} | awk '{{print $2"\\n out="$1".md5"}}' > "{params.outdir}/links_md5"
 		"""
 
+localrules: derep_gtdb
+
 rule derep_gtdb:
 	input:
 		download_complete_ncbi = config["rdir"] + "/gtdb/genomes/done",
 		tax_ncbi = config["rdir"] + "/gtdb/metadata/gtdb_download_info.txt"
 	output:
 		taxonomy = config["rdir"] + "/gtdb/metadata/gtdb_taxonomy.txt",
-		derep_taxonomy = config["rdir"] + "/gtdb/metadata/gtdb_derep_taxonomy.txt"
+		# derep_db = config["rdir"] + "/gtdb/derep_genomes/gtdb_derep_db",
+		derep_meta = config["rdir"] + "/gtdb/metadata/gtdb_derep_taxonomy_meta.txt"
 	params:
 		indir = config["rdir"] + "/gtdb/genomes",
 		outdir = config["rdir"] + "/gtdb/derep_genomes",
-		derep_script = config["derep_script"],
-		derep_threshold = config["derep_threshold_gtdb"]
+		z_threshold = config["z_threshold_gtdb"],
+		derep_slurm = config["wdir"] + "/config/cluster_derep.yaml",
+		derep_chunks = config["gtdb_derep_chunks"]
 	threads: config["derep_threads"]
 	conda:
 		config["wdir"] + "/envs/derep.yaml"
 	log:
-                config["rdir"] + "/logs/derep_gtdb.log"
+                # config["rdir"] + "/logs/derep_gtdb.log"
+		config["rdir"] + "/logs/derep_new_gtdb.log"
 	shell:
 		"""
 		# parse taxonomy file
 		cut -f6,7 {input.tax_ncbi} > {output.taxonomy}
-		{params.derep_script} --threads {threads} --threshold {params.derep_threshold} {params.indir} {params.outdir} {output.taxonomy} &>> {log}
-		# only select dereplicated genomes from taxonomy table for further processing
-		find {params.outdir} -type f -name '*.gz' | xargs -n1 basename | sed 's/\\.f.*//' | cut -d'_' -f1,2 | grep -w -F -f - {output.taxonomy} > {output.derep_taxonomy}
-		# delete non-dereplicated genomes
-		find {params.indir} -type f -name '*.gz' | xargs -n 1 -P {threads} rm
+		cd {params.outdir}
+		derepG --threads {threads} --in-dir {params.indir} --taxa {output.taxonomy} --tmp ./ --slurm-config {params.derep_slurm} --db gtdb_derep_db --threshold {params.z_threshold} --chunk-size {params.derep_chunks} --debug --slurm-arr-size 10000 &>> {log}
+		mv *derep-genomes_results.tsv {output.derep_meta}
+		# do not delete redundant genomes until DB workflow is finished, work with soft links for remaining steps
 		"""
 
 rule collect_gtdb_genomes:
  	input:
- 		derep_taxonomy = config["rdir"] + "/gtdb/metadata/gtdb_derep_taxonomy.txt"
+ 		derep_meta = config["rdir"] + "/gtdb/metadata/gtdb_derep_taxonomy_meta.txt"
  	output:
  		tax = config["rdir"] + "/tax_combined/gtdb_derep_taxonomy.txt"
 	params:
-		indir = config["rdir"] + "/gtdb/derep_genomes",
 		outdir = config["rdir"] + "/derep_combined/"
 	shell:
 		"""
 		mkdir -p {params.outdir}
-		find {params.indir} -type f -name '*.gz' | xargs -n 1 mv -t {params.outdir}
-		cp {input.derep_taxonomy} {output.tax}
+		cut -f4 {input.derep_meta} | sed '1d' | while read line
+		do
+		  ln -s "$line" {params.outdir}
+		done
+		# find {params.indir} -type f -name '*.gz' | xargs -n 1 mv -t {params.outdir}
+		awk -v FS="\\t" -v OFS="\\t" '{{print $2,$1}}' {input.derep_meta} | sed '1d' > {output.tax}
 		"""
 

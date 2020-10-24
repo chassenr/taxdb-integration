@@ -146,8 +146,7 @@ rule get_taxpath:
 		{params.script} -i {input.genomes} -t "{params.outdir}/ncbi_taxdump" -s "{params.outdir}/ncbi_taxdump/accessionTaxa.sql" -o {output.taxonomy} &>> {log}
 		"""
 
-# check for delnodes and merged! --> not included in taxonomizr
-# include fix ncbi taxonomy here!
+localrules: derep_ncbi
 
 rule derep_ncbi:
 	input:
@@ -155,18 +154,16 @@ rule derep_ncbi:
 		download_complete = config["rdir"] + "/{library_name}/genomes/done",
 		taxonomy = config["rdir"] + "/{library_name}/assembly_taxonomy.txt"
 	output:
-		derep_taxonomy = config["rdir"] + "/{library_name}/derep_assembly_taxonomy.txt"
+		derep_db = config["rdir"] + "/{library_name}/derep_genomes/gtdb_derep_db",
+		derep_meta = config["rdir"] + "/{library_name}/derep_assembly_taxonomy_meta.txt"
 	params:
 		dir = config["rdir"] + "/{library_name}",
 		indir = config["rdir"] + "/{library_name}/genomes",
 		outdir = config["rdir"] + "/{library_name}/derep_genomes",
-		derep_wrapper = config["wdir"] + "/scripts/dereplicate_ncbi_wrapper.sh",
-		derep_lineage = lambda wildcards: config["derep_lineage"][wildcards.library_name],
-		derep_taxlevel_main = lambda wildcards: config["derep_taxlevel_ncbi_main"][wildcards.library_name],
-		derep_taxlevel_sub = lambda wildcards: config["derep_taxlevel_ncbi_sub"][wildcards.library_name],
-		derep_threshold_main = lambda wildcards: config["derep_threshold_ncbi_main"][wildcards.library_name],
-		derep_threshold_sub = lambda wildcards: config["derep_threshold_ncbi_sub"][wildcards.library_name],
-		derep_script = config["derep_script"]
+		derep_lineage = lambda wildcards: config["derep_lineage_exclude"][wildcards.library_name],
+		z_threshold = lambda wildcards: config["z_threshold_ncbi"][wildcards.library_name],
+		derep_slurm = config["wdir"] + "/config/cluster_derep.yaml",
+		derep_chunks = lambda wildcards: config["ncbi_derep_chunks"][wildcards.library_name]
 	threads: config["derep_threads"]
 	conda:
 		config["wdir"] + "/envs/derep.yaml"
@@ -174,16 +171,22 @@ rule derep_ncbi:
 		config["rdir"] + "/logs/derep_ncbi_{library_name}.log"
 	shell:
 		"""
-		{params.derep_wrapper} "{params.derep_lineage}" {params.derep_taxlevel_main} {params.derep_taxlevel_sub} {params.derep_threshold_main} {params.derep_threshold_sub} {params.derep_script} {input.taxonomy} {params.dir} {threads} &>> {log}
-		# only select dereplicated genomes from taxonomy table for further processing
-		find {params.outdir} -type f -name '*.gz' | xargs -n1 basename | sed 's/\\([0-9]\\)_.*/\\1/' | grep -F -f - {input.taxonomy} > {output.derep_taxonomy}
-		# delete non-dereplicated genomes
-		find {params.indir} -type f -name '*.gz' | xargs -n 1 -P {threads} rm
+		# remove exlcuded lineages from taxonomy table (alternatively supply file to derep command with taxa to keep)
+		if [[ "{derep_lineage}" != "" ]]
+		then
+		  grep -v "{derep_lineage}" {input.taxonomy} > "{params.dir}/assembly_taxonomy_select.txt"
+		else
+		  cp {input.taxonomy} "{params.dir}/assembly_taxonomy_select.txt"
+		fi
+		cd {params.outdir}
+		derepG --threads {threads} --in-dir {params.indir} --taxa "{params.dir}/assembly_taxonomy_select.txt" --tmp ./ --slurm-config {params.derep_slurm} --db {output.derep_db} --threshold {params.z_threshold} --chunk-size {params.derep_chunks} &>> {log}
+		mv *derep-genomes_results.tsv {output.derep_meta}
+		# do not delete redundant genomes until DB workflow is finished, work with soft links for remaining steps
 		"""
 
 rule collect_ncbi_genomes:
 	input:
-		derep_taxonomy = config["rdir"] + "/{library_name}/derep_assembly_taxonomy.txt"
+		derep_meta = config["rdir"] + "/{library_name}/derep_assembly_taxonomy_meta.txt"
 	output:
 		tax = config["rdir"] + "/tax_combined/{library_name}_derep_taxonomy.txt"
 	params:
@@ -192,27 +195,10 @@ rule collect_ncbi_genomes:
 	shell:
 		"""
 		mkdir -p {params.outdir}
-		find {params.indir} -type f -name '*.gz' | xargs -n 1 mv -t {params.outdir}
-		cp {input.derep_taxonomy} {output.tax}
-		"""
-
-rule fix_ncbi_taxpath:
-	input:
-		ncbi = expand(config["rdir"] + "/tax_combined/{library_name}_derep_taxonomy.txt", library_name = LIBRARY_NAME),
-		gtdb = config["rdir"] + "/tax_combined/gtdb_derep_taxonomy.txt"
-	output:
-		ncbi_tax = config["rdir"] + "/tax_combined/ncbi_derep_taxonomy.txt"
-	params:
-		outdir = config["rdir"] + "/tax_combined",
-		script = config["wdir"] + "/scripts/fix_ncbi_taxpath.R"
-	conda:
-		config["wdir"] + "/envs/r.yaml"
-	log:
-		config["rdir"] + "/logs/fix_ncbi_taxpath.log"
-	shell:
-		"""
-		cat {input.ncbi} > "{params.outdir}/tmp"
-		{params.script} -i "{params.outdir}/tmp" -g {input.gtdb} -o {output.ncbi_tax} &>> {log}
-		rm "{params.outdir}/tmp"
+		cut -f4 {input.derep_meta} | sed '1d' | while read line
+		do
+		  ln -s "$line" {params.outdir}
+		done
+		awk -v FS="\\t" -v OFS="\\t" '{{print $2,$1}}' {input.derep_meta} | sed '1d' > {output.tax}
 		"""
 

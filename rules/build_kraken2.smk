@@ -1,9 +1,29 @@
+rule fix_ncbi_taxpath:
+	input:
+		ncbi = expand(config["rdir"] + "/tax_combined/{library_name}_derep_taxonomy.txt", library_name = LIBRARY_NAME),
+		gtdb = config["rdir"] + "/tax_combined/gtdb_derep_taxonomy.txt",
+		checkv = config["rdir"] + "/tax_combined/checkv_derep_taxonomy.txt"
+	output:
+		tax_combined = config["rdir"] + "/tax_combined/derep_taxonomy_combined.txt"
+        params:
+                outdir = config["rdir"] + "/tax_combined",
+                script = config["wdir"] + "/scripts/fix_ncbi_taxpath.R"
+        conda:
+                config["wdir"] + "/envs/r.yaml"
+        log:
+                config["rdir"] + "/logs/fix_ncbi_taxpath.log"
+        shell:
+                """
+                cat {input.ncbi} {input.checkv} > "{params.outdir}/tmp"
+                {params.script} -i "{params.outdir}/tmp" -g {input.gtdb} -o {output.tax_combined} &>> {log}
+                rm "{params.outdir}/tmp"
+                """
+
+
 rule format_taxonomy:
 	input:
-		config["rdir"] + "/tax_combined/ncbi_derep_taxonomy.txt",
-		config["rdir"] + "/tax_combined/gtdb_derep_taxonomy.txt"
+		tax_combined = config["rdir"] + "/tax_combined/derep_taxonomy_combined.txt"
 	output:
-		tax_combined = config["rdir"] + "/tax_combined/derep_taxonomy_combined.txt",
 		nodes = config["rdir"] + "/kraken2_db/taxonomy/nodes.dmp",
 		names = config["rdir"] + "/kraken2_db/taxonomy/names.dmp",
 		file_list = config["rdir"] + "/kraken2_genomes/file_names_derep_genomes.txt"
@@ -17,7 +37,6 @@ rule format_taxonomy:
 		config["rdir"] + "/logs/format_taxonomy.log"
 	shell:
 		"""
-		cat {input} > {output.tax_combined}
 		{params.tax_script} --gtdb {output.tax_combined} --assemblies {params.genomedir} --nodes {output.nodes} --names {output.names} --kraken_dir {params.krakendir} &>> {log}
 		# replace 'domain' with 'superkingdom (required for kaiju) to ensure that the same nodes.dmp and names.dmp files can be used for both databases
 		sed -i -e 's/domain/superkingdom/g' {output.nodes}

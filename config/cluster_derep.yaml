@@ -1,0 +1,6 @@
+cpus_per_task: 1
+partition: debug
+job_name: 'fastANI'
+ntasks: 1
+export: ALL
+

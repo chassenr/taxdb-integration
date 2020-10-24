@@ -1,6 +1,6 @@
 channels:
   - conda-forge
   - bioconda
-  - genomewalker
+  - defaults
 dependencies:
-  - derep-genomes
+  - kaiju
