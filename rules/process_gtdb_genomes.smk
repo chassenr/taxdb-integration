@@ -93,6 +93,7 @@ rule derep_gtdb:
 		indir = config["rdir"] + "/gtdb/genomes",
 		outdir = config["rdir"] + "/gtdb/derep_genomes",
 		z_threshold = config["z_threshold_gtdb"],
+		m_threshold = config["m_threshold_gtdb"],
 		derep_slurm = config["wdir"] + "/config/cluster_derep.yaml",
 		derep_chunks = config["gtdb_derep_chunks"]
 	threads: config["derep_threads"]
@@ -106,7 +107,7 @@ rule derep_gtdb:
 		# parse taxonomy file
 		cut -f6,7 {input.tax_ncbi} > {output.taxonomy}
 		cd {params.outdir}
-		derepG --threads {threads} --in-dir {params.indir} --taxa {output.taxonomy} --tmp ./ --slurm-config {params.derep_slurm} --db gtdb_derep_db --threshold {params.z_threshold} --chunk-size {params.derep_chunks} --debug --slurm-arr-size 10000 &>> {log}
+		derepG --threads {threads} --in-dir {params.indir} --taxa {output.taxonomy} --tmp ./ --slurm-config {params.derep_slurm} --db gtdb_derep_db --threshold {params.z_threshold} --mash-threhsold {params.m_threshold} --chunk-size {params.derep_chunks} --debug --slurm-arr-size 10000 &>> {log}
 		mv *derep-genomes_results.tsv {output.derep_meta}
 		# do not delete redundant genomes until DB workflow is finished, work with soft links for remaining steps
 		"""

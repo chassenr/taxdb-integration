@@ -5,7 +5,7 @@
 !scripts/common
 !scripts/common/*
 scripts/.snakemake*
-!Snakefile
+!Snakefile*
 !config
 !config/*
 !data

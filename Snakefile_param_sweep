@@ -1,0 +1,55 @@
+import glob
+import pandas as pd
+
+"""
+Author: Christiane Hassenrueck, Antonio Fernandez-Guerra
+Acknowledgements: Chiara Vanni
+Affiliation: MARUM - Center for Marine Environmental Sciences University of Bremen
+Aim: Create high resolution taxonomic database for all domains of life using GTDB and NCBI taxonomy
+Run: snakemake -s Snakefile
+"""
+
+# from snakemake.utils import validate, min_version
+##### set minimum snakemake version #####
+# min_version("5.1.2")
+
+configfile: "config/config.yaml"
+
+KL = config["ps_kmer_length"]
+ML = config["ps_minimizer_length"]
+MS = config["ps_minimizer_spaces"]
+
+rule all:
+	input:
+		hash = expand(config["rdir"] + "/Simulation/db_k{kl}_m{ml}_s{ms}_mem220/hash.k2d", kl = KL, ml = ML, ms = MS)
+
+rule ps_build_db:
+	input:
+		library_map = config["rdir"] + "/Simulation/kraken2_highres_k25/library/highres/prelim_map.txt",
+		library_fasta = config["rdir"] + "/Simulation/kraken2_highres_k25/library/highres/library.fna",
+		univec_map = config["rdir"] + "/Simulation/kraken2_highres_k25/library/UniVec_Core/prelim_map.txt",
+		univec_fasta = config["rdir"] + "/Simulation/kraken2_highres_k25/library/UniVec_Core/library.fna"
+	output:
+		hash = config["rdir"] + "/Simulation/db_k{kl}_m{ml}_s{ms}_mem220/hash.k2d",
+		opts = config["rdir"] + "/Simulation/db_k{kl}_m{ml}_s{ms}_mem220/opts.k2d",
+		map  = config["rdir"] + "/Simulation/db_k{kl}_m{ml}_s{ms}_mem220/seqid2taxid.map",
+		taxo = config["rdir"] + "/Simulation/db_k{kl}_m{ml}_s{ms}_mem220/taxo.k2d"
+	params:
+		sdir = config["rdir"] + "/Simulation/kraken2_highres_k25",
+		dbdir = config["rdir"] + "/Simulation/db_k{kl}_m{ml}_s{ms}_mem220",
+		kmer_len = "{kl}",
+		min_len = "{ml}",
+		min_spaces = "{ms}"
+	threads: config["krakenbuild_threads"]
+	conda:
+		config["wdir"] + "/envs/kraken2.yaml"
+	log:
+		config["rdir"] + "/Simulation/ps_db_build_k{kl}_m{ml}_s{ms}_mem220.log"
+	shell:
+		"""
+		mkdir -p {params.dbdir}
+		cp -r {params.sdir}/library {params.dbdir}/
+		cp -r {params.sdir}/taxonomy {params.dbdir}/
+		kraken2-build --build --threads {threads} --db {params.dbdir} --kmer-len {params.kmer_len} --minimizer-len {params.min_len} --minimizer-spaces {params.min_spaces} --max-db-size 220000000000 --fast-build &>> {log}
+		"""
+# delete library and taxonomy dirs in each db to save disk space if bracken db not planned		

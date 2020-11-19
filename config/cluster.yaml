@@ -41,3 +41,7 @@ build_krakendb:
   ntasks_per_node: 32
   partition: debug
 
+ps_build_db:
+  ntasks_per_node: 32
+  partition: debug
+

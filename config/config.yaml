@@ -47,6 +47,7 @@ derep_lineage_exclude:
   vertebrate_other: ""
 
 z_threshold_gtdb: 2
+m_threshold_gtdb: 0.01
 gtdb_derep_chunks: 5
 
 z_threshold_ncbi_main:
@@ -82,3 +83,13 @@ kmer_len: 27
 minimizer_len: 25
 minimizer_spaces: 4
 
+# Parameter sweep
+ps_kmer_length:
+  - 25
+  - 35
+ps_minimizer_length:
+  - 23
+ps_minimizer_spaces:
+  - 4
+  - 7
+ 
