@@ -21,22 +21,25 @@ MS = config["ps_minimizer_spaces"]
 
 rule all:
 	input:
-		hash = expand(config["rdir"] + "/Simulation/db_k{kl}_m{ml}_s{ms}_mem220/hash.k2d", kl = KL, ml = ML, ms = MS)
+		#hash_nolim = expand(config["rdir"] + "/Simulation/db_coarse_k{kl}_m{ml}_s{ms}_nolim/hash.k2d", kl = KL, ml = ML, ms = MS),
+		#hash_mem220 = expand(config["rdir"] + "/Simulation/db_coarse_k{kl}_m{ml}_s{ms}_mem220/hash.k2d", kl = KL, ml = ML, ms = MS),
+		kraken_nolim = expand(config["rdir"] + "/Simulation/sim_70bp_SE_k{kl}_m{ml}_s{ms}_nolim_c01.kraken", kl = KL, ml = ML, ms = MS),
+		#kraken_mem220 = expand(config["rdir"] + "/Simulation/sim_70bp_SE_k{kl}_m{ml}_s{ms}_mem220.kraken", kl = KL, ml = ML, ms = MS)
 
-rule ps_build_db:
+rule ps_build_db_highres:
 	input:
 		library_map = config["rdir"] + "/Simulation/kraken2_highres_k25/library/highres/prelim_map.txt",
 		library_fasta = config["rdir"] + "/Simulation/kraken2_highres_k25/library/highres/library.fna",
 		univec_map = config["rdir"] + "/Simulation/kraken2_highres_k25/library/UniVec_Core/prelim_map.txt",
 		univec_fasta = config["rdir"] + "/Simulation/kraken2_highres_k25/library/UniVec_Core/library.fna"
 	output:
-		hash = config["rdir"] + "/Simulation/db_k{kl}_m{ml}_s{ms}_mem220/hash.k2d",
-		opts = config["rdir"] + "/Simulation/db_k{kl}_m{ml}_s{ms}_mem220/opts.k2d",
-		map  = config["rdir"] + "/Simulation/db_k{kl}_m{ml}_s{ms}_mem220/seqid2taxid.map",
-		taxo = config["rdir"] + "/Simulation/db_k{kl}_m{ml}_s{ms}_mem220/taxo.k2d"
+		hash = config["rdir"] + "/Simulation/db_k{kl}_m{ml}_s{ms}_nolim/hash.k2d",
+		opts = config["rdir"] + "/Simulation/db_k{kl}_m{ml}_s{ms}_nolim/opts.k2d",
+		map  = config["rdir"] + "/Simulation/db_k{kl}_m{ml}_s{ms}_nolim/seqid2taxid.map",
+		taxo = config["rdir"] + "/Simulation/db_k{kl}_m{ml}_s{ms}_nolim/taxo.k2d"
 	params:
 		sdir = config["rdir"] + "/Simulation/kraken2_highres_k25",
-		dbdir = config["rdir"] + "/Simulation/db_k{kl}_m{ml}_s{ms}_mem220",
+		dbdir = config["rdir"] + "/Simulation/db_k{kl}_m{ml}_s{ms}_nolim",
 		kmer_len = "{kl}",
 		min_len = "{ml}",
 		min_spaces = "{ms}"
@@ -44,12 +47,82 @@ rule ps_build_db:
 	conda:
 		config["wdir"] + "/envs/kraken2.yaml"
 	log:
-		config["rdir"] + "/Simulation/ps_db_build_k{kl}_m{ml}_s{ms}_mem220.log"
+		config["rdir"] + "/Simulation/ps_db_build_k{kl}_m{ml}_s{ms}_nolim.log"
+	shell:
+		"""
+		#mkdir -p {params.dbdir}
+		#cp -r {params.sdir}/library {params.dbdir}/
+		#cp -r {params.sdir}/taxonomy {params.dbdir}/
+		kraken2-build --build --threads {threads} --db {params.dbdir} --kmer-len {params.kmer_len} --minimizer-len {params.min_len} --minimizer-spaces {params.min_spaces} --fast-build &>> {log}
+		"""
+
+rule ps_build_db_coarse:
+	input:
+		library_map = config["rdir"] + "/Simulation/kraken2_coarse_default/library/class/prelim_map.txt",
+		library_fasta = config["rdir"] + "/Simulation/kraken2_coarse_default/library/class/library.fna",
+		univec_map = config["rdir"] + "/Simulation/kraken2_coarse_default/library/UniVec_Core/prelim_map.txt",
+		univec_fasta = config["rdir"] + "/Simulation/kraken2_coarse_default/library/UniVec_Core/library.fna"
+	output:
+		hash = config["rdir"] + "/Simulation/db_coarse_k{kl}_m{ml}_s{ms}_nolim/hash.k2d",
+		opts = config["rdir"] + "/Simulation/db_coarse_k{kl}_m{ml}_s{ms}_nolim/opts.k2d",
+		map  = config["rdir"] + "/Simulation/db_coarse_k{kl}_m{ml}_s{ms}_nolim/seqid2taxid.map",
+		taxo = config["rdir"] + "/Simulation/db_coarse_k{kl}_m{ml}_s{ms}_nolim/taxo.k2d"
+	params:
+		sdir = config["rdir"] + "/Simulation/kraken2_coarse_default",
+		dbdir = config["rdir"] + "/Simulation/db_coarse_k{kl}_m{ml}_s{ms}_nolim",
+		kmer_len = "{kl}",
+		min_len = "{ml}",
+		min_spaces = "{ms}"
+	threads: config["krakenbuild_threads"]
+	conda:
+		config["wdir"] + "/envs/kraken2.yaml"
+	log:
+		config["rdir"] + "/Simulation/ps_db_build_coarse_k{kl}_m{ml}_s{ms}_nolim.log"
 	shell:
 		"""
 		mkdir -p {params.dbdir}
 		cp -r {params.sdir}/library {params.dbdir}/
 		cp -r {params.sdir}/taxonomy {params.dbdir}/
-		kraken2-build --build --threads {threads} --db {params.dbdir} --kmer-len {params.kmer_len} --minimizer-len {params.min_len} --minimizer-spaces {params.min_spaces} --max-db-size 220000000000 --fast-build &>> {log}
+		kraken2-build --build --threads {threads} --db {params.dbdir} --kmer-len {params.kmer_len} --minimizer-len {params.min_len} --minimizer-spaces {params.min_spaces} --fast-build &>> {log}
 		"""
-# delete library and taxonomy dirs in each db to save disk space if bracken db not planned		
+
+# delete library and taxonomy dirs in each db to save disk space if bracken db not planned
+
+rule ps_classify_nolim:
+	input:
+		hash = config["rdir"] + "/Simulation/db_k{kl}_m{ml}_s{ms}_nolim/hash.k2d",
+		fq = config["rdir"] + "/Simulation/sim_out_reads_70bp_SE/1/R1.fq"
+	output:
+		kraken = config["rdir"] + "/Simulation/sim_70bp_SE_k{kl}_m{ml}_s{ms}_nolim_c01.kraken",
+		kreport = config["rdir"] + "/Simulation/sim_70bp_SE_k{kl}_m{ml}_s{ms}_nolim_c01.kreport"
+	params:
+		dbdir = config["rdir"] + "/Simulation/db_k{kl}_m{ml}_s{ms}_nolim"
+	threads: config["kraken_classify_threads"]
+	conda:
+		config["wdir"] + "/envs/kraken2.yaml"
+	log:
+		config["rdir"] + "/Simulation/ps_classify_k{kl}_m{ml}_s{ms}_nolim_c01.log"
+	shell:
+		"""
+		/usr/bin/time -v kraken2 --db {params.dbdir} --threads {threads} --confidence 0.1 --report {output.kreport} --output {output.kraken} --report-minimizer-data {input.fq}
+		"""
+
+rule ps_classify_mem220:
+	input:
+		hash = config["rdir"] + "/Simulation/db_k{kl}_m{ml}_s{ms}_mem220/hash.k2d",
+		fq = config["rdir"] + "/Simulation/sim_out_reads_70bp_SE/1/R1.fq"
+	output:
+		kraken = config["rdir"] + "/Simulation/sim_70bp_SE_k{kl}_m{ml}_s{ms}_mem220.kraken",
+		kreport = config["rdir"] + "/Simulation/sim_70bp_SE_k{kl}_m{ml}_s{ms}_mem220.kreport"
+	params:
+		dbdir = config["rdir"] + "/Simulation/db_k{kl}_m{ml}_s{ms}_mem220"
+	threads: config["kraken_classify_threads"]
+	conda:
+		config["wdir"] + "/envs/kraken2.yaml"
+	log:
+		config["rdir"] + "/Simulation/ps_classify_k{kl}_m{ml}_s{ms}_mem220.log"
+	shell:
+		"""
+		/usr/bin/time -v kraken2 --db {params.dbdir} --threads {threads} --report {output.kreport} --output {output.kraken} --report-minimizer-data {input.fq}
+		"""
+

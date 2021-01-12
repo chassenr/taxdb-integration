@@ -154,16 +154,17 @@ rule derep_ncbi:
 		download_complete = config["rdir"] + "/{library_name}/genomes/done",
 		taxonomy = config["rdir"] + "/{library_name}/assembly_taxonomy.txt"
 	output:
-		derep_db = config["rdir"] + "/{library_name}/derep_genomes/gtdb_derep_db",
-		derep_meta = config["rdir"] + "/{library_name}/derep_assembly_taxonomy_meta.txt"
+		derep_meta = config["rdir"] + "/{library_name}/derep_taxonomy_meta.txt"
 	params:
 		dir = config["rdir"] + "/{library_name}",
 		indir = config["rdir"] + "/{library_name}/genomes",
 		outdir = config["rdir"] + "/{library_name}/derep_genomes",
-		derep_lineage = lambda wildcards: config["derep_lineage_exclude"][wildcards.library_name],
 		z_threshold = lambda wildcards: config["z_threshold_ncbi"][wildcards.library_name],
+		m_threshold = lambda wildcards: config["m_threshold_ncbi"][wildcards.library_name],
+		derep_db = config["rdir"] + "/{library_name}/derep_genomes/derep_db",
 		derep_slurm = config["wdir"] + "/config/cluster_derep.yaml",
-		derep_chunks = lambda wildcards: config["ncbi_derep_chunks"][wildcards.library_name]
+		derep_chunks = lambda wildcards: config["ncbi_derep_chunks"][wildcards.library_name],
+		derep_lineage = lambda wildcards: config["derep_lineage_exclude"][wildcards.library_name]
 	threads: config["derep_threads"]
 	conda:
 		config["wdir"] + "/envs/derep.yaml"
@@ -172,14 +173,15 @@ rule derep_ncbi:
 	shell:
 		"""
 		# remove exlcuded lineages from taxonomy table (alternatively supply file to derep command with taxa to keep)
-		if [[ "{derep_lineage}" != "" ]]
+		if [[ "{params.derep_lineage}" != "" ]]
 		then
-		  grep -v "{derep_lineage}" {input.taxonomy} > "{params.dir}/assembly_taxonomy_select.txt"
+		  grep -v "{params.derep_lineage}" {input.taxonomy} > "{params.dir}/assembly_taxonomy_select.txt"
+                mv *derep-genomes_results.tsv {output.derep_meta}
 		else
 		  cp {input.taxonomy} "{params.dir}/assembly_taxonomy_select.txt"
 		fi
 		cd {params.outdir}
-		derepG --threads {threads} --in-dir {params.indir} --taxa "{params.dir}/assembly_taxonomy_select.txt" --tmp ./ --slurm-config {params.derep_slurm} --db {output.derep_db} --threshold {params.z_threshold} --chunk-size {params.derep_chunks} &>> {log}
+		derepG --threads {threads} --in-dir {params.indir} --taxa "{params.dir}/assembly_taxonomy_select.txt" --tmp ./ --slurm-config {params.derep_slurm} --db {params.derep_db} --threshold {params.z_threshold} --mash-threshold {params.m_threshold} --chunk-size {params.derep_chunks} --debug --slurm-arr-size 10000 &>> {log}
 		mv *derep-genomes_results.tsv {output.derep_meta}
 		# do not delete redundant genomes until DB workflow is finished, work with soft links for remaining steps
 		"""

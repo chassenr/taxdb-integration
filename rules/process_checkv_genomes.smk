@@ -29,7 +29,7 @@ rule parse_taxa_checkv:
 		reps_metadata = config["rdir"] + "/checkv/checkv_reps_metadata.txt"
 	params:
 		script = config["wdir"] + "/scripts/parse_checkv_taxonomy.R",
-		outdir = config["wdir"]
+		outdir = config["rdir"]
 	conda:
 		config["wdir"] + "/envs/r.yaml"
 	log:
@@ -39,19 +39,35 @@ rule parse_taxa_checkv:
 		{params.script} -g {input.meta_genbank} -i {input.meta_circular} -c {input.clusters} -t "{params.outdir}/ncbi_taxdump" -s "{params.outdir}/ncbi_taxdump/accessionTaxa.sql" -o {output.checkv_taxonomy} -m {output.reps_metadata}
 		"""
 
+rule split_fasta:
+	input:
+		fna = config["rdir"] + "/checkv/checkv_full.fna"
+	output:
+		done = config["rdir"] + "/checkv/genomes/done"
+	params:
+		outdir = config["rdir"] + "/checkv/genomes/"
+	shell:
+		"""
+		# thanks: https://gist.github.com/astatham/621901
+		cd {params.outdir}
+		cat {input} | awk '{{ if (substr($0, 1, 1)==">") {{filename=(substr($0,2) ".fa")}} print $0 > filename }}'
+		touch done
+		"""
+
 localrules: derep_checkv
 
 rule derep_checkv:
 	input:
-		checkv_taxonomy = config["rdir"] + "/checkv/checkv_taxonomy.txt",
-		fna = config["rdir"] + "/checkv/checkv_full.fna"
+		split_done = config["rdir"] + "/checkv/genomes/done",
+		checkv_taxonomy = config["rdir"] + "/checkv/checkv_taxonomy.txt"
 	output:
-		derep_db = config["rdir"] + "/checkv/derep_genomes/gtdb_derep_db",
 		derep_meta = config["rdir"] + "/checkv/checkv_derep_taxonomy_meta.txt"
 	params:
-		dir = config["rdir"] + "/checkv",
+		indir = config["rdir"] + "/checkv/genomes",
 		outdir = config["rdir"] + "/checkv/derep_genomes",
 		z_threshold = config["z_threshold_checkv"],
+		m_threshold = config["m_threshold_checkv"],
+		derep_db = config["rdir"] + "/checkv/derep_genomes/checkv_derep_db",
 		derep_slurm = config["wdir"] + "/config/cluster_derep.yaml",
 		derep_chunks = config["checkv_derep_chunks"]
 	threads: config["derep_threads"]
@@ -61,8 +77,9 @@ rule derep_checkv:
 		config["rdir"] + "/logs/derep_checkv.log"
 	shell:
 		"""
+		mkdir -p {params.outdir}
 		cd {params.outdir}
-		derepG --threads {threads} --in-dir {params.indir} --taxa "{params.dir}/assembly_taxonomy_select.txt" --tmp ./ --slurm-config {params.derep_slurm} --db {output.derep_db} --threshold {params.z_threshold} --chunk-size {params.derep_chunks} --copy --out-dir {params.outdir} &>> {log}
+		derepG --threads {threads} --in-dir {params.indir} --taxa {input.checkv_taxonomy} --tmp ./ --slurm-config {params.derep_slurm} --db {params.derep_db} --threshold {params.z_threshold} --mash-threshold {params.m_threshold} --chunk-size {params.derep_chunks} --debug --slurm-arr-size 10000 &>> {log}
 		mv *derep-genomes_results.tsv {output.derep_meta}
 		# do not delete redundant genomes until DB workflow is finished, work with soft links for remaining steps
 		"""
@@ -72,8 +89,16 @@ rule collect_checkv_genomes:
 		derep_meta = config["rdir"] + "/checkv/checkv_derep_taxonomy_meta.txt"
 	output:
 		tax = config["rdir"] + "/tax_combined/checkv_derep_taxonomy.txt"
+	params:
+		outdir = config["rdir"] + "/derep_combined/"
 	shell:
 		"""
+		mkdir -p {params.outdir}
+		cut -f4 {input.derep_meta} | sed '1d' | while read line
+		do
+		  ln -s "$line" {params.outdir}
+		done
+		# find {params.indir} -type f -name '*.gz' | xargs -n 1 mv -t {params.outdir}
 		awk -v FS="\\t" -v OFS="\\t" '{{print $2,$1}}' {input.derep_meta} | sed '1d' > {output.tax}
 		"""
 

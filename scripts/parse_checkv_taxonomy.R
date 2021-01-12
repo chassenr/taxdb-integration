@@ -9,7 +9,6 @@ package.list <- c(
   "crayon",
   "optparse",
   "config",
-  "taxonomizr",
   "tidyverse",
   "data.table",
   "purrr",
@@ -226,7 +225,7 @@ clusters <- fread(
 ) %>% 
   mutate(tmp_id = ifelse(genbank_rep == "NULL", circular_rep, genbank_rep)) %>% 
   left_join(., full_tax, by = c("tmp_id" = "checkv_id")) %>% 
-  mutate(path_new = paste(path, rep_genome, sep = "_")) %>% 
+  mutate(path_new = paste0(path, "___", rep_genome)) %>% 
   select(-path, -tmp_id)
 # choose better naming strategy for clusters?
 

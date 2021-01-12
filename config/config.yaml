@@ -10,11 +10,11 @@ threads: 1
 # Define wildcard values for NCBI partitions
 library_name:
   - fungi
-  - invertebrate
-  - plant
-  - protozoa
-  - vertebrate_mammalian
-  - vertebrate_other
+    #- invertebrate
+    #- plant
+    #- protozoa
+    #- vertebrate_mammalian
+    #- vertebrate_other
 
 # Parameters for downloading files
 download_threads: 16
@@ -50,7 +50,7 @@ z_threshold_gtdb: 2
 m_threshold_gtdb: 0.01
 gtdb_derep_chunks: 5
 
-z_threshold_ncbi_main:
+z_threshold_ncbi:
   fungi: 2
   invertebrate: 2
   plant: 2
@@ -58,6 +58,14 @@ z_threshold_ncbi_main:
   vertebrate_mammalian: 2
   vertebrate_other: 2
   viral: 2
+m_threshold_ncbi:
+  fungi: 0.01
+  invertebrate: 0.01
+  plant: 0.01
+  protozoa: 0.01
+  vertebrate_mammalian: 0.01
+  vertebrate_other: 0.01
+  viral: 0.01
 ncbi_derep_chunks:
   fungi: 10
   invertebrate: 5
@@ -68,6 +76,7 @@ ncbi_derep_chunks:
   viral: 10
 
 z_threshold_checkv: 2
+m_threshold_checkv: 0.01
 checkv_derep_chunks: 5
 
 # Parameters for formatting taxonomy
@@ -85,11 +94,11 @@ minimizer_spaces: 4
 
 # Parameter sweep
 ps_kmer_length:
-  - 25
   - 35
+  - 25
 ps_minimizer_length:
   - 23
 ps_minimizer_spaces:
   - 4
-  - 7
- 
+kraken_classify_threads: 16
+
