@@ -127,7 +127,6 @@ rule collect_gtdb_genomes:
 		do
 		  ln -s "$line" {params.outdir}
 		done
-		# find {params.indir} -type f -name '*.gz' | xargs -n 1 mv -t {params.outdir}
 		awk -v FS="\\t" -v OFS="\\t" '{{print $2,$1}}' {input.derep_meta} | sed '1d' > {output.tax}
 		"""
 
