@@ -71,32 +71,44 @@ rule download_feature_count:
 		rm "{params.outdir}/links.log" "{params.outdir}/tmp1" "{params.outdir}/tmp2"
 		"""
 
-rule calculate_contig_stats:
+rule download_contigs_stats:
 	input:
-		download_genomes = config["rdir"] + "/{library_name}/genomes/done",
+		url = config["rdir"] + "/{library_name}/assembly_url_genomic.txt"
 	output:
-		contig_stats = config["rdir"] + "/{library_name}/metadata/stats_bbmap.txt"
+		stats_url = config["rdir"] + "/{library_name}/assembly_url_contig_stats.txt",
+		download_complete = config["rdir"] + "/{library_name}/contig_stats/done"
 	params:
-		genome_dir = config["rdir"] + "/{library_name}/genomes"
+		outdir = config["rdir"] + "/{library_name}/contig_stats"
+	threads: config["download_threads"]
 	conda:
-		config["wdir"] + "/envs/bbmap.yaml"
+		config["wdir"] + "/envs/download.yaml"
 	log:
-		config["rdir"] + "/logs/calculate_contig_stats_{library_name}.log"
+		config["rdir"] + "/logs/download_contig_stats_{library_name}.log"
 	shell:
 		"""
-		statswrapper.sh "{params.genome_dir}/*.gz" format=5 > {output.contig_stats} 2> {log}
+		sed 's/_genomic\.fna\.gz/_assembly_stats\.txt\.gz/' {input.url} > {output.stats_url}
+		aria2c -i {output.stats_url} -c -l "{params.outdir}/links.log" --dir {params.outdir} --max-tries=20 --retry-wait=5 --max-connection-per-server=1 --max-concurrent-downloads={threads} &>> {log}
+		# We need to verify all files are there
+		cat {output.stats_url} | xargs -n 1 basename | sort > "{params.outdir}/tmp1"
+		find {params.outdir} -type f -name '*.gz' | xargs -n 1 basename | sort > "{params.outdir}/tmp2"
+		if diff "{params.outdir}/tmp1" "{params.outdir}/tmp2"
+		then
+		  touch "{params.outdir}/done"
+		fi
+		rm "{params.outdir}/links.log" "{params.outdir}/tmp1" "{params.outdir}/tmp2"
 		"""
 
 rule parse_genome_metadata:
 	input:
 		download_feature_counts = config["rdir"] + "/{library_name}/feature_counts/done",
-		contig_stats = config["rdir"] + "/{library_name}/metadata/stats_bbmap.txt",
+		download_contig_stats = config["rdir"] + "/{library_name}/contig_stats/done",
 		summary = config["rdir"] + "/{library_name}/assembly_summary_combined.txt"
 	output:
 		metadata = config["rdir"] + "/{library_name}/metadata/genome_metadata.txt"
 	params:
 		outdir = config["rdir"] + "/{library_name}/metadata",
 		feature_dir = config["rdir"] + "/{library_name}/feature_counts",
+		stats_dir = config["rdir"] + "/{library_name}/contig_stats",
 		script = config["wdir"] + "/scripts/parse_genome_metadata.R"
 	conda:
 		config["wdir"] + "/envs/r.yaml"

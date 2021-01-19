@@ -10,11 +10,11 @@ threads: 1
 # Define wildcard values for NCBI partitions
 library_name:
   - fungi
-    #- invertebrate
-    #- plant
-    #- protozoa
-    #- vertebrate_mammalian
-    #- vertebrate_other
+  - invertebrate
+  - plant
+  - protozoa
+  - vertebrate_mammalian
+  - vertebrate_other
 
 # Parameters for downloading files
 download_threads: 16
