@@ -86,11 +86,11 @@ rule download_contigs_stats:
 		config["rdir"] + "/logs/download_contig_stats_{library_name}.log"
 	shell:
 		"""
-		sed 's/_genomic\.fna\.gz/_assembly_stats\.txt\.gz/' {input.url} > {output.stats_url}
+		sed 's/_genomic\.fna\.gz/_assembly_stats\.txt/' {input.url} > {output.stats_url}
 		aria2c -i {output.stats_url} -c -l "{params.outdir}/links.log" --dir {params.outdir} --max-tries=20 --retry-wait=5 --max-connection-per-server=1 --max-concurrent-downloads={threads} &>> {log}
 		# We need to verify all files are there
 		cat {output.stats_url} | xargs -n 1 basename | sort > "{params.outdir}/tmp1"
-		find {params.outdir} -type f -name '*.gz' | xargs -n 1 basename | sort > "{params.outdir}/tmp2"
+		find {params.outdir} -type f -name '*.txt' | xargs -n 1 basename | sort > "{params.outdir}/tmp2"
 		if diff "{params.outdir}/tmp1" "{params.outdir}/tmp2"
 		then
 		  touch "{params.outdir}/done"
@@ -116,9 +116,10 @@ rule parse_genome_metadata:
 		config["rdir"] + "/logs/parse_genome_metadata_{library_name}.log"
 	shell:
 		"""
+		grep "total-length" {params.stats_dir}/*.txt | grep ":all" | sed 's/^.*\///' | sed -E 's/(GC[AF]_[0-9]+\.[0-9]+)_.*_assembly_stats\.txt:/\\1\\t/' > "{params.outdir}/stats_assembly.txt"
 		zcat {params.feature_dir}/*.gz | sed '/^\#/d' | awk -v FS="\\t" -v OFS="\\t" '$1 == "gene" && $2 == "protein_coding"' > "{params.outdir}/stats_gene_count.txt"
-		{params.script} -g "{params.outdir}/stats_gene_count.txt" -c {input.contig_stats} -s {input.summary} -o {output.metadata} &>> {log}
-		# optional: delete feature counts directoy again (not implemented at the moment.
+		{params.script} -g "{params.outdir}/stats_gene_count.txt" -c "{params.outdir}/stats_assembly.txt" -s {input.summary} -o {output.metadata} &>> {log}
+		# optional: delete contig_stats and feature_counts directory again (not implemented at the moment).
 		"""
 
 rule get_taxdump:
