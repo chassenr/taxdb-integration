@@ -72,7 +72,7 @@ option_list <- list(
     c("-c", "--contig_stats"),
     type = "character",
     default = NULL, 
-    help = "contig statistics from statswrapper.sh", 
+    help = "genome length extracted from assembly stats table", 
     metavar = "character"
   ),
   make_option(
@@ -113,17 +113,16 @@ asm_summary <- fread(
   select(1, 5) %>% 
   setNames(c("accession", "refseq_category")) 
 
-msg("Reading contig stats...\n")
-# only keep n_contigs, contig_bp, ctg_max, ctg_L50
+msg("Reading assembly stats...\n")
+# only using genome length right now (N50 not provided for all genomes)
 contig_stats <- fread(
   opt$contig_stats, 
-  h = T, 
+  h = F, 
   sep = "\t"
 ) %>%
   as_tibble() %>% 
-  mutate(accession = sapply(strsplit(basename(filename), "_"), function(x) paste(x[1:2], collapse = "_"))) %>% 
-  select(accession, n_contigs, contig_bp, ctg_max, ctg_L50) %>% 
-  rename(contig_count = n_contigs, genome_size = contig_bp, longest_contig = ctg_max, n50_contigs = ctg_L50)
+  select(1, 7) %>% 
+  rename(accession = V1, genome_size = V7)
   
 msg("Reading gene counts...\n")
 # keep gene counts for all (incl. non-nuclear if present), otherwise Primary accession
@@ -144,7 +143,7 @@ gene_counts_primary <- gene_counts %>%
     asm_unit_name == "Primary Assembly"
     )
 gene_counts_nr <- bind_rows(gene_counts_all, gene_counts_primary)
-msg(paste0("Found gene counts for", nrow(gene_counts_nr), " genomes\n"))
+msg(paste0("Found gene counts for ", nrow(gene_counts_nr), " genomes\n"))
 
 
 ### merge assembly metadata ####

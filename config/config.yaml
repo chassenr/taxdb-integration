@@ -1,6 +1,7 @@
 # Basic dirs
-wdir: "/vol/cloud/christiane/Repos/taxdb-integration"
+wdir: "/vol/cloud/christiane/Repos/Misc/taxdb-integration"
 rdir: "/vol/cloud/christiane/NCBI_taxdb_integration/Testing4"
+cdir: "/vol/cloud/christiane/NCBI_taxdb_integration/Testing4/coarse"
 # wdir: "/home/chh/Documents/Repos/taxdb-integration"
 # rdir: "/home/chh/Documents/Projects/NCBI_taxdb_integration/Testing7"
 
@@ -15,6 +16,11 @@ library_name:
   - protozoa
   - vertebrate_mammalian
   - vertebrate_other
+
+library_highres:
+  - fungi
+  - protozoa
+  - plant
 
 # Parameters for downloading files
 download_threads: 16
@@ -101,4 +107,31 @@ ps_minimizer_length:
 ps_minimizer_spaces:
   - 4
 kraken_classify_threads: 16
+
+# settings for coarse DB
+rank_coarse:
+  fungi: "family"
+  invertebrate: "class"
+  plant: "family"
+  protozoa: "family"
+  vertebrate_mammalian: "class"
+  vertebrate_other: "class"
+
+coarse_sublineage:
+  fungi: ""
+  invertebrate: ""
+  plant: "p__Streptophyta"
+  protozoa: ""
+  vertebrate_mammalian: ""
+  vertebrate_other: ""
+
+rank_sublineage:
+  fungi: "family"
+  invertebrate: "class"
+  plant: "class"
+  protozoa: "family"
+  vertebrate_mammalian: "class"
+  vertebrate_other: "class"
+
+nmax_coarse: 5
 

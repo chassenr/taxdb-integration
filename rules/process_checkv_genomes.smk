@@ -1,20 +1,29 @@
 rule download_genomes_checkv:
 	output: 
 		fna = config["rdir"] + "/checkv/checkv_full.fna",
-		clusters = config["rdir"] + "/checkv/checkv_clusters.tsv",
-		meta_genbank = config["rdir"] + "/checkv/checkv_genbank.tsv",
-		meta_circular = config["rdir"] + "/checkv/checkv_circular.tsv"
 	params:
-		library_dir = config["rdir"],
 		checkv_link = config["checkv_link"]
 	log:
 		config["rdir"] + "/logs/download_genomes_checkv.log"
 	shell:
 		"""
 		wget -O {output.fna} "{params.checkv_link}/checkv_full.fna" &>> {log}
+		"""
+
+rule download_metadata_checkv:
+	output:
+		clusters = config["rdir"] + "/checkv/checkv_clusters.tsv",
+		meta_genbank = config["rdir"] + "/checkv/checkv_genbank.tsv",
+		meta_circular = config["rdir"] + "/checkv/checkv_circular.tsv"
+	params:
+		checkv_link = config["checkv_link"]
+	log:
+		config["rdir"] + "/logs/download_metadata_checkv.log"
+	shell:
+		"""
 		wget -O {output.clusters} "{params.checkv_link}/checkv_clusters.tsv" &>> {log}
-		wget -O {output.meta_genbank} "{params.checkv_link}/checkv_genbank.tsv"
-		wget -O {output.meta_circular} "{params.checkv_link}/checkv_circular.tsv"
+		wget -O {output.meta_genbank} "{params.checkv_link}/checkv_genbank.tsv" &>> {log}
+		wget -O {output.meta_circular} "{params.checkv_link}/checkv_circular.tsv" &>> {log}
 		"""
 
 rule parse_taxa_checkv:

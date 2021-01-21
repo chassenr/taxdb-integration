@@ -150,7 +150,7 @@ img <- fread(
   sep = "\t",
   quote = ""
 ) %>% 
-  mutate(path = "d__Viruses;p__Viruses;c__Viruses;o__Viruses;f__Viruses;g__Viruses;s__Viruses")
+  mutate(path = "d__Viruses;p__Viruses;c__Viruses;o__Viruses;f__Viruses;g__Viruses;s__Viruses unclassified")
 
 # genbank contigs
 # as lineage provided by checkV does not contain rank information
@@ -181,7 +181,10 @@ if(anyNA(taxpath$superkingdom)) {
         as_tibble() %>% 
         mutate(accnos = X)
     }) %>% 
-    rows_update(taxpath, ., by = "accnos", copy = T)
+    rows_update(taxpath, ., by = "accnos", copy = T) %>%
+    # in the unlikely case that there are still NAs, remove those genomes from list
+    # this can happen if entrez_fetch is unable to retrieve the updated record for taxid
+    filter(!is.na(superkingdom))
 } else {
   taxpath_new <- taxpath
 }
@@ -200,7 +203,7 @@ genbank_parsed <- taxpath_new %>%
     genus = paste0("g__", ifelse(is.na(genus), gsub("f__", "", family), genus)),
     species = ifelse(
       is.na(species), 
-      paste0("s__", gsub("g__", "", genus)),
+      paste0("s__", gsub("g__", "", genus), " unclassified"),
       paste0("s__", species)
     )
   ) %>% 

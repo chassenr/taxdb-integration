@@ -21,16 +21,16 @@ rule get_genomes_ncbi:
 
 rule download_genomes_ncbi:
 	input:
-		url = config["rdir"] + "/{library_name}/assembly_url_genomic.txt"
+		url = config["rdir"] + "/{library_highres}/assembly_url_genomic.txt"
 	output:
-		download_complete = config["rdir"] + "/{library_name}/genomes/done"
+		download_complete = config["rdir"] + "/{library_highres}/genomes/done"
 	params:
-		outdir = config["rdir"] + "/{library_name}/genomes"
+		outdir = config["rdir"] + "/{library_highres}/genomes"
 	threads: config["download_threads"]
 	conda:
 		config["wdir"] + "/envs/download.yaml"
 	log:
-                config["rdir"] + "/logs/download_genomes_ncbi_{library_name}.log"
+                config["rdir"] + "/logs/download_genomes_ncbi_{library_highres}.log"
 	shell:
 		"""
 		aria2c -i {input.url} -c -l "{params.outdir}/links.log" --dir {params.outdir} --max-tries=20 --retry-wait=5 --max-connection-per-server=1 --max-concurrent-downloads={threads} &>> {log}
@@ -86,11 +86,11 @@ rule download_contigs_stats:
 		config["rdir"] + "/logs/download_contig_stats_{library_name}.log"
 	shell:
 		"""
-		sed 's/_genomic\.fna\.gz/_assembly_stats\.txt\.gz/' {input.url} > {output.stats_url}
+		sed 's/_genomic\.fna\.gz/_assembly_stats\.txt/' {input.url} > {output.stats_url}
 		aria2c -i {output.stats_url} -c -l "{params.outdir}/links.log" --dir {params.outdir} --max-tries=20 --retry-wait=5 --max-connection-per-server=1 --max-concurrent-downloads={threads} &>> {log}
 		# We need to verify all files are there
 		cat {output.stats_url} | xargs -n 1 basename | sort > "{params.outdir}/tmp1"
-		find {params.outdir} -type f -name '*.gz' | xargs -n 1 basename | sort > "{params.outdir}/tmp2"
+		find {params.outdir} -type f -name '*.txt' | xargs -n 1 basename | sort > "{params.outdir}/tmp2"
 		if diff "{params.outdir}/tmp1" "{params.outdir}/tmp2"
 		then
 		  touch "{params.outdir}/done"
@@ -116,9 +116,10 @@ rule parse_genome_metadata:
 		config["rdir"] + "/logs/parse_genome_metadata_{library_name}.log"
 	shell:
 		"""
+		grep "total-length" {params.stats_dir}/*.txt | grep ":all" | sed 's/^.*\///' | sed -E 's/(GC[AF]_[0-9]+\.[0-9]+)_.*_assembly_stats\.txt:/\\1\\t/' > "{params.outdir}/stats_assembly.txt"
 		zcat {params.feature_dir}/*.gz | sed '/^\#/d' | awk -v FS="\\t" -v OFS="\\t" '$1 == "gene" && $2 == "protein_coding"' > "{params.outdir}/stats_gene_count.txt"
-		{params.script} -g "{params.outdir}/stats_gene_count.txt" -c {input.contig_stats} -s {input.summary} -o {output.metadata} &>> {log}
-		# optional: delete feature counts directoy again (not implemented at the moment.
+		{params.script} -g "{params.outdir}/stats_gene_count.txt" -c "{params.outdir}/stats_assembly.txt" -s {input.summary} -o {output.metadata} &>> {log}
+		# optional: delete contig_stats and feature_counts directory again (not implemented at the moment).
 		"""
 
 rule get_taxdump:
@@ -162,26 +163,26 @@ localrules: derep_ncbi
 
 rule derep_ncbi:
 	input:
-		metadata = config["rdir"] + "/{library_name}/metadata/genome_metadata.txt",
-		download_complete = config["rdir"] + "/{library_name}/genomes/done",
-		taxonomy = config["rdir"] + "/{library_name}/assembly_taxonomy.txt"
+		metadata = config["rdir"] + "/{library_highres}/metadata/genome_metadata.txt",
+		download_complete = config["rdir"] + "/{library_highres}/genomes/done",
+		taxonomy = config["rdir"] + "/{library_highres}/assembly_taxonomy.txt"
 	output:
-		derep_meta = config["rdir"] + "/{library_name}/derep_taxonomy_meta.txt"
+		derep_meta = config["rdir"] + "/{library_highres}/derep_taxonomy_meta.txt"
 	params:
-		dir = config["rdir"] + "/{library_name}",
-		indir = config["rdir"] + "/{library_name}/genomes",
-		outdir = config["rdir"] + "/{library_name}/derep_genomes",
-		z_threshold = lambda wildcards: config["z_threshold_ncbi"][wildcards.library_name],
-		m_threshold = lambda wildcards: config["m_threshold_ncbi"][wildcards.library_name],
-		derep_db = config["rdir"] + "/{library_name}/derep_genomes/derep_db",
+		dir = config["rdir"] + "/{library_highres}",
+		indir = config["rdir"] + "/{library_highres}/genomes",
+		outdir = config["rdir"] + "/{library_highres}/derep_genomes",
+		z_threshold = lambda wildcards: config["z_threshold_ncbi"][wildcards.library_highres],
+		m_threshold = lambda wildcards: config["m_threshold_ncbi"][wildcards.library_highres],
+		derep_db = config["rdir"] + "/{library_highres}/derep_genomes/derep_db",
 		derep_slurm = config["wdir"] + "/config/cluster_derep.yaml",
-		derep_chunks = lambda wildcards: config["ncbi_derep_chunks"][wildcards.library_name],
-		derep_lineage = lambda wildcards: config["derep_lineage_exclude"][wildcards.library_name]
+		derep_chunks = lambda wildcards: config["ncbi_derep_chunks"][wildcards.library_highres],
+		derep_lineage = lambda wildcards: config["derep_lineage_exclude"][wildcards.library_highres]
 	threads: config["derep_threads"]
 	conda:
 		config["wdir"] + "/envs/derep.yaml"
 	log:
-		config["rdir"] + "/logs/derep_ncbi_{library_name}.log"
+		config["rdir"] + "/logs/derep_ncbi_{library_highres}.log"
 	shell:
 		"""
 		# remove exlcuded lineages from taxonomy table (alternatively supply file to derep command with taxa to keep)
@@ -200,11 +201,11 @@ rule derep_ncbi:
 
 rule collect_ncbi_genomes:
 	input:
-		derep_meta = config["rdir"] + "/{library_name}/derep_assembly_taxonomy_meta.txt"
+		derep_meta = config["rdir"] + "/{library_highres}/derep_assembly_taxonomy_meta.txt"
 	output:
-		tax = config["rdir"] + "/tax_combined/{library_name}_derep_taxonomy.txt"
+		tax = config["rdir"] + "/tax_combined/{library_highres}_derep_taxonomy.txt"
 	params:
-		indir = config["rdir"] + "/{library_name}/derep_genomes",
+		indir = config["rdir"] + "/{library_highres}/derep_genomes",
 		outdir = config["rdir"] + "/derep_combined/"
 	shell:
 		"""
