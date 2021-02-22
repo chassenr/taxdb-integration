@@ -345,7 +345,8 @@ bac_metadata <- fread(
     genome_size,
     longest_contig,
     n50_contigs,
-    protein_count
+    protein_count,
+    gc_percentage
   )
 ar_metadata <- fread(
   opt$ar_metadata, 
@@ -363,7 +364,8 @@ ar_metadata <- fread(
     genome_size,
     longest_contig,
     n50_contigs,
-    protein_count
+    protein_count,
+    gc_percentage
   )
 gtdb_metadata <- bind_rows(bac_metadata, ar_metadata)
 gtdb_metadata <- gtdb_metadata[match(out_file_links$gtdb_genome, gtdb_metadata$accession), ]

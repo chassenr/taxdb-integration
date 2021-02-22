@@ -44,46 +44,37 @@ rule download_genomes_ncbi:
 		rm "{params.outdir}/links.log" "{params.outdir}/tmp1" "{params.outdir}/tmp2"
 		"""
 
-rule download_feature_count:
+rule calculate_contig_stats:
 	input:
-		url = config["rdir"] + "/{library_name}/assembly_url_genomic.txt"
+		download_genomes = config["rdir"] + "/{library_highres}/genomes/done",
 	output:
-		feature_url = config["rdir"] + "/{library_name}/assembly_url_feature_count.txt",
-		download_complete = config["rdir"] + "/{library_name}/feature_counts/done"
+		contig_stats = config["rdir"] + "/{library_highres}/metadata/genome_metadata.txt"
 	params:
-		outdir = config["rdir"] + "/{library_name}/feature_counts"
-	threads: config["download_threads"]
+		genome_dir = config["rdir"] + "/{library_highres}/genomes"
 	conda:
-		config["wdir"] + "/envs/download.yaml"
+		config["wdir"] + "/envs/bbmap.yaml"
 	log:
-		config["rdir"] + "/logs/download_feature_count_{library_name}.log"
+		config["rdir"] + "/logs/calculate_contig_stats_{library_highres}.log"
 	shell:
 		"""
-		sed 's/_genomic\.fna\.gz/_feature_count\.txt\.gz/' {input.url} > {output.feature_url}
-		aria2c -i {output.feature_url} -c -l "{params.outdir}/links.log" --dir {params.outdir} --max-tries=20 --retry-wait=5 --max-connection-per-server=1 --max-concurrent-downloads={threads} &>> {log}
-		# We need to verify all files are there
-		cat {output.feature_url} | xargs -n 1 basename | sort > "{params.outdir}/tmp1"
-		find {params.outdir} -type f -name '*.gz' | xargs -n 1 basename | sort > "{params.outdir}/tmp2"
-		if diff "{params.outdir}/tmp1" "{params.outdir}/tmp2"
-		then
-		  touch "{params.outdir}/done"
-		fi
-		rm "{params.outdir}/links.log" "{params.outdir}/tmp1" "{params.outdir}/tmp2"
+		statswrapper.sh "{params.genome_dir}/*.gz" format=5 > "{params.genome_dir}/../metadata/bb_out.tmp" 2> {log}
+		paste "{params.genome_dir}/../metadata/bb_out.tmp" <(cut -f11 "{params.genome_dir}/../metadata/bb_out.tmp" | sed 's/.*\///' | cut -d'_' -f1,2 | sed 's/filename/accession/') | sed 's/contig_bp/genome_size/'> {output.contig_stats}
+		rm "{params.genome_dir}/../metadata/bb_out.tmp"
 		"""
 
-rule download_contigs_stats:
+rule download_assembly_stats:
 	input:
-		url = config["rdir"] + "/{library_name}/assembly_url_genomic.txt"
+		url = config["rdir"] + "/{library_coarse}/assembly_url_genomic.txt"
 	output:
-		stats_url = config["rdir"] + "/{library_name}/assembly_url_contig_stats.txt",
-		download_complete = config["rdir"] + "/{library_name}/contig_stats/done"
+		stats_url = config["rdir"] + "/{library_coarse}/assembly_url_contig_stats.txt",
+		download_complete = config["rdir"] + "/{library_coarse}/contig_stats/done"
 	params:
-		outdir = config["rdir"] + "/{library_name}/contig_stats"
+		outdir = config["rdir"] + "/{library_coarse}/contig_stats"
 	threads: config["download_threads"]
 	conda:
 		config["wdir"] + "/envs/download.yaml"
 	log:
-		config["rdir"] + "/logs/download_contig_stats_{library_name}.log"
+		config["rdir"] + "/logs/download_assembly_stats_{library_coarse}.log"
 	shell:
 		"""
 		sed 's/_genomic\.fna\.gz/_assembly_stats\.txt/' {input.url} > {output.stats_url}
@@ -98,28 +89,25 @@ rule download_contigs_stats:
 		rm "{params.outdir}/links.log" "{params.outdir}/tmp1" "{params.outdir}/tmp2"
 		"""
 
-rule parse_genome_metadata:
+rule parse_assembly_metadata:
 	input:
-		download_feature_counts = config["rdir"] + "/{library_name}/feature_counts/done",
-		download_contig_stats = config["rdir"] + "/{library_name}/contig_stats/done",
-		summary = config["rdir"] + "/{library_name}/assembly_summary_combined.txt"
+		download_contig_stats = config["rdir"] + "/{library_coarse}/contig_stats/done",
+		summary = config["rdir"] + "/{library_coarse}/assembly_summary_combined.txt"
 	output:
-		metadata = config["rdir"] + "/{library_name}/metadata/genome_metadata.txt"
+		metadata = config["rdir"] + "/{library_coarse}/metadata/genome_metadata.txt"
 	params:
-		outdir = config["rdir"] + "/{library_name}/metadata",
-		feature_dir = config["rdir"] + "/{library_name}/feature_counts",
-		stats_dir = config["rdir"] + "/{library_name}/contig_stats",
-		script = config["wdir"] + "/scripts/parse_genome_metadata.R"
-	conda:
-		config["wdir"] + "/envs/r.yaml"
+		outdir = config["rdir"] + "/{library_coarse}/metadata",
+		stats_dir = config["rdir"] + "/{library_coarse}/contig_stats",
+		script = config["wdir"] + "/scripts/parse_assembly_metadata.R"
 	log:
-		config["rdir"] + "/logs/parse_genome_metadata_{library_name}.log"
+		config["rdir"] + "/logs/parse_assembly_metadata_{library_coarse}.log"
 	shell:
 		"""
-		grep "total-length" {params.stats_dir}/*.txt | grep ":all" | sed 's/^.*\///' | sed -E 's/(GC[AF]_[0-9]+\.[0-9]+)_.*_assembly_stats\.txt:/\\1\\t/' > "{params.outdir}/stats_assembly.txt"
-		zcat {params.feature_dir}/*.gz | sed '/^\#/d' | awk -v FS="\\t" -v OFS="\\t" '$1 == "gene" && $2 == "protein_coding"' > "{params.outdir}/stats_gene_count.txt"
-		{params.script} -g "{params.outdir}/stats_gene_count.txt" -c "{params.outdir}/stats_assembly.txt" -s {input.summary} -o {output.metadata} &>> {log}
-		# optional: delete contig_stats and feature_counts directory again (not implemented at the moment).
+		grep "total-length" {params.stats_dir}/*.txt | grep ":all" | sed 's/^.*\///' | sed -E 's/(GC[AF]_[0-9]+\.[0-9]+)_.*_assembly_stats\.txt:/\\1\\t/' > "{params.outdir}/contig_stats.tmp"
+		echo -e "accession\tgenome_size" > {output.metadata}
+		cut -f1,7 "{params.outdir}/contig_stats.tmp" >> {output.metadata}
+		rm "{params.outdir}/contig_stats.tmp"
+		# optional: delete contig_stats directory again (not implemented at the moment).
 		"""
 
 rule get_taxdump:
@@ -159,13 +147,36 @@ rule get_taxpath:
 		{params.script} -i {input.genomes} -t "{params.outdir}/ncbi_taxdump" -s "{params.outdir}/ncbi_taxdump/accessionTaxa.sql" -o {output.taxonomy} &>> {log}
 		"""
 
+rule filter_assemblies:
+	input:
+		taxonomy = config["rdir"] + "/{library_highres}/assembly_taxonomy.txt",
+		contig_stats = config["rdir"] + "/{library_highres}/metadata/genome_metadata.txt"
+	output:
+		tax_filt = config["rdir"] + "/{library_highres}/assembly_taxonomy_filtered.txt"
+	params:
+		script = config["wdir"] + "/scripts/filter_genome_assemblies.R",
+		fields = lambda wildcards: config["filter_ncbi_fields"][wildcards.library_highres],
+		abs_cut = lambda wildcards: config["filter_ncbi_abs"][wildcards.library_highres],
+		rel_cut = lambda wildcards: config["filter_ncbi_rel"][wildcards.library_highres],
+		cut_dif = lambda wildcards: config["filter_ncbi_dif"][wildcards.library_highres],
+		cut_sign = lambda wildcards: config["filter_ncbi_sign"][wildcards.library_highres]
+	conda:
+		config["wdir"] + "/envs/r.yaml"
+	log:
+		config["rdir"] + "/logs/filter_ncbi_assemblies_{library_highres}.log"
+	shell:
+		"""
+		{params.script} -t "{input.taxonomy}" -m "{input.contig_stats}" -p "{params.fields}" --absolute_cutoff="{params.abs_cut}" -r "{params.rel_cut}" -d "{params.cut_dif}" -s "{params.cut_sign}" -o {output.tax_filt} &>> {log}
+		"""
+
+# insert user-supplied genomes
+
 localrules: derep_ncbi
 
 rule derep_ncbi:
 	input:
-		metadata = config["rdir"] + "/{library_highres}/metadata/genome_metadata.txt",
 		download_complete = config["rdir"] + "/{library_highres}/genomes/done",
-		taxonomy = config["rdir"] + "/{library_highres}/assembly_taxonomy.txt"
+		taxonomy = config["rdir"] + "/{library_highres}/assembly_taxonomy_filtered.txt"
 	output:
 		derep_meta = config["rdir"] + "/{library_highres}/derep_taxonomy_meta.txt"
 	params:
