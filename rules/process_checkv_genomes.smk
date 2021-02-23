@@ -63,12 +63,35 @@ rule split_fasta:
 		touch done
 		"""
 
+rule add_custom_checkv:
+	input:
+		tax_checkv = config["rdir"] + "/checkv/checkv_taxonomy.txt"
+	output:
+		tax_added = config["rdir"] + "/checkv/checkv_taxonomy_added.txt"
+	params:
+		add = config["custom_checkv"],
+		dir = config["rdir"] + "/checkv/genomes"
+	shell:
+		"""
+		if [[ "{params.add}" != "" ]]
+		then
+		  ls -1 {params.dir} | grep -F -f <(cut -f1 {params.add}) > {params.dir}/tmp
+		  if [[ "$(wc -l < {params.dir}/tmp)" -eq "$(wc -l < {params.add})" ]]
+		  then
+		    cat {input.tax_checkv} {params.add} > {output.tax_added}
+		  fi
+		  rm {params.dir}/tmp
+		else
+		  cp {input.tax_checkv} {output.tax_added}
+		fi
+		"""
+
 localrules: derep_checkv
 
 rule derep_checkv:
 	input:
 		split_done = config["rdir"] + "/checkv/genomes/done",
-		checkv_taxonomy = config["rdir"] + "/checkv/checkv_taxonomy.txt"
+		checkv_taxonomy = config["rdir"] + "/checkv/checkv_taxonomy_added.txt"
 	output:
 		derep_meta = config["rdir"] + "/checkv/checkv_derep_taxonomy_meta.txt"
 	params:

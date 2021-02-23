@@ -12,14 +12,14 @@ threads: 1
 library_name:
   - fungi
   - invertebrate
-  - plant
-  - protozoa
+  #- plant
+  #- protozoa
   - vertebrate_mammalian
   - vertebrate_other
 
 library_highres:
   - fungi
-  #- protozoa
+  - protozoa
   #- plant
 
 library_coarse:
@@ -49,18 +49,32 @@ gtdb_link: "https://data.ace.uq.edu.au/public/gtdb/data/releases/latest"
 # Parameters for filtering assemblies based on contig stats
 filter_ncbi_fields:
   fungi: "genome_size,gc_avg,ctg_L50"
+  protozoa: "genome_size,gc_avg,ctg_L50"
 
 filter_ncbi_abs:
   fungi: "-1,-1,-1"
+  protozoa: "-1,-1,-1"
 
 filter_ncbi_rel:
   fungi: "0.1,0.1,0.1"
+  protozoa: "0.1,0.1,0.1"
 
 filter_ncbi_dif:
   fungi: "0.1,1,0.25"
+  protozoa: "0.1,1,0.25"
 
 filter_ncbi_sign:
   fungi: "greater,both,greater"
+  protozoa: "greater,both,greater"
+
+# Optional: include custom assemblies
+custom_ncbi:
+  fungi: "/vol/cloud/christiane/NCBI_taxdb_integration/Testing4/fungi/assembly_taxonomy_user.txt"
+  protozoa: ""
+
+custom_gtdb: ""
+
+custom_checkv: ""
 
 # Parameters for dereplicating genomes
 derep_threads: 32

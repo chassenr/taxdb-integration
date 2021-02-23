@@ -79,14 +79,41 @@ rule download_gtdb_ncbi:
 		# cut -f5,1 {input.gtdb_links} | awk '{{print $2"\\n out="$1".md5"}}' > "{params.outdir}/links_md5"
 		"""
 
+# to add cusom assemblies, manually include genome files in the respective directories and provide the taxonomy file name in the config file for custom_ncbi
+rule add_custom_gtdb:
+	input:
+		download_info = config["rdir"] + "/gtdb/metadata/gtdb_download_info.txt"
+	output:
+		tax_gtdb = config["rdir"] + "/gtdb/metadata/gtdb_taxonomy.txt",
+		tax_added = config["rdir"] + "/gtdb/metadata/gtdb_taxonomy_added.txt"
+	params:
+		add = config["custom_gtdb"],
+		dir = config["rdir"] + "/gtdb/genomes"
+	shell:
+		"""
+		# parse taxonomy file
+		cut -f6,7 {input.download_info} > {output.tax_gtdb}
+		# add additional genomes if provided
+		if [[ "{params.add}" != "" ]]
+		then
+		  ls -1 {params.dir} | grep -F -f <(cut -f1 {params.add}) > {params.dir}/tmp
+		  if [[ "$(wc -l < {params.dir}/tmp)" -eq "$(wc -l < {params.add})" ]]
+		  then
+		    cat {output.tax_gtdb} {params.add} > {output.tax_added}
+		  fi
+		  rm {params.dir}/tmp
+		else
+		  cp {output.tax_gtdb} {output.tax_added}
+		fi
+		"""
+
 localrules: derep_gtdb
 
 rule derep_gtdb:
 	input:
 		download_complete_ncbi = config["rdir"] + "/gtdb/genomes/done",
-		tax_ncbi = config["rdir"] + "/gtdb/metadata/gtdb_download_info.txt"
+		tax_added = config["rdir"] + "/gtdb/metadata/gtdb_taxonomy_added.txt"
 	output:
-		taxonomy = config["rdir"] + "/gtdb/metadata/gtdb_taxonomy.txt",
 		derep_meta = config["rdir"] + "/gtdb/metadata/gtdb_derep_taxonomy_meta.txt"
 	params:
 		indir = config["rdir"] + "/gtdb/genomes",
@@ -104,11 +131,9 @@ rule derep_gtdb:
 		config["rdir"] + "/logs/derep_new_gtdb.log"
 	shell:
 		"""
-		# parse taxonomy file
-		cut -f6,7 {input.tax_ncbi} > {output.taxonomy}
 		mkdir -p {params.outdir}
 		cd {params.outdir}
-		derepG --threads {threads} --in-dir {params.indir} --taxa {output.taxonomy} --tmp ./ --slurm-config {params.derep_slurm} --db {params.derep_db} --threshold {params.z_threshold} --mash-threshold {params.m_threshold} --chunk-size {params.derep_chunks} --debug --slurm-arr-size 10000 &>> {log}
+		derepG --threads {threads} --in-dir {params.indir} --taxa {input.tax_added} --tmp ./ --slurm-config {params.derep_slurm} --db {params.derep_db} --threshold {params.z_threshold} --mash-threshold {params.m_threshold} --chunk-size {params.derep_chunks} --debug --slurm-arr-size 10000 &>> {log}
 		mv *derep-genomes_results.tsv {output.derep_meta}
 		# do not delete redundant genomes until DB workflow is finished, work with soft links for remaining steps
 		"""

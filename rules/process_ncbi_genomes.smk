@@ -104,7 +104,7 @@ rule parse_assembly_metadata:
 	shell:
 		"""
 		grep "total-length" {params.stats_dir}/*.txt | grep ":all" | sed 's/^.*\///' | sed -E 's/(GC[AF]_[0-9]+\.[0-9]+)_.*_assembly_stats\.txt:/\\1\\t/' > "{params.outdir}/contig_stats.tmp"
-		echo -e "accession\tgenome_size" > {output.metadata}
+		echo -e "accession\\tgenome_size" > {output.metadata}
 		cut -f1,7 "{params.outdir}/contig_stats.tmp" >> {output.metadata}
 		rm "{params.outdir}/contig_stats.tmp"
 		# optional: delete contig_stats directory again (not implemented at the moment).
@@ -169,14 +169,36 @@ rule filter_assemblies:
 		{params.script} -t "{input.taxonomy}" -m "{input.contig_stats}" -p "{params.fields}" --absolute_cutoff="{params.abs_cut}" -r "{params.rel_cut}" -d "{params.cut_dif}" -s "{params.cut_sign}" -o {output.tax_filt} &>> {log}
 		"""
 
-# insert user-supplied genomes
-
+# to add cusom assemblies, manually include genome files in the respective directories and provide the taxonomy file name in the config file for custom_ncbi
+rule add_custom_assemblies:
+	input:
+		tax_ncbi = config["rdir"] + "/{library_highres}/assembly_taxonomy_filtered.txt"
+	output:
+		tax_added = config["rdir"] + "/{library_highres}/assembly_taxonomy_added.txt"
+	params:
+		add = lambda wildcards: config["custom_ncbi"][wildcards.library_highres],
+		dir = config["rdir"] + "/{library_highres}/genomes"
+	shell:
+		"""
+		if [[ "{params.add}" != "" ]]
+		then
+		  ls -1 {params.dir} | grep -F -f <(cut -f1 {params.add}) > {params.dir}/tmp
+		  if [[ "$(wc -l < {params.dir}/tmp)" -eq "$(wc -l < {params.add})" ]]
+		  then
+		    cat {input.tax_ncbi} {params.add} > {output.tax_added}
+		  fi
+		  rm {params.dir}/tmp
+		else
+		  cp {input.tax_ncbi} {output.tax_added}
+		fi
+		"""
+		
 localrules: derep_ncbi
 
 rule derep_ncbi:
 	input:
 		download_complete = config["rdir"] + "/{library_highres}/genomes/done",
-		taxonomy = config["rdir"] + "/{library_highres}/assembly_taxonomy_filtered.txt"
+		taxonomy = config["rdir"] + "/{library_highres}/assembly_taxonomy_added.txt"
 	output:
 		derep_meta = config["rdir"] + "/{library_highres}/derep_taxonomy_meta.txt"
 	params:
