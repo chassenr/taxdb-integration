@@ -54,6 +54,65 @@ rule prelim_map_coarse:
 		rm {params.libdir}/tmp.accnos
 		"""
 
+localrules: detect_contamination
+
+# make sure that conterminator is available in PATH. Manual installation required as conda version is not up to date
+rule detect_contamination:
+	input:
+		fasta = config["cdir"] + "/kraken2_db/library/coarse/library.fna",
+		map = config["cdir"] + "/kraken2_db/library/coarse/prelim_map.txt",
+		nodes = config["cdir"] + "/kraken2_db/taxonomy/nodes.dmp",
+                names = config["cdir"] + "/kraken2_db/taxonomy/names.dmp",
+		tax_all_coarse = config["cdir"] + "/tax_coarse_all.txt"
+	output:
+		delnodes = config["cdir"] + "/kraken2_db/taxonomy/delnodes.dmp",
+		merged = config["cdir"] + "/kraken2_db/taxonomy/merged.dmp",
+		cstring = config["cdir"] + "/decontamination/conterminator_string.txt",
+		cmap = config["cdir"] + "/decontamination/cmap.txt",
+		contam = config["cdir"] + "/decontamination/coarse_db_conterm_prediction"
+	params:
+		script = config["wdir"] + "/scripts/get_kingdoms_conterminator.R",
+		tmpdir = config["cdir"] + "/decontamination/tmp",
+		taxdir = config["cdir"] + "/kraken2_db/taxonomy/",
+		prefix = config["cdir"] + "/decontamination/coarse_db",
+		cmem = config["cmem"]
+	conda:
+		config["wdir"] + "/envs/r.yaml"
+	threads: config["masking_threads"]
+	log:
+		config["rdir"] + "/logs/coarse_conterminator.log"
+	shell:
+		"""
+		# prepare fasta header mapping file for conterminator
+		cut -f2,3 {input.map} > {output.cmap}
+		# create dummy delnodes and merged files in the taxonomic directory for compatibility with conterminator
+		touch {output.delnodes}
+		touch {output.merged}
+		# parse taxid string for conterminator kingdoms parameter
+		{params.script} -i {input.tax_all_coarse} -t {params.taxdir} -s "{params.taxdir}/accessionTaxa.sql" -o {output.cstring}
+		# run conterminator
+		CSTR=$(cat {output.cstring})
+		conterminator dna {input.fasta} {output.cmap} {params.prefix} {params.tmpdir} --mask-lower-case 1 --ncbi-tax-dump {params.taxdir} --threads {threads} --split-memory-limit {params.cmem} --blacklist '5' --kingdoms $CSTR
+		"""
+
+rule remove_contamination:
+	input:
+		contam = config["cdir"] + "/decontamination/coarse_db_conterm_prediction",
+		fasta = config["cdir"] + "/kraken2_db/library/coarse/library.fna",
+		map = config["cdir"] + "/kraken2_db/library/coarse/prelim_map.txt"
+	output:
+		cleaned_fasta = config["cdir"] + "/kraken2_db/library/coarse/library.fna",
+		cleaned_map = config["cdir"] + "/kraken2_db/library/coarse/prelim_map.txt"
+	params:
+		script = config["wdir"] + "/scripts/remove_contamination.R"
+	conda:
+		config["wdir"] + "/envs/r.yaml"
+	log:
+		config["rdir"] + "/logs/coarse_cleaning.log"
+	shell:
+		"""
+		"""
+
 if config["univec"]:
 	rule add_univec:
 		output:

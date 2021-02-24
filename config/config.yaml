@@ -168,5 +168,7 @@ rank_sublineage:
   vertebrate_mammalian: "class"
   vertebrate_other: "class"
 
-nmax_coarse: 5
+nmax_coarse: 3
 
+# maximum memory for conterminator
+cmem: "350G"
