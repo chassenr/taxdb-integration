@@ -64,13 +64,6 @@ msg_sub <- function(X){
 # define command line options
 option_list <- list(
   make_option(
-    c("-i", "--input"), 
-    type = "character", 
-    default = NULL,
-    help = "taxonomy table", 
-    metavar = "character"
-  ),
-  make_option(
     c("-t", "--taxdump"), 
     type = "character", 
     default = NULL,
@@ -95,7 +88,7 @@ option_list <- list(
 opt_parser <- OptionParser(option_list = option_list)
 opt <- parse_args(opt_parser)
 
-if (is.null(opt$input) | is.null(opt$output) | is.null(opt$taxdump) | is.null(opt$sql)) {
+if (is.null(opt$output) | is.null(opt$taxdump) | is.null(opt$sql)) {
   print_help(opt_parser)
   stop(
     "All parameters are mandatory.\n", 
@@ -114,20 +107,6 @@ read.nodes.sql(
   paste0(opt$taxdump, "/nodes.dmp"),
   opt$sql
 )
-
-# read taxonomy table
-tax_table <- fread(
-  opt$input,
-  h = F,
-  sep = "\t",
-  quote = ""
-)
-
-# map taxid
-phylum_table <- separate(tax_table, V2, into = c("domain", "phylum", "class", "order", "family", "genus", "species"), sep = ";") %>% 
-  filter(domain == "d__Eukaryota") %>% 
-  select(2, 3) %>% 
-  unique()
 
 # select the phylum groupings for:
 phylum_list <- list(
