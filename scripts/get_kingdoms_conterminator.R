@@ -71,6 +71,13 @@ option_list <- list(
     metavar = "character"
   ),
   make_option(
+    c("-k", "--kingdoms"), 
+    type = "character", 
+    default = "prokaryotes,fungi,protists,plants,metazoa",
+    help = "space-separated list of kingdoms to compare", 
+    metavar = "character"
+  ),
+  make_option(
     c("-s", "--sql"), 
     type = "character", 
     default = NULL,
@@ -81,7 +88,14 @@ option_list <- list(
     c("-o", "--output"), 
     type = "character", 
     default = NULL,
-    help = "taxonomy table with taxid appended",
+    help = "conterminator string for kingdoms",
+    metavar = "character"
+  ),
+  make_option(
+    c("-x", "--blacklist"), 
+    type = "character", 
+    default = NULL,
+    help = "conterminator string for blacklist (always viruses)", 
     metavar = "character"
   )
 )
@@ -110,6 +124,21 @@ read.nodes.sql(
 
 # select the phylum groupings for:
 phylum_list <- list(
+  # bacteria, archaea (always taxid 2 and 3, no need to select)
+  c(),
+  # fungi
+  c(
+    "p__Ascomycota",
+    "p__Basidiomycota",
+    "p__Blastocladiomycota",
+    "p__Chytridiomycota",
+    "p__Cryptomycota",
+    "p__Microsporidia",
+    "p__Mucoromycota",
+    "p__Zoopagomycota"
+  ),
+  # protist and algae: to be selected based on exclusion
+  c(),
   # higher plants
   c("p__Streptophyta"),
   # metazoa
@@ -138,55 +167,70 @@ phylum_list <- list(
     "p__Rotifera",
     "p__Tardigrada",
     "p__Xenacoelomorpha"
-  ),
-  # fungi
-  c(
-    "p__Ascomycota",
-    "p__Basidiomycota",
-    "p__Blastocladiomycota",
-    "p__Chytridiomycota",
-    "p__Cryptomycota",
-    "p__Microsporidia",
-    "p__Mucoromycota",
-    "p__Zoopagomycota"
   )
 )
-names(phylum_list) <- c("plants", "metazoa", "fungi")
-#   protist and algae: to be selected based on exclusion
+names(phylum_list) <- c("prokaryotes", "fungi", "protists", "plants", "metazoa")
+
+# domain list
+domains <- c("d__Archaea", "d__Bacteria", "d__Eukaryota", "d__Viruses")
+tmp <- getId(gsub("^d__", "", domains), opt$sql) %>% 
+  strsplit(., split = ",") %>% 
+  unlist() %>% 
+  getTaxonomy(., opt$sql)
+domains_taxid <- gsub(" ", "", rownames(tmp)[is.na(tmp[, "phylum"])])
+names(domains_taxid) <- domains
+
+# subset to kingdoms to compare
+kingdoms <- strsplit(opt$kingdoms, ",")[[1]]
+phylum_list <- phylum_list[kingdoms]
 
 # retrieve taxid
 taxid_list <- map(
   1:length(phylum_list),
   function(X) {
-    tmp <- getId(gsub("^p__", "", phylum_list[[X]]), opt$sql) %>% 
-      strsplit(., split = ",") %>% 
-      unlist() %>% 
-      getTaxonomy(., opt$sql)
-    gsub(" ", "", rownames(tmp)[is.na(tmp[, "class"])])
+    if(!is.null(phylum_list[[X]])) {
+      tmp <- getId(gsub("^p__", "", phylum_list[[X]]), opt$sql) %>% 
+        strsplit(., split = ",") %>% 
+        unlist() %>% 
+        getTaxonomy(., opt$sql)
+      gsub(" ", "", rownames(tmp)[is.na(tmp[, "class"]) & !is.na(tmp[, "phylum"])]) 
+    } else {
+      c()
+    }
   }
 )
 names(taxid_list) <- names(phylum_list)
-all.equal(sapply(phylum_list, length), sapply(taxid_list, length))
 
 # parse string for conterminator
 # taxid 2 and 3 will always be archaea and bacteria
 # euks are taxid 4
-conterminator_string <- paste0(
-  "'(2||3),(",
-  paste(taxid_list$fungi, collapse = "||"),
+conterminator_string <- gsub(
+  ")(", 
   "),(",
-  taxid_list$plants,
-  "),(",
-  paste(taxid_list$metazoa, collapse = "||"),
-  "),(4&&!",
-  paste(unlist(taxid_list), collapse = "&&!"),
-  ")'"
+  paste0(
+    "'",
+    ifelse(c("prokaryotes") %in% kingdoms, paste0("(",paste(domains_taxid[1:2], collapse = "||"), ")"), ""),
+    ifelse(c("fungi") %in% kingdoms, paste0("(",paste(taxid_list$fungi, collapse = "||"), ")"), ""),
+    ifelse(c("plants") %in% kingdoms, paste0("(", taxid_list$plants, ")"), ""),
+    ifelse(c("metazoa") %in% kingdoms, paste0("(", paste(taxid_list$metazoa, collapse = "||"), ")"), ""),
+    ifelse(c("protists") %in% kingdoms, paste0("(", domains_taxid[3], "&&!", paste(unlist(taxid_list), collapse = "&&!"), ")"), ""),
+    "'"
+  ),
+  fixed = T
 )
 
-# write output table
+# write output
 write.table(
   conterminator_string,
   opt$output,
+  sep = "\t",
+  col.names = F,
+  row.names = F,
+  quote = F
+)
+write.table(
+  paste0("'", domains_taxid[4], "'"),
+  opt$blacklist,
   sep = "\t",
   col.names = F,
   row.names = F,

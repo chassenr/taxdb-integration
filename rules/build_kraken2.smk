@@ -1,24 +1,23 @@
 rule fix_ncbi_taxpath:
 	input:
-		ncbi = expand(config["rdir"] + "/tax_combined/{library_name}_derep_taxonomy.txt", library_name = LIBRARY_NAME),
 		gtdb = config["rdir"] + "/tax_combined/gtdb_derep_taxonomy.txt",
-		checkv = config["rdir"] + "/tax_combined/checkv_derep_taxonomy.txt"
+		checkv = config["rdir"] + "/tax_combined/checkv_derep_taxonomy.txt",
+		ncbi = expand(config["rdir"] + "/tax_combined/{library_highres}_derep_taxonomy.txt", library_highres = LIBRARY_HIGHRES)
 	output:
 		tax_combined = config["rdir"] + "/tax_combined/derep_taxonomy_combined.txt"
-        params:
-                outdir = config["rdir"] + "/tax_combined",
-                script = config["wdir"] + "/scripts/fix_ncbi_taxpath.R"
-        conda:
-                config["wdir"] + "/envs/r.yaml"
-        log:
-                config["rdir"] + "/logs/fix_ncbi_taxpath.log"
-        shell:
-                """
-                cat {input.ncbi} {input.checkv} > "{params.outdir}/tmp"
-                {params.script} -i "{params.outdir}/tmp" -g {input.gtdb} -o {output.tax_combined} &>> {log}
-                rm "{params.outdir}/tmp"
-                """
-
+	params:
+		outdir = config["rdir"] + "/tax_combined",
+		script = config["wdir"] + "/scripts/fix_ncbi_taxpath.R"
+	conda:
+		config["wdir"] + "/envs/r.yaml"
+	log:
+		config["rdir"] + "/logs/fix_ncbi_taxpath.log"
+	shell:
+		"""
+		cat {input} > "{params.outdir}/tmp"
+		{params.script} -i "{params.outdir}/tmp" -o {output.tax_combined} &>> {log}
+		rm "{params.outdir}/tmp"
+		"""
 
 rule format_taxonomy:
 	input:
@@ -44,98 +43,67 @@ rule format_taxonomy:
 		"""
 # depending on the number and size of the genomes, it may be required to delete the zipped fna in the derep directory
 
-rule masking_ncbi:
-	input:
-		file_list = config["rdir"] + "/kraken2_genomes/file_names_derep_genomes.txt",
-		ncbi = config["rdir"] + "/tax_combined/{library_name}_derep_taxonomy.txt",
-		nodes = config["rdir"] + "/kraken2_db/taxonomy/nodes.dmp",
-		names = config["rdir"] + "/kraken2_db/taxonomy/names.dmp"
-	output:
-		fasta = config["rdir"] + "/kraken2_db/library/{library_name}/library.fna"
-	conda:
-		config["wdir"] + "/envs/kraken2.yaml"
-	threads: config["masking_threads"]
-	shell:
-		"""
-		cut -f1 {input.ncbi} | grep -F -f - {input.file_list} | parallel -j{threads} 'dustmasker -in {{}} -outfmt fasta' | sed -e '/^>/!s/[a-z]/x/g' >> {output.fasta}
-		"""
-
-rule masking_gtdb:
-	input:
-		file_list = config["rdir"] + "/kraken2_genomes/file_names_derep_genomes.txt",
-		gtdb = config["rdir"] + "/tax_combined/gtdb_derep_taxonomy.txt",
-		nodes = config["rdir"] + "/kraken2_db/taxonomy/nodes.dmp",
-		names = config["rdir"] + "/kraken2_db/taxonomy/names.dmp"
-	output:
-		fasta = config["rdir"] + "/kraken2_db/library/gtdb/library.fna"
-	conda:
-		config["wdir"] + "/envs/kraken2.yaml"
-	threads: config["masking_threads"]
-	shell:
-		"""
-		cut -f1 {input.gtdb} | grep -F -f - {input.file_list} | parallel -j{threads} 'dustmasker -in {{}} -outfmt fasta' | sed -e '/^>/!s/[a-z]/x/g' >> {output.fasta}
-		"""
-
-rule prelim_map_ncbi:
-	input:
-		fasta = config["rdir"] + "/kraken2_db/library/{library_name}/library.fna"
-	output:
-		map = config["rdir"] + "/kraken2_db/library/{library_name}/prelim_map.txt"
-	params:
-		libdir = config["rdir"] + "/kraken2_db/library/{library_name}"
-	conda:
-		config["wdir"] + "/envs/kraken2.yaml"
-	shell:
-		"""
-		LC_ALL=C grep '^>' {input.fasta} | sed 's/^>//' > {params.libdir}/tmp.accnos
-		NSEQ=$(wc -l {params.libdir}/tmp.accnos | cut -d' ' -f1)
-		printf 'TAXID\\n%.0s' $(seq 1 $NSEQ) | paste - {params.libdir}/tmp.accnos | paste - <(cut -d'|' -f3 {params.libdir}/tmp.accnos) > {output.map}
-		rm {params.libdir}/tmp.accnos
-		"""
-
-rule prelim_map_gtdb:
-	input:  
-		fasta = config["rdir"] + "/kraken2_db/library/gtdb/library.fna"
-	output:
-		map = config["rdir"] + "/kraken2_db/library/gtdb/prelim_map.txt"
-	params: 
-		libdir = config["rdir"] + "/kraken2_db/library/gtdb"
-	conda:
-		config["wdir"] + "/envs/kraken2.yaml"
-	shell:
-		"""
-		LC_ALL=C grep '^>' {input.fasta} | sed 's/^>//' > {params.libdir}/tmp.accnos
-		NSEQ=$(wc -l {params.libdir}/tmp.accnos | cut -d' ' -f1)
-		printf 'TAXID\\n%.0s' $(seq 1 $NSEQ) | paste - {params.libdir}/tmp.accnos | paste - <(cut -d'|' -f3 {params.libdir}/tmp.accnos) > {output.map}
-		rm {params.libdir}/tmp.accnos
-		"""
-
-# to avoid ftp issue, recreate kraken2 code for adding UniVec files
-# https://github.com/DerrickWood/kraken2/blob/561cc73fababe1dfd996e553e36ea1aff5642ef8/scripts/download_genomic_library.sh#L102-L117
-if config["univec"]:
-	rule add_univec:
+# optional: run conterminator
+if config["kingdoms"]:
+	rule cat_library:
+		input:
+			fasta_ncbi = expand(config["rdir"] + "/kraken2_db/library/{library_highres}/library.fna", library_highres = LIBRARY_HIGHRES),
+			fasta_gtdb = config["rdir"] + "/kraken2_db/library/gtdb/library.fna",
+			fasta_checkv = config["rdir"] + "/kraken2_db/library/checkv/library.fna",
+			map_ncbi = expand(config["rdir"] + "/kraken2_db/library/{library_highres}/library.fna", library_highres = LIBRARY_HIGHRES),
+			map_gtdb = config["rdir"] + "/kraken2_db/library/gtdb/prelim_map.txt",
+			map_checkv = config["rdir"] + "/kraken2_db/library/checkv/prelim_map.txt"
 		output:
-			fasta = config["rdir"] + "/kraken2_db/library/" + config["univec"] + "/library.fna",
-			map = config["rdir"] + "/kraken2_db/library/" + config["univec"] + "/prelim_map.txt"
-		params:
-			ncbi_server = config["ncbi_server"],
-			uv_name = config["univec"],
-			libdir = config["rdir"] + "/kraken2_db/library/" + config["univec"]
-		conda:
-			config["wdir"] + "/envs/kraken2.yaml"
-		log:
-			config["rdir"] + "/logs/add_krakendb_univec.log"
+			tmp_fna = config["rdir"] + "/kraken2_db/tmp/library.fna",
+			tmp_map = config["rdir"] + "/kraken2_db/tmp/prelim_map.txt"
 		shell:
 			"""
-			wget -O "{params.libdir}/tmp.fna" "{params.ncbi_server}/pub/UniVec/{params.uv_name}"
-			# choosing random artificial taxid (this taxid must not exist elsewhere in the database)
-			sed -i 's/^>/>kraken:taxid|1234567|/' "{params.libdir}/tmp.fna"
-			dustmasker -in "{params.libdir}/tmp.fna" -outfmt fasta | sed -e '/^>/!s/[a-z]/x/g' > {output.fasta}
-			rm "{params.libdir}/tmp.fna"
-			grep '^>' {output.fasta} | sed 's/^>//' > {params.libdir}/tmp.accnos
-			NSEQ=$(wc -l {params.libdir}/tmp.accnos | cut -d' ' -f1)
-			printf 'TAXID\\n%.0s' $(seq 1 $NSEQ) | paste - {params.libdir}/tmp.accnos | paste - <(cut -d'|' -f3 {params.libdir}/tmp.accnos) > {output.map}
-			rm {params.libdir}/tmp.accnos
+			cat {input.fasta_ncbi} {input.fasta_gtdb} {input.fasta_checkv} > {output.tmp_fna}
+			cat {input.map_ncbi} {input.map_gtdb} {input.map_checkv} > {output.tmp_map}
+			"""
+
+	localrules: detect_contam_highres
+	
+	rule detect_contam_highres:
+		input:
+			tmp_fna = config["rdir"] + "/kraken2_db/tmp/library.fna",
+			tmp_map = config["rdir"] + "/kraken2_db/tmp/prelim_map.txt",
+			nodes = config["rdir"] + "/kraken2_db/taxonomy/nodes.dmp",
+			names = config["rdir"] + "/kraken2_db/taxonomy/names.dmp"
+		output:
+			delnodes = config["rdir"] + "/kraken2_db/taxonomy/delnodes.dmp",
+			merged = config["rdir"] + "/kraken2_db/taxonomy/merged.dmp",
+			kstring = config["rdir"] + "/decontamination/conterminator_string.txt",
+			xstring = config["rdir"] + "/decontamination/conterminator_blacklist.txt",
+			cmap = config["rdir"] + "/decontamination/cmap.txt",
+			contam = config["rdir"] + "/decontamination/highres_db_conterm_prediction",
+			id_contam = config["cdir"] + "/decontamination/contam_id.accnos"
+		params:
+			script = config["wdir"] + "/scripts/get_kingdoms_conterminator.R",
+			tmpdir = config["rdir"] + "/decontamination/tmp",
+			taxdir = config["rdir"] + "/kraken2_db/taxonomy/",
+			prefix = config["rdir"] + "/decontamination/highres_db",
+			cmem = config["cmem"],
+			kingdoms = config["kingdoms_highres"]
+		conda:
+			config["wdir"] + "/envs/r.yaml"
+		threads: config["masking_threads"]
+		log:
+			config["rdir"] + "/logs/highres_conterminator.log"
+		shell:
+			"""
+			# prepare fasta header mapping file for conterminator
+			cut -f2,3 {input.tmp_map} > {output.cmap}
+			# create dummy delnodes and merged files in the taxonomic directory for compatibility with conterminator
+			touch {output.delnodes}
+			touch {output.merged}
+			# parse taxid string for conterminator kingdoms parameter
+			{params.script} -t {params.taxdir} -k "{params.kingdoms}" -s "{params.taxdir}/accessionTaxa.sql" -o {output.kstring} -x {output.xstring}
+			# run conterminator
+			KSTR=$(cat {output.kstring})
+			XSTR=$(cat {output.xstring})
+			conterminator dna {input.tmp_fna} {output.cmap} {params.prefix} {params.tmpdir} --mask-lower-case 1 --ncbi-tax-dump {params.taxdir} --threads {threads} --split-memory-limit {params.cmem} --blacklist $XSTR --kingdoms $CSTR
+			cut -f2 {output.contam} | sort | uniq > {output.id_contam}
 			"""
 
 rule build_krakendb:
@@ -144,8 +112,8 @@ rule build_krakendb:
 		gtdb_fasta = config["rdir"] + "/kraken2_db/library/gtdb/library.fna",
 		ncbi_map = expand(config["rdir"] + "/kraken2_db/library/{library_name}/prelim_map.txt", library_name = LIBRARY_NAME),
 		ncbi_fasta = expand(config["rdir"] + "/kraken2_db/library/{library_name}/library.fna", library_name = LIBRARY_NAME),
-		univec_map = config["rdir"] + "/kraken2_db/library/" + config["univec"] + "/prelim_map.txt" if config["univec"] else [],
-		univec_fasta = config["rdir"] + "/kraken2_db/library/" + config["univec"] + "/library.fna" if config["univec"] else []
+		checkv_map = config["rdir"] + "/kraken2_db/library/checkv/prelim_map.txt",
+		checkv_fasta = config["rdir"] + "/kraken2_db/library/checkv/library.fna"
 	output:
 		hash = config["rdir"] + "/kraken2_db/hash.k2d",
 		opts = config["rdir"] + "/kraken2_db/opts.k2d",

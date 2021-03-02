@@ -66,7 +66,8 @@ rule detect_contamination:
 	output:
 		delnodes = config["cdir"] + "/kraken2_db/taxonomy/delnodes.dmp",
 		merged = config["cdir"] + "/kraken2_db/taxonomy/merged.dmp",
-		cstring = config["cdir"] + "/decontamination/conterminator_string.txt",
+		kstring = config["cdir"] + "/decontamination/conterminator_string.txt",
+		xstring = config["cdir"] + "/decontamination/conterminator_blacklist.txt",
 		cmap = config["cdir"] + "/decontamination/cmap.txt",
 		contam = config["cdir"] + "/decontamination/coarse_db_conterm_prediction"
 	params:
@@ -74,7 +75,8 @@ rule detect_contamination:
 		tmpdir = config["cdir"] + "/decontamination/tmp",
 		taxdir = config["cdir"] + "/kraken2_db/taxonomy/",
 		prefix = config["cdir"] + "/decontamination/coarse_db",
-		cmem = config["cmem"]
+		cmem = config["cmem"],
+		kingdoms = config["kingdoms"]
 	conda:
 		config["wdir"] + "/envs/r.yaml"
 	threads: config["masking_threads"]
@@ -88,11 +90,13 @@ rule detect_contamination:
 		touch {output.delnodes}
 		touch {output.merged}
 		# parse taxid string for conterminator kingdoms parameter
-		{params.script} -t {params.taxdir} -s "{params.taxdir}/accessionTaxa.sql" -o {output.cstring}
+		{params.script} -t {params.taxdir} -k "{params.kingdoms}" -s "{params.taxdir}/accessionTaxa.sql" -o {output.kstring} -x {output.xstring}
 		# run conterminator
-		CSTR=$(cat {output.cstring})
-		conterminator dna {input.fasta} {output.cmap} {params.prefix} {params.tmpdir} --mask-lower-case 1 --ncbi-tax-dump {params.taxdir} --threads {threads} --split-memory-limit {params.cmem} --blacklist '5' --kingdoms $CSTR
+		KSTR=$(cat {output.kstring})
+		XSTR=$(cat {output.xstring})
+		conterminator dna {input.fasta} {output.cmap} {params.prefix} {params.tmpdir} --mask-lower-case 1 --ncbi-tax-dump {params.taxdir} --threads {threads} --split-memory-limit {params.cmem} --blacklist $XSTR --kingdoms $CSTR
 		"""
+
 rule filter_contamination
 	input:
 		contam = config["cdir"] + "/decontamination/coarse_db_conterm_prediction",
@@ -143,41 +147,54 @@ rule remove_contamination:
 		# to be implemented later: remove tmp folder in krakendb to save disk space
 		"""
 
-if config["univec"]:
-	rule add_univec:
-		output:
-			fasta = config["cdir"] + "/kraken2_db/library/" + config["univec"] + "/library.fna",
-			map = config["cdir"] + "/kraken2_db/library/" + config["univec"] + "/prelim_map.txt"
-		params:
-			ncbi_server = config["ncbi_server"],
-			uv_name = config["univec"],
-			libdir = config["cdir"] + "/kraken2_db/library/" + config["univec"]
-		conda:
-			config["wdir"] + "/envs/kraken2.yaml"
-		log:
-			config["rdir"] + "/logs/add_krakendb_univec.log"
-		shell:
-			"""
-			wget -O "{params.libdir}/tmp.fna" "{params.ncbi_server}/pub/UniVec/{params.uv_name}"
-			# choosing random artificial taxid (this taxid must not exist elsewhere in the database)
-			sed -i 's/^>/>kraken:taxid|1234567|/' "{params.libdir}/tmp.fna"
-			dustmasker -in "{params.libdir}/tmp.fna" -outfmt fasta | sed -e '/^>/!s/[a-z]/x/g' > {output.fasta}
-			rm "{params.libdir}/tmp.fna"
-			grep '^>' {output.fasta} | sed 's/^>//' > {params.libdir}/tmp.accnos
-			NSEQ=$(wc -l {params.libdir}/tmp.accnos | cut -d' ' -f1)
-			printf 'TAXID\\n%.0s' $(seq 1 $NSEQ) | paste - {params.libdir}/tmp.accnos | paste - <(cut -d'|' -f3 {params.libdir}/tmp.accnos) > {output.map}
-			rm {params.libdir}/tmp.accnos
-			"""
+# to avoid ftp issue, recreate kraken2 code for adding UniVec files
+# https://github.com/DerrickWood/kraken2/blob/561cc73fababe1dfd996e553e36ea1aff5642ef8/scripts/download_genomic_library.sh#L102-L117
+rule add_univec:
+	output:
+		fasta = config["cdir"] + "/kraken2_db/library/" + config["univec"] + "/library.fna",
+		map = config["cdir"] + "/kraken2_db/library/" + config["univec"] + "/prelim_map.txt"
+	params:
+		ncbi_server = config["ncbi_server"],
+		uv_name = config["univec"],
+		libdir = config["cdir"] + "/kraken2_db/library/" + config["univec"]
+	conda:
+		config["wdir"] + "/envs/kraken2.yaml"
+	log:
+		config["rdir"] + "/logs/add_krakendb_univec.log"
+	shell:
+		"""
+		wget -O "{params.libdir}/tmp.fna" "{params.ncbi_server}/pub/UniVec/{params.uv_name}"
+		# choosing random artificial taxid (this taxid must not exist elsewhere in the database)
+		sed -i 's/^>/>kraken:taxid|1234567|/' "{params.libdir}/tmp.fna"
+		dustmasker -in "{params.libdir}/tmp.fna" -outfmt fasta | sed -e '/^>/!s/[a-z]/x/g' > {output.fasta}
+		rm "{params.libdir}/tmp.fna"
+		grep '^>' {output.fasta} | sed 's/^>//' > {params.libdir}/tmp.accnos
+		NSEQ=$(wc -l {params.libdir}/tmp.accnos | cut -d' ' -f1)
+		printf 'TAXID\\n%.0s' $(seq 1 $NSEQ) | paste - {params.libdir}/tmp.accnos | paste - <(cut -d'|' -f3 {params.libdir}/tmp.accnos) > {output.map}
+		rm {params.libdir}/tmp.accnos
+		"""
 
 rule build_kraken_coarse:
 	input:
+		univec_fasta = config["cdir"] + "/kraken2_db/library/" + config["univec"] + "/library.fna",
+		univec_map = config["cdir"] + "/kraken2_db/library/" + config["univec"] + "/prelim_map.txt",
+		coarse_fasta = config["cdir"] + "/kraken2_db/library/coarse/library.fna",
+		coarse_map = config["cdir"] + "/kraken2_db/library/coarse/prelim_map.txt"
 	output:
+		hash = config["cdir"] + "/kraken2_db/hash.k2d",
+		opts = config["cdir"] + "/kraken2_db/opts.k2d",
+		map  = config["cdir"] + "/kraken2_db/seqid2taxid.map",
+		taxo = config["cdir"] + "/kraken2_db/taxo.k2d"
 	params:
+		dbdir = config["cdir"] + "/kraken2_db",
+		kmer_len = config["kmer_len"],
+		min_len = config["minimizer_len"],
+		min_spaces = config["minimizer_spaces"]
 	threads: config["krakenbuild_threads"]
 	conda:
 		config["wdir"] + "/envs/kraken2.yaml"
 	log:
-		config["rdir"] + "/logs/build_kraken.log"
+		config["rdir"] + "/logs/build_kraken_coarse.log"
 	shell:
 		"""
 		kraken2-build --build --threads {threads} --db {params.dbdir} --kmer-len {params.kmer_len} --minimizer-len {params.min_len} --minimizer-spaces {params.min_spaces} &>> {log}

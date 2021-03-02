@@ -145,3 +145,36 @@ rule collect_checkv_genomes:
 		rm "{params.indir}../tmp"
 		"""
 
+rule masking_checkv:
+	input:
+		file_list = config["rdir"] + "/kraken2_genomes/file_names_derep_genomes.txt",
+		checkv = config["rdir"] + "/tax_combined/checkv_derep_taxonomy.txt",
+		nodes = config["rdir"] + "/kraken2_db/taxonomy/nodes.dmp",
+		names = config["rdir"] + "/kraken2_db/taxonomy/names.dmp"
+	output:
+		fasta = config["rdir"] + "/kraken2_db/library/checkv/library.fna"
+	conda:
+		config["wdir"] + "/envs/kraken2.yaml"
+	threads: config["masking_threads"]
+	shell:
+		"""
+		cut -f1 {input.checkv} | grep -F -f - {input.file_list} | parallel -j{threads} 'dustmasker -in {{}} -outfmt fasta' | sed -e '/^>/!s/[a-z]/x/g' >> {output.fasta}
+		"""
+
+rule prelim_map_checkv:
+	input:  
+		fasta = config["rdir"] + "/kraken2_db/library/checkv/library.fna"
+	output:
+		map = config["rdir"] + "/kraken2_db/library/checkv/prelim_map.txt"
+	params: 
+		libdir = config["rdir"] + "/kraken2_db/library/checkv"
+	conda:
+		config["wdir"] + "/envs/kraken2.yaml"
+	shell:
+		"""
+		LC_ALL=C grep '^>' {input.fasta} | sed 's/^>//' > {params.libdir}/tmp.accnos
+		NSEQ=$(wc -l {params.libdir}/tmp.accnos | cut -d' ' -f1)
+		printf 'TAXID\\n%.0s' $(seq 1 $NSEQ) | paste - {params.libdir}/tmp.accnos | paste - <(cut -d'|' -f3 {params.libdir}/tmp.accnos) > {output.map}
+		rm {params.libdir}/tmp.accnos
+		"""
+

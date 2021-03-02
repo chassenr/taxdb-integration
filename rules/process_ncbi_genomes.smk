@@ -250,3 +250,101 @@ rule collect_ncbi_genomes:
 		awk -v FS="\\t" -v OFS="\\t" '{{print $2,$1}}' {input.derep_meta} | sed '1d' > {output.tax}
 		"""
 
+rule masking_ncbi:
+	input:
+		file_list = config["rdir"] + "/kraken2_genomes/file_names_derep_genomes.txt",
+		ncbi = config["rdir"] + "/tax_combined/{library_name}_derep_taxonomy.txt",
+		nodes = config["rdir"] + "/kraken2_db/taxonomy/nodes.dmp",
+		names = config["rdir"] + "/kraken2_db/taxonomy/names.dmp"
+	output:
+		fasta = config["rdir"] + "/kraken2_db/library/{library_name}/library.fna"
+	conda:
+		config["wdir"] + "/envs/kraken2.yaml"
+	threads: config["masking_threads"]
+	shell:
+		"""
+		cut -f1 {input.ncbi} | grep -F -f - {input.file_list} | parallel -j{threads} 'dustmasker -in {{}} -outfmt fasta' | sed -e '/^>/!s/[a-z]/x/g' >> {output.fasta}
+		"""
+
+rule prelim_map_ncbi:
+	input:
+		fasta = config["rdir"] + "/kraken2_db/library/{library_name}/library.fna"
+	output:
+		map = config["rdir"] + "/kraken2_db/library/{library_name}/prelim_map.txt"
+	params:
+		libdir = config["rdir"] + "/kraken2_db/library/{library_name}"
+	conda:
+		config["wdir"] + "/envs/kraken2.yaml"
+	shell:
+		"""
+		LC_ALL=C grep '^>' {input.fasta} | sed 's/^>//' > {params.libdir}/tmp.accnos
+		NSEQ=$(wc -l {params.libdir}/tmp.accnos | cut -d' ' -f1)
+		printf 'TAXID\\n%.0s' $(seq 1 $NSEQ) | paste - {params.libdir}/tmp.accnos | paste - <(cut -d'|' -f3 {params.libdir}/tmp.accnos) > {output.map}
+		rm {params.libdir}/tmp.accnos
+		"""
+
+if config["kingdoms"]:
+	rule separate_contam_ncbi:
+		input:
+			id_contam = config["cdir"] + "/decontamination/contam_id.accnos",
+			fasta = config["rdir"] + "/kraken2_db/library/{library_highres}/library.fna",
+			map = config["rdir"] + "/kraken2_db/library/{library_highres}/prelim_map.txt"
+		output:
+			fasta_contam = config["cdir"] + "/decontamination/{library_highres}_library_contam.fna"
+		conda:
+			config["wdir"] + "/envs/bbmap.yaml"
+		log:
+			config["rdir"] + "/logs/{library_highres}_contam_filter.log"
+		shell:
+			"""
+			filterbyname.sh in={input.fasta} out={output.fasta_contam} names={input.id_contam} include=t
+			"""
+
+	rule remove_contam_ncbi:
+		input:
+			contam = config["rdir"] + "/decontamination/highres_db_conterm_prediction",
+			fasta_contam = config["cdir"] + "/decontamination/{library_highres}_library_contam.fna"
+		output:
+			cleaned_fasta = config["cdir"] + "/decontamination/{library_highres}_cleaned.fna",
+			cleaned_map = config["cdir"] + "/decontamination/{library_highres}_cleaned_map.txt"
+		params:
+			script = config["wdir"] + "/scripts/remove_contamination.R",
+			contamdir = config["cdir"] + "/decontamination"
+		conda:
+			config["wdir"] + "/envs/r.yaml"
+		log:
+			config["rdir"] + "/logs/{library_highres}_contam_remove.log"
+		shell:
+			"""
+			{params.script} -i {output.fasta_contam} -c {input.contam} -o {output.cleaned_fasta}
+			C_ALL=C grep '^>' {output.cleaned_fasta} | sed 's/^>//' > "{params.contam_dir}/tmp.accnos"
+			NSEQ=$(wc -l "{params.contam_dir}/tmp.accnos" | cut -d' ' -f1)
+			printf 'TAXID\n%.0s' $(seq 1 $NSEQ) | paste - "{params.contam_dir}/tmp.accnos" | paste - <(cut -d'|' -f3 "{params.contam_dir}/tmp.accnos") > {output.cleaned_map}
+			rm "{params.contam_dir}/tmp.accnos"
+			"""
+
+	rule concat_cleaned_ncbi:
+		input:
+			id_contam = config["cdir"] + "/decontamination/contam_id.accnos",
+			fasta = config["rdir"] + "/kraken2_db/library/{library_highres}/library.fna",
+			map = config["rdir"] + "/kraken2_db/library/{library_highres}/prelim_map.txt",
+			cleaned_fasta = config["cdir"] + "/decontamination/{library_highres}_cleaned.fna",
+			cleaned_map = config["cdir"] + "/decontamination/{library_highres}_cleaned_map.txt"
+		output:
+			done = config["cdir"] + "/decontamination/{library_highres}_cleaning.done
+		params:
+			tmpdir = config["rdir"] + "/kraken2_db/tmp/{library_highres}"
+		conda:
+			config["wdir"] + "/envs/bbmap.yaml"
+		shell:
+			"""
+			mv {input.fasta} "{params.tmpdir}/library.fna"
+			filterbyname.sh in="{params.tmpdir}/library.fna" out={input.fasta} names={input.id_contam} include=f
+			mv {input.map} "{params.tmpdir}/prelim_map.txt"
+			grep -v -F -f {input.id_contam} "{params.tmpdir}/prelim_map.txt" > {input.map}
+			cat {input.cleaned_fasta} >> {input.fasta}
+			cat {input.cleaned_map} >> {input.map}
+			rm "{params.tmpdir}/prelim_map.txt" "{params.tmpdir}/library.fna"
+			touch {output}
+			"""
+
