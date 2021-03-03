@@ -207,10 +207,11 @@ rule derep_ncbi:
 		outdir = config["rdir"] + "/{library_highres}/derep_genomes",
 		z_threshold = lambda wildcards: config["z_threshold_ncbi"][wildcards.library_highres],
 		m_threshold = lambda wildcards: config["m_threshold_ncbi"][wildcards.library_highres],
+		ani_fraglen = lambda wildcards: config["ani_fraglen_ncbi"][wildcards.library_highres],
 		derep_db = config["rdir"] + "/{library_highres}/derep_genomes/derep_db",
+		derep_lineage = lambda wildcards: config["derep_lineage_exclude"][wildcards.library_highres],
 		derep_slurm = config["wdir"] + "/config/cluster_derep.yaml",
-		derep_chunks = lambda wildcards: config["ncbi_derep_chunks"][wildcards.library_highres],
-		derep_lineage = lambda wildcards: config["derep_lineage_exclude"][wildcards.library_highres]
+		derep_chunks = lambda wildcards: config["ncbi_derep_chunks"][wildcards.library_highres]
 	threads: config["derep_threads"]
 	conda:
 		config["wdir"] + "/envs/derep.yaml"
@@ -218,23 +219,23 @@ rule derep_ncbi:
 		config["rdir"] + "/logs/derep_ncbi_{library_highres}.log"
 	shell:
 		"""
+		mkdir -p {params.outdir}
 		# remove exlcuded lineages from taxonomy table (alternatively supply file to derep command with taxa to keep)
 		if [[ "{params.derep_lineage}" != "" ]]
 		then
 		  grep -v "{params.derep_lineage}" {input.taxonomy} > "{params.dir}/assembly_taxonomy_select.txt"
-                mv *derep-genomes_results.tsv {output.derep_meta}
 		else
 		  cp {input.taxonomy} "{params.dir}/assembly_taxonomy_select.txt"
 		fi
 		cd {params.outdir}
-		derepG --threads {threads} --in-dir {params.indir} --taxa "{params.dir}/assembly_taxonomy_select.txt" --tmp ./ --slurm-config {params.derep_slurm} --db {params.derep_db} --threshold {params.z_threshold} --mash-threshold {params.m_threshold} --chunk-size {params.derep_chunks} --debug --slurm-arr-size 10000 &>> {log}
+		derepG --threads {threads} --in-dir {params.indir} --taxa "{params.dir}/assembly_taxonomy_select.txt" --tmp ./ --db {params.derep_db} --threshold {params.z_threshold} --mash-threshold {params.m_threshold} --ani-fraglen-fraction {params.ani_fraglen} --debug --slurm-config {params.derep_slurm} --chunk-size {params.derep_chunks} --slurm-arr-size 10000 &>> {log}
 		mv *derep-genomes_results.tsv {output.derep_meta}
 		# do not delete redundant genomes until DB workflow is finished, work with soft links for remaining steps
 		"""
 
 rule collect_ncbi_genomes:
 	input:
-		derep_meta = config["rdir"] + "/{library_highres}/derep_assembly_taxonomy_meta.txt"
+		derep_meta = config["rdir"] + "/{library_highres}/derep_taxonomy_meta.txt"
 	output:
 		tax = config["rdir"] + "/tax_combined/{library_highres}_derep_taxonomy.txt"
 	params:
@@ -253,11 +254,11 @@ rule collect_ncbi_genomes:
 rule masking_ncbi:
 	input:
 		file_list = config["rdir"] + "/kraken2_genomes/file_names_derep_genomes.txt",
-		ncbi = config["rdir"] + "/tax_combined/{library_name}_derep_taxonomy.txt",
+		ncbi = config["rdir"] + "/tax_combined/{library_highres}_derep_taxonomy.txt",
 		nodes = config["rdir"] + "/kraken2_db/taxonomy/nodes.dmp",
 		names = config["rdir"] + "/kraken2_db/taxonomy/names.dmp"
 	output:
-		fasta = config["rdir"] + "/kraken2_db/library/{library_name}/library.fna"
+		fasta = config["rdir"] + "/kraken2_db/library/{library_highres}/library.fna"
 	conda:
 		config["wdir"] + "/envs/kraken2.yaml"
 	threads: config["masking_threads"]
@@ -268,11 +269,11 @@ rule masking_ncbi:
 
 rule prelim_map_ncbi:
 	input:
-		fasta = config["rdir"] + "/kraken2_db/library/{library_name}/library.fna"
+		fasta = config["rdir"] + "/kraken2_db/library/{library_highres}/library.fna"
 	output:
-		map = config["rdir"] + "/kraken2_db/library/{library_name}/prelim_map.txt"
+		map = config["rdir"] + "/kraken2_db/library/{library_highres}/prelim_map.txt"
 	params:
-		libdir = config["rdir"] + "/kraken2_db/library/{library_name}"
+		libdir = config["rdir"] + "/kraken2_db/library/{library_highres}"
 	conda:
 		config["wdir"] + "/envs/kraken2.yaml"
 	shell:
@@ -331,7 +332,7 @@ if config["kingdoms"]:
 			cleaned_fasta = config["cdir"] + "/decontamination/{library_highres}_cleaned.fna",
 			cleaned_map = config["cdir"] + "/decontamination/{library_highres}_cleaned_map.txt"
 		output:
-			done = config["cdir"] + "/decontamination/{library_highres}_cleaning.done
+			done = config["cdir"] + "/decontamination/{library_highres}_cleaning.done"
 		params:
 			tmpdir = config["rdir"] + "/kraken2_db/tmp/{library_highres}"
 		conda:

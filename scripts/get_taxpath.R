@@ -109,14 +109,16 @@ if (is.null(opt$input) | is.null(opt$output) | is.null(opt$taxdump) | is.null(op
 ### retrieve taxonomy ####
 
 # format NCBI taxdump database
-read.names.sql(
-  paste0(opt$taxdump, "/names.dmp"),
-  opt$sql
-)
-read.nodes.sql(
-  paste0(opt$taxdump, "/nodes.dmp"),
-  opt$sql
-)
+if(!file.exists(opt$sql)) {
+  read.names.sql(
+    paste0(opt$taxdump, "/names.dmp"),
+    opt$sql
+  )
+  read.nodes.sql(
+    paste0(opt$taxdump, "/nodes.dmp"),
+    opt$sql
+  )
+}
 
 # read assembly summary
 assembly_summary <- fread(

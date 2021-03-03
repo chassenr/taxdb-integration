@@ -57,7 +57,7 @@ rule download_gtdb_reps:
 	params:
 		outdir = config["cdir"] + "/gtdb",
 		gtdb_link = config["gtdb_link"]
-	threads: config["download_threads"]
+	threads: config["download_onefile"]
 	conda:
 		config["wdir"] + "/envs/download.yaml"
 	log:
@@ -66,34 +66,29 @@ rule download_gtdb_reps:
 		"""
 		aria2c -c -l "{params.outdir}/links.log" -d {params.outdir} --max-tries=20 --retry-wait=5 -x {threads} -j {threads} -s {threads} "{params.gtdb_link}/genomic_files_reps/gtdb_genomes_reps.tar.gz" &>> {log}
 		# wget -P {params.outdir} "{params.gtdb_link}/genomic_files_reps/gtdb_genomes_reps.tar.gz"
-		tar -xzvf "{params.outdir}/gtdb_genomes_reps.tar.gz"
-		mv "{params.outdir}/gtdb_genomes_reps_*" "{params.outdir}/genomes/"
+		tar -C {params.outdir} -xzf "{params.outdir}/gtdb_genomes_reps.tar.gz"
+		mv {params.outdir}/gtdb_genomes_reps_* "{params.outdir}/genomes/"
 		awk -v FS="\\t" -v OFS="\\t" '$16 == "t"' {input.ar_meta} | cut -f1 | grep -F -f - {input.ar_tax} | sed 's/^[RG][SB]_//' > {output.gtdb_reps}
 		awk -v FS="\\t" -v OFS="\\t" '$16 == "t"' {input.bac_meta} | cut -f1 | grep -F -f - {input.bac_tax} | sed 's/^[RG][SB]_//' >> {output.gtdb_reps}
 		"""
 
-rule download_checkv_reps:
+rule get_checkv_reps:
 	input:
-		reps_metadata = config["rdir"] + "/checkv/checkv_reps_metadata.txt"
+		reps_metadata = config["rdir"] + "/checkv/checkv_reps_metadata.txt",
+		reps_fna = config["cdir"] + "/checkv/checkv_reps.fna"
 	output:
 		checkv_tax = config["cdir"] + "/checkv/checkv_reps_tax.txt",
-		fna = config["cdir"] + "/checkv/checkv_reps.fna",
 		done = config["cdir"] + "/checkv/genomes/done"
 	params:
-		checkv_link = config["checkv_link"],
 		outdir = config["cdir"] + "/checkv/genomes/"
-	threads: config["download_threads"]
 	conda:
 		config["wdir"] + "/envs/kraken2.yaml" # this env has parallel
-	log:
-		config["rdir"] + "/logs/download_coarse_checkv.log"
 	shell:
 		"""
-		wget -O {output.fna} "{params.checkv_link}/checkv_reps.fna" &>> {log}
 		cut -f1,8 {input.reps_metadata} | sed '1d' > {output.checkv_tax}
 		mkdir -p {params.outdir}
 		cd {params.outdir}
-		cat {output.fna} | awk '{{ if (substr($0, 1, 1)==">") {{filename=(substr($0,2) ".fa")}} print $0 > filename }}'
+		cat {input.reps_fna} | awk '{{ if (substr($0, 1, 1)==">") {{filename=(substr($0,2) ".fa")}} print $0 > filename }}'
 		find . -type f -name '*.fa' | parallel -j {threads} gzip {{}}
 		touch done
 		"""

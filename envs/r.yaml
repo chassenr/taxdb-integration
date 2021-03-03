@@ -3,7 +3,7 @@ channels:
   - bioconda
   - defaults
 dependencies:
-  - r-base>=4.0.0
+  - r-base
   - r-tidyverse
   - r-crayon
   - r-optparse
@@ -13,3 +13,5 @@ dependencies:
   - r-purrr
   - r-scales
   - r-rentrez
+  - r-seqinr
+  - bioconductor-iranges

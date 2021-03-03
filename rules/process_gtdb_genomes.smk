@@ -13,15 +13,16 @@ rule get_gtdb_metadata:
                 config["rdir"] + "/logs/get_gtdb_metadata.log"
 	shell:
 		"""
+		mkdir -p {params.outdir}
 		wget -O {output.ar_tax} "{params.gtdb_link}/ar122_taxonomy.tsv" &>> {log}
 		wget -O {output.bac_tax} "{params.gtdb_link}/bac120_taxonomy.tsv" &>> {log}
 		wget -O "{params.outdir}/tmp_ar.tar.gz" "{params.gtdb_link}/ar122_metadata.tar.gz" &>> {log}
 		wget -O "{params.outdir}/tmp_bac.tar.gz" "{params.gtdb_link}/bac120_metadata.tar.gz" &>> {log}
-		tar -xzf "{params.outdir}/tmp_ar.tar.gz"
-		tar -xzf "{params.outdir}/tmp_bac.tar.gz"
+		tar -xzf "{params.outdir}/tmp_ar.tar.gz" -C {params.outdir}
+		tar -xzf "{params.outdir}/tmp_bac.tar.gz" -C {params.outdir}
 		rm "{params.outdir}/tmp_ar.tar.gz" "{params.outdir}/tmp_bac.tar.gz"
-		mv "{params.outdir}/ar122_metadata*" {output.ar_meta}
-		mv "{params.outdir}/bac120_metadata*" {output.bac_meta}
+		mv {params.outdir}/ar122_metadata* {output.ar_meta}
+		mv {params.outdir}/bac120_metadata* {output.bac_meta}
 		wget -O "{params.outdir}/assembly_summary_refseq.txt" http://ftp.ncbi.nlm.nih.gov/genomes/refseq/assembly_summary_refseq.txt &>> {log}
 		wget -O "{params.outdir}/assembly_summary_genbank.txt" http://ftp.ncbi.nlm.nih.gov/genomes/genbank/assembly_summary_genbank.txt &>> {log}
 		# parse NCBI data
@@ -127,13 +128,12 @@ rule derep_gtdb:
 	conda:
 		config["wdir"] + "/envs/derep.yaml"
 	log:
-                # config["rdir"] + "/logs/derep_gtdb.log"
-		config["rdir"] + "/logs/derep_new_gtdb.log"
+                config["rdir"] + "/logs/derep_gtdb.log"
 	shell:
 		"""
 		mkdir -p {params.outdir}
 		cd {params.outdir}
-		derepG --threads {threads} --in-dir {params.indir} --taxa {input.tax_added} --tmp ./ --slurm-config {params.derep_slurm} --db {params.derep_db} --threshold {params.z_threshold} --mash-threshold {params.m_threshold} --chunk-size {params.derep_chunks} --debug --slurm-arr-size 10000 &>> {log}
+		derepG --threads {threads} --in-dir {params.indir} --taxa {input.tax_added} --tmp ./ --db {params.derep_db} --threshold {params.z_threshold} --mash-threshold {params.m_threshold} --debug --slurm-config {params.derep_slurm} --chunk-size {params.derep_chunks} --slurm-arr-size 10000 &>> {log}
 		mv *derep-genomes_results.tsv {output.derep_meta}
 		# do not delete redundant genomes until DB workflow is finished, work with soft links for remaining steps
 		"""
@@ -189,7 +189,7 @@ rule prelim_map_gtdb:
 		"""
 
 if config["kingdoms"]:
-	rule separate_contam_ncbi:
+	rule separate_contam_gtdb:
 		input:
 			id_contam = config["cdir"] + "/decontamination/contam_id.accnos",
 			fasta = config["rdir"] + "/kraken2_db/library/gtdb/library.fna",
@@ -205,7 +205,7 @@ if config["kingdoms"]:
 			filterbyname.sh in={input.fasta} out={output.fasta_contam} names={input.id_contam} include=t
 			"""
 
-	rule remove_contam_ncbi:
+	rule remove_contam_gtdb:
 		input:
 			contam = config["rdir"] + "/decontamination/highres_db_conterm_prediction",
 			fasta_contam = config["cdir"] + "/decontamination/gtdb_library_contam.fna"
@@ -228,7 +228,7 @@ if config["kingdoms"]:
 			rm "{params.contam_dir}/tmp.accnos"
 			"""
 
-	rule concat_cleaned_ncbi:
+	rule concat_cleaned_gtdb:
 		input:
 			id_contam = config["cdir"] + "/decontamination/contam_id.accnos",
 			fasta = config["rdir"] + "/kraken2_db/library/gtdb/library.fna",
@@ -236,7 +236,7 @@ if config["kingdoms"]:
 			cleaned_fasta = config["cdir"] + "/decontamination/gtdb_cleaned.fna",
 			cleaned_map = config["cdir"] + "/decontamination/gtdb_cleaned_map.txt"
 		output:
-			done = config["cdir"] + "/decontamination/gtdb_cleaning.done
+			done = config["cdir"] + "/decontamination/gtdb_cleaning.done"
 		params:
 			tmpdir = config["rdir"] + "/kraken2_db/tmp/gtdb"
 		conda:

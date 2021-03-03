@@ -1,29 +1,27 @@
 rule download_genomes_checkv:
 	output: 
 		fna = config["rdir"] + "/checkv/checkv_full.fna",
+		clusters = config["rdir"] + "/checkv/checkv_clusters.tsv",
+		meta_genbank = config["rdir"] + "/checkv/checkv_genbank.tsv",
+		meta_circular = config["rdir"] + "/checkv/checkv_circular.tsv",
+		fna_reps = config["cdir"] + "/checkv/checkv_reps.fna"
 	params:
-		checkv_link = config["checkv_link"]
+		checkv_link = config["checkv_link"],
+		outdir = config["rdir"] + "/checkv/"
 	log:
 		config["rdir"] + "/logs/download_genomes_checkv.log"
 	shell:
 		"""
-		wget -O {output.fna} "{params.checkv_link}/checkv_full.fna" &>> {log}
-		"""
-
-rule download_metadata_checkv:
-	output:
-		clusters = config["rdir"] + "/checkv/checkv_clusters.tsv",
-		meta_genbank = config["rdir"] + "/checkv/checkv_genbank.tsv",
-		meta_circular = config["rdir"] + "/checkv/checkv_circular.tsv"
-	params:
-		checkv_link = config["checkv_link"]
-	log:
-		config["rdir"] + "/logs/download_metadata_checkv.log"
-	shell:
-		"""
-		wget -O {output.clusters} "{params.checkv_link}/checkv_clusters.tsv" &>> {log}
-		wget -O {output.meta_genbank} "{params.checkv_link}/checkv_genbank.tsv" &>> {log}
-		wget -O {output.meta_circular} "{params.checkv_link}/checkv_circular.tsv" &>> {log}
+		wget -P {params.outdir} {params.checkv_link} &>> {log}
+		mkdir -p "{params.outdir}/checkv_tmp"
+		tar -C "{params.outdir}/checkv_tmp" -xzf {params.outdir}/*.tar.gz
+		mv {params.outdir}/checkv_tmp/checkv-db-*/genome_db/checkv_full.fna {output.fna}
+		mv {params.outdir}/checkv_tmp/checkv-db-*/genome_db/checkv_clusters.tsv {output.clusters}
+		mv {params.outdir}/checkv_tmp/checkv-db-*/genome_db/checkv_genbank.tsv {output.meta_genbank}
+		mv {params.outdir}/checkv_tmp/checkv-db-*/genome_db/checkv_circular.tsv {output.meta_circular}
+		mv {params.outdir}/checkv_tmp/checkv-db-*/genome_db/checkv_reps.fna {output.fna_reps}
+		rm -rf "{params.outdir}/checkv_tmp"
+		rm {params.outdir}/*.tar.gz
 		"""
 
 rule parse_taxa_checkv:
@@ -111,7 +109,7 @@ rule derep_checkv:
 		"""
 		mkdir -p {params.outdir}
 		cd {params.outdir}
-		derepG --threads {threads} --in-dir {params.indir} --taxa {input.checkv_taxonomy} --tmp ./ --slurm-config {params.derep_slurm} --db {params.derep_db} --threshold {params.z_threshold} --mash-threshold {params.m_threshold} --chunk-size {params.derep_chunks} --debug --slurm-arr-size 10000 &>> {log}
+		derepG --threads {threads} --in-dir {params.indir} --taxa {input.checkv_taxonomy} --tmp ./ --db {params.derep_db} --threshold {params.z_threshold} --mash-threshold {params.m_threshold} --debug --slurm-config {params.derep_slurm} --chunk-size {params.derep_chunks} --slurm-arr-size 10000 &>> {log}
 		mv *derep-genomes_results.tsv {output.derep_meta}
 		# do not delete redundant genomes until DB workflow is finished, work with soft links for remaining steps
 		"""
