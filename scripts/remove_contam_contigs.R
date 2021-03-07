@@ -1,6 +1,7 @@
 #!/usr/bin/env Rscript
 
 # parse taxonomic path for NCBI genomes
+# To do: improve parallelization for speed!
 
 ### setting up environment ####
 
@@ -109,6 +110,7 @@ cleaned <- list()
 
 # for each contaminated sequence (scaffold)
 for(i in names(fna)) {
+  print(paste0(which(names(fna) == i), ": ", i))
   fna.sub <- fna[[i]]
   contam.sub <- contam[contam$V2 == i, ]
   contam.ranges <- data.frame(reduce(IRanges(contam.sub$V5,contam.sub$V6)))
@@ -117,6 +119,12 @@ for(i in names(fna)) {
     start = c(1, contam.ranges[, 2] + 1),
     end = c(contam.ranges[, 1] - 1, length(fna.sub))
   )
+  if(contam.ranges[1, 1] == 0) {
+    clean.ranges <- clean.ranges[-1, ]
+  }
+  if(contam.ranges[nrow(contam.ranges), 2] == length(fna.sub)) {
+    clean.ranges <- clean.ranges[-nrow(clean.ranges), ]
+  }
   # get positions of Ns to identify contigs in scaffolds
   pos.n <- which(fna.sub %in% c("n", "N"))
   # if no Ns (i.e. no scaffolding), remove whole contig (i.e. don't write any output)
@@ -124,13 +132,10 @@ for(i in names(fna)) {
     cleaned <- cleaned
   } else {
     # split scaffold into clean sections
-    fna.split <- apply(
-      clean.ranges,
-      1,
-      function(x) {
-        fna.sub[x[1]:x[2]]
-      }
-    )
+    fna.split <- vector("list", length = nrow(clean.ranges))
+    for(k in 1:length(fna.split)) {
+      fna.split[[k]] <- fna.sub[clean.ranges[k, 1]:clean.ranges[k, 2]]
+    }
     # get position of Ns in each clean section
     pos.n.split <- lapply(fna.split, function(x) which(x %in% c("n", "N")))
     fna.cleaned <- vector("list", length = length(fna.split))

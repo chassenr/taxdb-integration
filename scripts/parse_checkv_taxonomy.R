@@ -131,14 +131,16 @@ if (is.null(opt$img) | is.null(opt$genbank) | is.null(opt$clusters) | is.null(op
 ### read NCBI taxonomy info ####
 
 # format NCBI taxdump database
-read.names.sql(
-  paste0(opt$taxdump, "/names.dmp"),
-  opt$sql
-)
-read.nodes.sql(
-  paste0(opt$taxdump, "/nodes.dmp"),
-  opt$sql
-)
+if(!file.exists(opt$sql)) {
+  read.names.sql(
+    paste0(opt$taxdump, "/names.dmp"),
+    opt$sql
+  )
+  read.nodes.sql(
+    paste0(opt$taxdump, "/nodes.dmp"),
+    opt$sql
+  )
+}
 
 
 ### read checkv metadata tables ####
@@ -205,6 +207,11 @@ genbank_parsed <- taxpath_new %>%
       is.na(species), 
       paste0("s__", gsub("g__", "", genus), " unclassified"),
       paste0("s__", species)
+    ),
+    species = ifelse(
+      !grepl(" ", species),
+      paste0(species, " unknown species"),
+      species
     )
   ) %>% 
   # mutate( root = "root", .before = superkingdom) %>% 
@@ -227,23 +234,49 @@ clusters <- fread(
   quote = ""
 ) %>% 
   mutate(tmp_id = ifelse(genbank_rep == "NULL", circular_rep, genbank_rep)) %>% 
-  left_join(., full_tax, by = c("tmp_id" = "checkv_id")) %>% 
-  mutate(path_new = paste0(path, "___", rep_genome)) %>% 
-  select(-path, -tmp_id)
+  left_join(., full_tax, by = c("tmp_id" = "checkv_id")) 
+
+clusters_long <- data.frame(
+  accnos = unlist(strsplit(clusters$genome_ids, ",", fixed = T)),
+  reps = rep(clusters$tmp_id, sapply(strsplit(clusters$genome_ids, ",", fixed = T), length)),
+  stringsAsFactors = F
+)
+
+# extract taxonomic path from cluster members if not available for representative
+clusters_new <- clusters %>% 
+  filter(is.na(clusters$path)) %>% 
+  pull(tmp_id) %>% 
+  map_dfr(., function(X) {
+    tmp <- clusters_long %>% 
+      filter(reps == X) %>% 
+      pull(1)
+    tmp_path <- sort(
+      table(
+        genbank_parsed %>% 
+          filter(checkv_id %in% tmp) %>% 
+          pull(2)
+      ),
+      decreasing = T
+    )[1]
+    data.frame(
+      tmp_id = X,
+      path = tmp_path
+    )
+  }) %>% 
+  rows_update(clusters, ., by = "tmp_id", copy = T) %>% 
+  filter(!is.na(clusters$path)) %>% 
+  mutate(path_new = paste0(path, "___", rep_genome))
 # choose better naming strategy for clusters?
 
-
-### parse taxonomy table ####
-
 full_tax_parsed <- data.frame(
-  accnos = unlist(strsplit(clusters$genome_ids, ",", fixed = T)),
-  path = rep(clusters$path_new, sapply(strsplit(clusters$genome_ids, ",", fixed = T), length)),
+  accnos = unlist(strsplit(clusters_new$genome_ids, ",", fixed = T)),
+  path = rep(clusters_new$path_new, sapply(strsplit(clusters_new$genome_ids, ",", fixed = T), length)),
   stringsAsFactors = F
 )
 
 # write output tables
 write_delim(
-  clusters,
+  clusters_new,
   opt$meta,
   delim = "\t",
   col_names = T

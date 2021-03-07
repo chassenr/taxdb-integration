@@ -6,6 +6,7 @@ Current metagenomic reference databases are often either limited in their taxono
 * Detection and removal of cross-domain contamination in the reference genomes using [conterminator](https://github.com/martin-steinegger/conterminator)
 * Highly customizable workflow depending on individual user needs
 * Portable: The workflow is implemented in snakemake and relies heavily on conda environments
+
 The output of the workflow will be 2 [kraken2](https://github.com/DerrickWood/kraken2) and 2 [kaiju](https://github.com/bioinformatics-centre/kaiju) databases: (1) coarse taxonomic resolution for sorting by domain or phylum, (2) high resolution for target group. The workflow further uses scripts from [Correcting index databases to improve metagenomic studies](https://www.biorxiv.org/content/10.1101/712166v1). Therefore, if you use this workflow, please cite:
 
 * Méric, G., Wick, R. R., Watts, S. C., Holt, K. E., & Inouye, M. (2019). Correcting index databases improves metagenomic studies. BioRxiv, 712166. https://doi.org/10.1101/712166
@@ -24,7 +25,7 @@ You will also need to compile the latest version of conterminator as described [
 
 ### Workflow description and configuration
 
-![Illustration of the main steps in the workflow]()
+![Illustration of the main steps in the workflow](https://github.com/chassenr/taxdb-integration/blob/master/images/taxdb_workflow.jpg).
 
 The first step in the workflow is to screen the available collection of genomes on NCBI refseq and genbank based on their assembly quality. This first filter is based on the metadata parameter [assembly_level](https://www.ncbi.nlm.nih.gov/assembly/help/). Possible choices are: ```Contig```, ```Scaffold```, ```Chromosome```, ```Complete Genome```, or ```variable```. ```Contig``` is the most relaxed setting, with which all available genomes will be considered. ```Complete Genome``` is the most stringent setting. If ```variable```, for species with ```Chromosome``` and/or ```Complete Genome```-level assemblies available ```Contig``` and ```Scaffold```-level assemblies will not be included. This constitutes a compromise between excluding incomplete and low-quality assemblies and including species with incomplete assemblies. Apart from the setting for assembly level, this workflow is only considering the latest assembly of NCBI genomes with full genome representation.
 
@@ -40,10 +41,9 @@ Before the netword guided dereplication of genomes within each species, it is po
 
 The remaining step in the generation of the high resolution database are similar to those for the coarse database: create a common taxonomic framework, remove contamination, and build the kraken database. As it is possible to restrict the database to only one domain or larger taxonomic group, the decontamination step can also be disabled. 
 
-For building the kraken2 database, the parameters kmer length, minimizer length, and minimizer spaces
+For building the kraken2 database, the parameters kmer length, minimizer length, and minimizer spaces can be adjusted depending on the type of reads that you want to classify. We recommend <to be inserted after the benchmarks> for modern and ancient metagenomic reads.
 
-
-
+Further details about the configurable parameters are included in the comments of the [config file](https://github.com/chassenr/taxdb-integration/blob/master/config/config.yaml).
 
 ### Next steps and ToDos:
 * Kaiju implementation (update prokaryotic annotation)

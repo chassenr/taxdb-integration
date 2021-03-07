@@ -2,6 +2,7 @@ rule format_taxonomy_coarse:
 	input:
 		tax_all_coarse = config["cdir"] + "/tax_coarse_all.txt"
 	output:
+		tax_good = config["cdir"] + "/tax_coarse_good.txt",
 		nodes = config["cdir"] + "/kraken2_db/taxonomy/nodes.dmp",
 		names = config["cdir"] + "/kraken2_db/taxonomy/names.dmp",
 		file_list = config["cdir"] + "/kraken2_genomes/file_names_coarse_genomes.txt"
@@ -15,7 +16,8 @@ rule format_taxonomy_coarse:
 		config["rdir"] + "/logs/format_taxonomy_coarse.log"
 	shell:
 		"""
-		{params.tax_script} --gtdb {input.tax_all_coarse} --assemblies {params.genomedir} --nodes {output.nodes} --names {output.names} --kraken_dir {params.krakendir} &>> {log}
+		cut -f1,2 {input.tax_all_coarse} > {output.tax_good}
+		{params.tax_script} --gtdb {output.tax_good} --assemblies {params.genomedir} --nodes {output.nodes} --names {output.names} --kraken_dir {params.krakendir} &>> {log}
 		# replace 'domain' with 'superkingdom (required for kaiju) to ensure that the same nodes.dmp and names.dmp files can be used for both databases
 		sed -i -e 's/domain/superkingdom/g' {output.nodes}
 		find {params.krakendir} -type f -name '*.fa' > {output.file_list}
@@ -34,7 +36,7 @@ rule masking_coarse:
 	threads: config["masking_threads"]
 	shell:
 		"""
-		cut -f1 {input.ncbi} | grep -F -f - {input.file_list} | parallel -j{threads} 'dustmasker -in {{}} -outfmt fasta' | sed -e '/^>/!s/[a-z]/x/g' >> {output.fasta}
+		cut -f1 {input.tax_all_coarse} | grep -F -f - {input.file_list} | parallel -j{threads} 'dustmasker -in {{}} -outfmt fasta' | sed -e '/^>/!s/[a-z]/x/g' >> {output.fasta}
 		"""
 
 rule prelim_map_coarse:
@@ -75,8 +77,7 @@ rule detect_contamination:
 		tmpdir = config["cdir"] + "/decontamination/tmp",
 		taxdir = config["cdir"] + "/kraken2_db/taxonomy/",
 		prefix = config["cdir"] + "/decontamination/coarse_db",
-		cmem = config["cmem"],
-		kingdoms = config["kingdoms"]
+		cmem = config["cmem"]
 	conda:
 		config["wdir"] + "/envs/r.yaml"
 	threads: config["masking_threads"]
@@ -90,19 +91,20 @@ rule detect_contamination:
 		touch {output.delnodes}
 		touch {output.merged}
 		# parse taxid string for conterminator kingdoms parameter
-		{params.script} -t {params.taxdir} -k "{params.kingdoms}" -s "{params.taxdir}/accessionTaxa.sql" -o {output.kstring} -x {output.xstring}
+		{params.script} -t {params.taxdir} -k "prokaryotes,fungi,protists,plants,metazoa" -s "{params.taxdir}/accessionTaxa.sql" -o {output.kstring} -x {output.xstring}
 		# run conterminator
 		KSTR=$(cat {output.kstring})
 		XSTR=$(cat {output.xstring})
-		conterminator dna {input.fasta} {output.cmap} {params.prefix} {params.tmpdir} --mask-lower-case 1 --ncbi-tax-dump {params.taxdir} --threads {threads} --split-memory-limit {params.cmem} --blacklist $XSTR --kingdoms $CSTR
+		conterminator dna {input.fasta} {output.cmap} {params.prefix} {params.tmpdir} --mask-lower-case 1 --ncbi-tax-dump {params.taxdir} --threads {threads} --split-memory-limit {params.cmem} --blacklist $XSTR --kingdoms $KSTR &>> {log}
 		"""
 
-rule filter_contamination
+rule filter_contamination:
 	input:
 		contam = config["cdir"] + "/decontamination/coarse_db_conterm_prediction",
 		fasta = config["cdir"] + "/kraken2_db/tmp/library.fna",
 		map = config["cdir"] + "/kraken2_db/tmp/prelim_map.txt"
 	output:
+		contam_filt = config["cdir"] + "/decontamination/coarse_db_conterm_prediction_filt",
 		id_contam = config["cdir"] + "/decontamination/contam_id.accnos",
 		fasta_noncontam = config["cdir"] + "/kraken2_db/library/coarse/library.fna",
 		fasta_contam = config["cdir"] + "/decontamination/library_contam.fna",
@@ -113,15 +115,16 @@ rule filter_contamination
 		config["rdir"] + "/logs/coarse_contam_filter.log"
 	shell:
 		"""
-		cut -f2 {input.contam} | sort | uniq > {output.id_contam}
-		filterbyname.sh in={input.fasta} out={output.fasta_contam} names={output.id_contam} include=t
-		filterbyname.sh in={input.fasta} out={output.fasta_noncontam} names={output.id_contam} include=f
+		awk -v FS="\\t" -v OFS="\\t" '$5 >= 0 && $6 >= 0' {input.contam} > {output.contam_filt}
+		cut -f2 {output.contam_filt} | sort | uniq > {output.id_contam}
+		filterbyname.sh in={input.fasta} out={output.fasta_contam} names={output.id_contam} include=t ow=t &>> {log}
+		filterbyname.sh in={input.fasta} out={output.fasta_noncontam} names={output.id_contam} include=f ow=t &>> {log}
 		grep -v -F -f {output.id_contam} {input.map} > {output.map_noncontam}
 		"""
 
 rule remove_contamination:
 	input:
-		contam = config["cdir"] + "/decontamination/coarse_db_conterm_prediction",
+		contam = config["cdir"] + "/decontamination/coarse_db_conterm_prediction_filt",
 		fasta_contam = config["cdir"] + "/decontamination/library_contam.fna",
 		map_noncontam = config["cdir"] + "/kraken2_db/library/coarse/prelim_map.txt",
 		fasta_noncontam = config["cdir"] + "/kraken2_db/library/coarse/library.fna",
@@ -129,18 +132,18 @@ rule remove_contamination:
 		cleaned_fasta = config["cdir"] + "/decontamination/cleaned.fna",
 		cleaned_map = config["cdir"] + "/decontamination/cleaned_map.txt"
 	params:
-		script = config["wdir"] + "/scripts/remove_contamination.R",
-		contamdir = config["cdir"] + "/decontamination"
+		script = config["wdir"] + "/scripts/remove_contam_contigs.R",
+		contam_dir = config["cdir"] + "/decontamination"
 	conda:
 		config["wdir"] + "/envs/r.yaml"
 	log:
 		config["rdir"] + "/logs/coarse_contam_cleaning.log"
 	shell:
 		"""
-		{params.script} -i {input.fasta_contam} -c {input.contam} -o {output.cleaned_fasta}
+		{params.script} -i {input.fasta_contam} -c {input.contam} -o {output.cleaned_fasta} &>> {log}
 		LC_ALL=C grep '^>' {output.cleaned_fasta} | sed 's/^>//' > "{params.contam_dir}/tmp.accnos"
 		NSEQ=$(wc -l "{params.contam_dir}/tmp.accnos" | cut -d' ' -f1)
-		printf 'TAXID\n%.0s' $(seq 1 $NSEQ) | paste - "{params.contam_dir}/tmp.accnos" | paste - <(cut -d'|' -f3 "{params.contam_dir}/tmp.accnos") > {output.cleaned_map}
+		printf 'TAXID\\n%.0s' $(seq 1 $NSEQ) | paste - "{params.contam_dir}/tmp.accnos" | paste - <(cut -d'|' -f3 "{params.contam_dir}/tmp.accnos") > {output.cleaned_map}
 		rm "{params.contam_dir}/tmp.accnos"
 		cat {output.cleaned_map} >> {input.map_noncontam}
 		cat {output.cleaned_fasta} >> {input.fasta_noncontam}
@@ -189,7 +192,8 @@ rule build_kraken_coarse:
 		dbdir = config["cdir"] + "/kraken2_db",
 		kmer_len = config["kmer_len"],
 		min_len = config["minimizer_len"],
-		min_spaces = config["minimizer_spaces"]
+		min_spaces = config["minimizer_spaces"],
+		max_dbsize = config["max_dbsize"]
 	threads: config["krakenbuild_threads"]
 	conda:
 		config["wdir"] + "/envs/kraken2.yaml"
@@ -197,6 +201,6 @@ rule build_kraken_coarse:
 		config["rdir"] + "/logs/build_kraken_coarse.log"
 	shell:
 		"""
-		kraken2-build --build --threads {threads} --db {params.dbdir} --kmer-len {params.kmer_len} --minimizer-len {params.min_len} --minimizer-spaces {params.min_spaces} &>> {log}
+		kraken2-build --build --threads {threads} --db {params.dbdir} --kmer-len {params.kmer_len} --minimizer-len {params.min_len} --minimizer-spaces {params.min_spaces} --max-db-size {params.max_dbsize} &>> {log}
 		"""
 

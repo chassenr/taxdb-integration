@@ -28,8 +28,8 @@ rule all:
 	input:
 		derep_gtdb = config["rdir"] + "/gtdb/metadata/gtdb_derep_taxonomy_meta.txt",
 		derep_ncbi = expand(config["rdir"] + "/{library_highres}/derep_taxonomy_meta.txt", library_highres = LIBRARY_HIGHRES),
-		derep_checkv = config["rdir"] + "/checkv/checkv_derep_taxonomy_meta.txt",
-		tax_coarse = config["cdir"] + "/tax_coarse_all.txt"
+		derep_checkv = config["rdir"] + "/checkv/checkv_derep_taxonomy_meta.txt"
+		#hash = config["cdir"] + "/kraken2_db/hash.k2d"
 
 '''
 ##### load rules #####
@@ -38,6 +38,6 @@ include: "rules/process_ncbi_genomes.smk"
 include: "rules/process_gtdb_genomes.smk"
 include: "rules/process_checkv_genomes.smk"
 #include: "rules/build_kraken2.smk"
-include: "rules/coarse_genomes.smk"
+#include: "rules/coarse_genomes.smk"
 #include: "rules/coarse_kraken2.smk"
 

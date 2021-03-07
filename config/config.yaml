@@ -140,9 +140,10 @@ univec: "UniVec_Core"
 # Parameters for building krakendb
 masking_threads: 32
 krakenbuild_threads: 32
-kmer_len: 27
-minimizer_len: 25
+kmer_len: 31
+minimizer_len: 23
 minimizer_spaces: 4
+max_dbsize: 450000000000
 
 # Parameter sweep
 ps_kmer_length:
