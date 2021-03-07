@@ -150,7 +150,7 @@ rule collect_gtdb_genomes:
 		mkdir -p {params.outdir}
 		cut -f4 {input.derep_meta} | sed '1d' | while read line
 		do
-		  ln -s "$line" {params.outdir}
+		  ln -sf "$line" {params.outdir}
 		done
 		awk -v FS="\\t" -v OFS="\\t" '{{print $2,$1}}' {input.derep_meta} | sed '1d' > {output.tax}
 		"""
@@ -207,7 +207,7 @@ if config["kingdoms"]:
 
 	rule remove_contam_gtdb:
 		input:
-			contam = config["rdir"] + "/decontamination/highres_db_conterm_prediction",
+			contam = config["rdir"] + "/decontamination/highres_db_conterm_prediction_filt",
 			fasta_contam = config["cdir"] + "/decontamination/gtdb_library_contam.fna"
 		output:
 			cleaned_fasta = config["cdir"] + "/decontamination/gtdb_cleaned.fna",
@@ -221,8 +221,8 @@ if config["kingdoms"]:
 			config["rdir"] + "/logs/gtdb_contam_remove.log"
 		shell:
 			"""
-			{params.script} -i {input.fasta_contam} -c {input.contam} -o {output.cleaned_fasta}
-			C_ALL=C grep '^>' {output.cleaned_fasta} | sed 's/^>//' > "{params.contam_dir}/tmp.accnos"
+			{params.script} -i {input.fasta_contam} -c {input.contam} -o {output.cleaned_fasta} &>> {log}
+			LC_ALL=C grep '^>' {output.cleaned_fasta} | sed 's/^>//' > "{params.contam_dir}/tmp.accnos"
 			NSEQ=$(wc -l "{params.contam_dir}/tmp.accnos" | cut -d' ' -f1)
 			printf 'TAXID\n%.0s' $(seq 1 $NSEQ) | paste - "{params.contam_dir}/tmp.accnos" | paste - <(cut -d'|' -f3 "{params.contam_dir}/tmp.accnos") > {output.cleaned_map}
 			rm "{params.contam_dir}/tmp.accnos"

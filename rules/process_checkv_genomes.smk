@@ -128,19 +128,22 @@ rule collect_checkv_genomes:
 		mkdir -p {params.outdir}
 		cut -f4 {input.derep_meta} | sed '1d' | while read line
 		do
-		  ln -s "$line" {params.outdir}
+		  ln -sf "$line" {params.outdir}
 		done
 		# find {params.indir} -type f -name '*.gz' | xargs -n 1 mv -t {params.outdir}
 		awk -v FS="\\t" -v OFS="\\t" '{{print $2,$1}}' {input.derep_meta} | sed '1d' > {output.tax}
 		# assuming that the only reason that derepG jobs may have failed is because of too divergent assemblies,
 		# include all assemblies for these taxonomic paths
-		cut -f2 {input.checkv_taxonomy} | sort -t$'\\t' | uniq | grep -v -F -f <(cut -f1 {input.derep_meta} | sed '1d' | sort -t$'\\t' | uniq) | grep -F -f - {input.checkv_taxonomy} > "{params.indir}../tmp"
-		cut -f1 "{params.indir}../tmp" | sed 's/$/\.fa/' | while read line
-		do
-		  ln -s "$line" {params.outdir}
-		done
-		cat "{params.indir}../tmp" >> {output.tax}
-		rm "{params.indir}../tmp"
+		if [[ $(cut -f2 {input.checkv_taxonomy} | sort -t$'\\t' | uniq | wc -l) != $(cut -f1 {input.derep_meta} | sed '1d' | sort -t$'\\t' | uniq | wc -l) ]]
+		then
+		  cut -f2 {input.checkv_taxonomy} | sort -t$'\\t' | uniq | grep -v -F -f <(cut -f1 {input.derep_meta} | sed '1d' | sort -t$'\\t' | uniq) | grep -F -f - {input.checkv_taxonomy} > "{params.indir}../tmp"
+		  cut -f1 "{params.indir}../tmp" | sed 's/$/\.fa/' | while read line
+		  do
+		    ln -sf "$line" {params.outdir}
+		  done
+		  cat "{params.indir}../tmp" >> {output.tax}
+		  rm "{params.indir}../tmp"
+		fi
 		"""
 
 rule masking_checkv:

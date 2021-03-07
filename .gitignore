@@ -1,5 +1,7 @@
 *.gz
 *
+!images
+!images/*
 !scripts
 !scripts/*
 !scripts/common

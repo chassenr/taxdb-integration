@@ -23,6 +23,7 @@ rule format_taxonomy:
 	input:
 		tax_combined = config["rdir"] + "/tax_combined/derep_taxonomy_combined.txt"
 	output:
+		tax_good_ = config["rdir"] + "/tax_combined/derep_taxonomy_good.txt",
 		nodes = config["rdir"] + "/kraken2_db/taxonomy/nodes.dmp",
 		names = config["rdir"] + "/kraken2_db/taxonomy/names.dmp",
 		file_list = config["rdir"] + "/kraken2_genomes/file_names_derep_genomes.txt"
@@ -36,6 +37,7 @@ rule format_taxonomy:
 		config["rdir"] + "/logs/format_taxonomy.log"
 	shell:
 		"""
+		cut -f1,2 {input.tax_combined} > {output.tax_good}
 		{params.tax_script} --gtdb {output.tax_combined} --assemblies {params.genomedir} --nodes {output.nodes} --names {output.names} --kraken_dir {params.krakendir} &>> {log}
 		# replace 'domain' with 'superkingdom (required for kaiju) to ensure that the same nodes.dmp and names.dmp files can be used for both databases
 		sed -i -e 's/domain/superkingdom/g' {output.nodes}
@@ -77,6 +79,7 @@ if config["kingdoms"]:
 			xstring = config["rdir"] + "/decontamination/conterminator_blacklist.txt",
 			cmap = config["rdir"] + "/decontamination/cmap.txt",
 			contam = config["rdir"] + "/decontamination/highres_db_conterm_prediction",
+			contam_filt = config["rdir"] + "/decontamination/highres_db_conterm_prediction_filt",
 			id_contam = config["cdir"] + "/decontamination/contam_id.accnos"
 		params:
 			script = config["wdir"] + "/scripts/get_kingdoms_conterminator.R",
@@ -102,8 +105,9 @@ if config["kingdoms"]:
 			# run conterminator
 			KSTR=$(cat {output.kstring})
 			XSTR=$(cat {output.xstring})
-			conterminator dna {input.tmp_fna} {output.cmap} {params.prefix} {params.tmpdir} --mask-lower-case 1 --ncbi-tax-dump {params.taxdir} --threads {threads} --split-memory-limit {params.cmem} --blacklist $XSTR --kingdoms $CSTR
-			cut -f2 {output.contam} | sort | uniq > {output.id_contam}
+			conterminator dna {input.tmp_fna} {output.cmap} {params.prefix} {params.tmpdir} --mask-lower-case 1 --ncbi-tax-dump {params.taxdir} --threads {threads} --split-memory-limit {params.cmem} --blacklist $XSTR --kingdoms $KSTR
+			awk -v FS="\\t" -v OFS="\\t" '$5 >= 0 && $6 >= 0' {output.contam} > {output.contam_filt}
+			cut -f2 {output.contam_filt} | sort | uniq > {output.id_contam}
 			"""
 
 rule build_krakendb:
@@ -131,6 +135,6 @@ rule build_krakendb:
 		config["rdir"] + "/logs/build_kraken.log"
 	shell:
 		"""
-		kraken2-build --build --threads {threads} --db {params.dbdir} --kmer-len {params.kmer_len} --minimizer-len {params.min_len} --minimizer-spaces {params.min_spaces} &>> {log}
+		kraken2-build --build --threads {threads} --db {params.dbdir} --kmer-len {params.kmer_len} --minimizer-len {params.min_len} --minimizer-spaces {params.min_spaces} --max-db-size {params.max_dbsize} &>> {log}
 		"""
 

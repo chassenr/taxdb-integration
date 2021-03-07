@@ -235,7 +235,9 @@ rule derep_ncbi:
 
 rule collect_ncbi_genomes:
 	input:
-		derep_meta = config["rdir"] + "/{library_highres}/derep_taxonomy_meta.txt"
+		derep_meta = config["rdir"] + "/{library_highres}/derep_taxonomy_meta.txt",
+		taxonomy = config["rdir"] + "/{library_highres}/assembly_taxonomy_select.txt",
+		url = config["rdir"] + "/{library_highres}/assembly_url_genomic.txt"
 	output:
 		tax = config["rdir"] + "/tax_combined/{library_highres}_derep_taxonomy.txt"
 	params:
@@ -246,9 +248,21 @@ rule collect_ncbi_genomes:
 		mkdir -p {params.outdir}
 		cut -f4 {input.derep_meta} | sed '1d' | while read line
 		do
-		  ln -s "$line" {params.outdir}
+		  ln -sf "$line" {params.outdir}
 		done
 		awk -v FS="\\t" -v OFS="\\t" '{{print $2,$1}}' {input.derep_meta} | sed '1d' > {output.tax}
+		# assuming that the only reason that derepG jobs may have failed is because of too divergent assemblies,
+		# include all assemblies for these taxonomic paths
+		if [[ $(cut -f2 {input.taxonomy} | sort -t$'\\t' | uniq | wc -l) != $(cut -f1 {input.derep_meta} | sed '1d' | sort -t$'\\t' | uniq | wc -l) ]]
+		then
+		  cut -f2 {input.taxonomy} | sort -t$'\\t' | uniq | grep -v -F -f <(cut -f1 {input.derep_meta} | sed '1d' | sort -t$'\\t' | uniq) | grep -F -f - {input.taxonomy} > "{params.indir}/../tmp"
+		  cut -f1 "{params.indir}/../tmp" | cut -f1 tmp2 | grep -F -f - {input.url} | xargs -n1 basename | while read line
+		  do
+		    ln -sf "$line" {params.outdir}
+		  done
+		  cat "{params.indir}/../tmp" >> {output.tax}
+		  rm "{params.indir}/../tmp"
+		fi
 		"""
 
 rule masking_ncbi:
@@ -303,7 +317,7 @@ if config["kingdoms"]:
 
 	rule remove_contam_ncbi:
 		input:
-			contam = config["rdir"] + "/decontamination/highres_db_conterm_prediction",
+			contam = config["rdir"] + "/decontamination/highres_db_conterm_prediction_filt",
 			fasta_contam = config["cdir"] + "/decontamination/{library_highres}_library_contam.fna"
 		output:
 			cleaned_fasta = config["cdir"] + "/decontamination/{library_highres}_cleaned.fna",
@@ -317,8 +331,8 @@ if config["kingdoms"]:
 			config["rdir"] + "/logs/{library_highres}_contam_remove.log"
 		shell:
 			"""
-			{params.script} -i {output.fasta_contam} -c {input.contam} -o {output.cleaned_fasta}
-			C_ALL=C grep '^>' {output.cleaned_fasta} | sed 's/^>//' > "{params.contam_dir}/tmp.accnos"
+			{params.script} -i {output.fasta_contam} -c {input.contam} -o {output.cleaned_fasta} &>> {log}
+			LC_ALL=C grep '^>' {output.cleaned_fasta} | sed 's/^>//' > "{params.contam_dir}/tmp.accnos"
 			NSEQ=$(wc -l "{params.contam_dir}/tmp.accnos" | cut -d' ' -f1)
 			printf 'TAXID\n%.0s' $(seq 1 $NSEQ) | paste - "{params.contam_dir}/tmp.accnos" | paste - <(cut -d'|' -f3 "{params.contam_dir}/tmp.accnos") > {output.cleaned_map}
 			rm "{params.contam_dir}/tmp.accnos"
