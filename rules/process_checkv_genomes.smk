@@ -117,11 +117,11 @@ rule derep_checkv:
 rule collect_checkv_genomes:
 	input:
 		derep_meta = config["rdir"] + "/checkv/checkv_derep_taxonomy_meta.txt",
-		checkv_taxonomy = config["rdir"] + "/checkv/checkv_taxonomy.txt"
+		checkv_taxonomy = config["rdir"] + "/checkv/checkv_taxonomy_added.txt"
 	output:
 		tax = config["rdir"] + "/tax_combined/checkv_derep_taxonomy.txt"
 	params:
-		indir = config["rdir"] + "/checkv/genomes/",
+		gendir = config["rdir"] + "/checkv/genomes",
 		outdir = config["rdir"] + "/derep_combined/"
 	shell:
 		"""
@@ -130,19 +130,18 @@ rule collect_checkv_genomes:
 		do
 		  ln -sf "$line" {params.outdir}
 		done
-		# find {params.indir} -type f -name '*.gz' | xargs -n 1 mv -t {params.outdir}
 		awk -v FS="\\t" -v OFS="\\t" '{{print $2,$1}}' {input.derep_meta} | sed '1d' > {output.tax}
 		# assuming that the only reason that derepG jobs may have failed is because of too divergent assemblies,
 		# include all assemblies for these taxonomic paths
 		if [[ $(cut -f2 {input.checkv_taxonomy} | sort -t$'\\t' | uniq | wc -l) != $(cut -f1 {input.derep_meta} | sed '1d' | sort -t$'\\t' | uniq | wc -l) ]]
 		then
-		  cut -f2 {input.checkv_taxonomy} | sort -t$'\\t' | uniq | grep -v -F -f <(cut -f1 {input.derep_meta} | sed '1d' | sort -t$'\\t' | uniq) | grep -F -f - {input.checkv_taxonomy} > "{params.indir}../tmp"
-		  cut -f1 "{params.indir}../tmp" | sed 's/$/\.fa/' | while read line
+		  cut -f2 {input.checkv_taxonomy} | sort -t$'\\t' | uniq | grep -v -F -f <(cut -f1 {input.derep_meta} | sed '1d' | sort -t$'\\t' | uniq) | grep -F -f - {input.checkv_taxonomy} > "{params.gendir}/../tmp"
+		  cut -f1 "{params.gendir}/../tmp" | sed 's/$/\.fa/' | while read line
 		  do
-		    ln -sf "$line" {params.outdir}
+		    ln -sf "{params.gendir}/$line" {params.outdir}
 		  done
-		  cat "{params.indir}../tmp" >> {output.tax}
-		  rm "{params.indir}../tmp"
+		  cat "{params.gendir}/../tmp" >> {output.tax}
+		  rm "{params.gendir}/../tmp"
 		fi
 		"""
 

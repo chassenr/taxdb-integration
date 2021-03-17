@@ -132,7 +132,8 @@ tax_script: "/storage/hdd1/chh/Repos/Metagenomics-Index-Correction/tax_from_gtdb
 # protists: protozoa and algae (plants that are not Streptophytes)
 # plants: Streptophytes
 # metazoa: higher (non-plant) eukaryotes
-kingdoms: "prokaryotes,fungi,protists"
+kingdoms_highres: "prokaryotes,fungi,protists"
+# kingdoms_highres: ""
 
 # Include UniVec databases
 univec: "UniVec_Core"

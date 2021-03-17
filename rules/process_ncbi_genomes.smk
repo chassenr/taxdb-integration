@@ -241,6 +241,7 @@ rule collect_ncbi_genomes:
 	output:
 		tax = config["rdir"] + "/tax_combined/{library_highres}_derep_taxonomy.txt"
 	params:
+		gendir = config["rdir"] + "/{library_highres}/genomes",
 		indir = config["rdir"] + "/{library_highres}/derep_genomes",
 		outdir = config["rdir"] + "/derep_combined/"
 	shell:
@@ -256,9 +257,9 @@ rule collect_ncbi_genomes:
 		if [[ $(cut -f2 {input.taxonomy} | sort -t$'\\t' | uniq | wc -l) != $(cut -f1 {input.derep_meta} | sed '1d' | sort -t$'\\t' | uniq | wc -l) ]]
 		then
 		  cut -f2 {input.taxonomy} | sort -t$'\\t' | uniq | grep -v -F -f <(cut -f1 {input.derep_meta} | sed '1d' | sort -t$'\\t' | uniq) | grep -F -f - {input.taxonomy} > "{params.indir}/../tmp"
-		  cut -f1 "{params.indir}/../tmp" | cut -f1 tmp2 | grep -F -f - {input.url} | xargs -n1 basename | while read line
+		  cut -f1 "{params.indir}/../tmp" | grep -F -f - {input.url} | xargs -n1 basename | while read line
 		  do
-		    ln -sf "$line" {params.outdir}
+		    ln -sf "{params.gendir}/$line" {params.outdir}
 		  done
 		  cat "{params.indir}/../tmp" >> {output.tax}
 		  rm "{params.indir}/../tmp"
@@ -298,7 +299,7 @@ rule prelim_map_ncbi:
 		rm {params.libdir}/tmp.accnos
 		"""
 
-if config["kingdoms"]:
+if config["kingdoms_highres"]:
 	rule separate_contam_ncbi:
 		input:
 			id_contam = config["cdir"] + "/decontamination/contam_id.accnos",

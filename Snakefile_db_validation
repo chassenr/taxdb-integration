@@ -1,0 +1,39 @@
+import glob
+import pandas as pd
+
+"""
+Author: Christiane Hassenrueck, Antonio Fernandez-Guerra
+Acknowledgements: Chiara Vanni
+Affiliation: MARUM - Center for Marine Environmental Sciences University of Bremen
+Aim: Create high resolution taxonomic database for all domains of life using GTDB and NCBI taxonomy
+Run: snakemake -s Snakefile
+"""
+
+# from snakemake.utils import validate, min_version
+##### set minimum snakemake version #####
+# min_version("5.1.2")
+
+configfile: "config/config_db_validation.yaml"
+
+KL = config["ps_kmer_length"]
+ML = config["ps_minimizer_length"]
+MS = config["ps_minimizer_spaces"]
+CONF = config["kraken_confidence"]
+RTL = config["kraken_rtl"]
+LIBRARY_HIGHRES = config["library_highres"]
+
+wildcard_constraints:
+	library_highres = '|'.join(LIBRARY_HIGHRES)
+
+rule all:
+	input:
+		#hash_nolim = expand(config["sdir"] + "/db_coarse_k{kl}_m{ml}_s{ms}_nolim/hash.k2d", kl = KL, ml = ML, ms = MS),
+		hash_mem220 = expand(config["sdir"] + "/db_coarse_k{kl}_m{ml}_s{ms}_mem220/hash.k2d", kl = KL, ml = ML, ms = MS)
+
+# delete library and taxonomy dirs in each db to save disk space if bracken db not planned
+
+'''
+##### load rules #####
+'''
+include: "rules/db_validation_coarse.smk"
+

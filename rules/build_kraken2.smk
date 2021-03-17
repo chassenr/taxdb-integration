@@ -15,7 +15,7 @@ rule fix_ncbi_taxpath:
 	shell:
 		"""
 		cat {input} > "{params.outdir}/tmp"
-		{params.script} -i "{params.outdir}/tmp" -o {output.tax_combined} &>> {log}
+		{params.script} -i "{params.outdir}/tmp" -o "{output.tax_combined}" &>> {log}
 		rm "{params.outdir}/tmp"
 		"""
 
@@ -23,7 +23,7 @@ rule format_taxonomy:
 	input:
 		tax_combined = config["rdir"] + "/tax_combined/derep_taxonomy_combined.txt"
 	output:
-		tax_good_ = config["rdir"] + "/tax_combined/derep_taxonomy_good.txt",
+		tax_good = config["rdir"] + "/tax_combined/derep_taxonomy_good.txt",
 		nodes = config["rdir"] + "/kraken2_db/taxonomy/nodes.dmp",
 		names = config["rdir"] + "/kraken2_db/taxonomy/names.dmp",
 		file_list = config["rdir"] + "/kraken2_genomes/file_names_derep_genomes.txt"
@@ -32,13 +32,13 @@ rule format_taxonomy:
 		genomedir = config["rdir"] + "/derep_combined",
 		tax_script = config["tax_script"]
 	conda:
-		config["wdir"] + "/envs/derep.yaml"
+		config["wdir"] + "/envs/biopython.yaml"
 	log:
 		config["rdir"] + "/logs/format_taxonomy.log"
 	shell:
 		"""
 		cut -f1,2 {input.tax_combined} > {output.tax_good}
-		{params.tax_script} --gtdb {output.tax_combined} --assemblies {params.genomedir} --nodes {output.nodes} --names {output.names} --kraken_dir {params.krakendir} &>> {log}
+		{params.tax_script} --gtdb {output.tax_good} --assemblies {params.genomedir} --nodes {output.nodes} --names {output.names} --kraken_dir {params.krakendir} &>> {log}
 		# replace 'domain' with 'superkingdom (required for kaiju) to ensure that the same nodes.dmp and names.dmp files can be used for both databases
 		sed -i -e 's/domain/superkingdom/g' {output.nodes}
 		find {params.krakendir} -type f -name '*.fa' > {output.file_list}
@@ -46,7 +46,7 @@ rule format_taxonomy:
 # depending on the number and size of the genomes, it may be required to delete the zipped fna in the derep directory
 
 # optional: run conterminator
-if config["kingdoms"]:
+if config["kingdoms_highres"]:
 	rule cat_library:
 		input:
 			fasta_ncbi = expand(config["rdir"] + "/kraken2_db/library/{library_highres}/library.fna", library_highres = LIBRARY_HIGHRES),
@@ -114,8 +114,8 @@ rule build_krakendb:
 	input:
 		gtdb_map = config["rdir"] + "/kraken2_db/library/gtdb/prelim_map.txt",
 		gtdb_fasta = config["rdir"] + "/kraken2_db/library/gtdb/library.fna",
-		ncbi_map = expand(config["rdir"] + "/kraken2_db/library/{library_name}/prelim_map.txt", library_name = LIBRARY_NAME),
-		ncbi_fasta = expand(config["rdir"] + "/kraken2_db/library/{library_name}/library.fna", library_name = LIBRARY_NAME),
+		ncbi_map = expand(config["rdir"] + "/kraken2_db/library/{library_highres}/prelim_map.txt", library_highres = LIBRARY_HIGHRES),
+		ncbi_fasta = expand(config["rdir"] + "/kraken2_db/library/{library_highres}/library.fna", library_highres = LIBRARY_HIGHRES),
 		checkv_map = config["rdir"] + "/kraken2_db/library/checkv/prelim_map.txt",
 		checkv_fasta = config["rdir"] + "/kraken2_db/library/checkv/library.fna"
 	output:
@@ -127,7 +127,8 @@ rule build_krakendb:
 		dbdir = config["rdir"] + "/kraken2_db",
 		kmer_len = config["kmer_len"],
 		min_len = config["minimizer_len"],
-		min_spaces = config["minimizer_spaces"]
+		min_spaces = config["minimizer_spaces"],
+		max_dbsize = config["max_dbsize"]
 	threads: config["krakenbuild_threads"]
 	conda:
 		config["wdir"] + "/envs/kraken2.yaml"

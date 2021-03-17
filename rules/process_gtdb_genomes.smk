@@ -140,10 +140,13 @@ rule derep_gtdb:
 
 rule collect_gtdb_genomes:
  	input:
- 		derep_meta = config["rdir"] + "/gtdb/metadata/gtdb_derep_taxonomy_meta.txt"
+ 		derep_meta = config["rdir"] + "/gtdb/metadata/gtdb_derep_taxonomy_meta.txt",
+		gtdb_reps = config["cdir"] + "/gtdb/gtdb_reps_tax.txt"
  	output:
  		tax = config["rdir"] + "/tax_combined/gtdb_derep_taxonomy.txt"
 	params:
+		metadir = config["rdir"] + "/gtdb/metadata",
+		repdir = config["cdir"] + "/gtdb/genomes",
 		outdir = config["rdir"] + "/derep_combined/"
 	shell:
 		"""
@@ -153,6 +156,14 @@ rule collect_gtdb_genomes:
 		  ln -sf "$line" {params.outdir}
 		done
 		awk -v FS="\\t" -v OFS="\\t" '{{print $2,$1}}' {input.derep_meta} | sed '1d' > {output.tax}
+		# for the species not in the dereplicated set (because there genomes could not be obtained from genbank/refseq) take at least the GTDB reps form the coars DB
+		cut -f1 {input.derep_meta} | sed '1d' | sort -t$'\\t' | uniq | grep -v -F -f - {input.gtdb_reps} > "{params.metadir}/tmp_reps.txt"
+		cut -f1 "{params.metadir}/tmp_reps.txt" | sed 's/$/_genomic\.fna\.gz/' | while read line
+		do
+		  ln -sf "{params.repdir}/$line" {params.outdir}
+		done
+		cat "{params.metadir}/tmp_reps.txt" >> {output.tax}
+		rm "{params.metadir}/tmp_reps.txt"
 		"""
 
 rule masking_gtdb:
@@ -188,7 +199,7 @@ rule prelim_map_gtdb:
 		rm {params.libdir}/tmp.accnos
 		"""
 
-if config["kingdoms"]:
+if config["kingdoms_highres"]:
 	rule separate_contam_gtdb:
 		input:
 			id_contam = config["cdir"] + "/decontamination/contam_id.accnos",
