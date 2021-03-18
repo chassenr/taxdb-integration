@@ -273,7 +273,7 @@ rule masking_ncbi:
 		nodes = config["rdir"] + "/kraken2_db/taxonomy/nodes.dmp",
 		names = config["rdir"] + "/kraken2_db/taxonomy/names.dmp"
 	output:
-		fasta = config["rdir"] + "/kraken2_db/library/{library_highres}/library.fna"
+		fasta = config["rdir"] + "/kraken2_db/tmp/{library_highres}_library.fna"
 	conda:
 		config["wdir"] + "/envs/kraken2.yaml"
 	threads: config["masking_threads"]
@@ -284,29 +284,32 @@ rule masking_ncbi:
 
 rule prelim_map_ncbi:
 	input:
-		fasta = config["rdir"] + "/kraken2_db/library/{library_highres}/library.fna"
+		fasta = config["rdir"] + "/kraken2_db/tmp/{library_highres}_library.fna"
 	output:
-		map = config["rdir"] + "/kraken2_db/library/{library_highres}/prelim_map.txt"
+		map = config["rdir"] + "/kraken2_db/tmp/{library_highres}_prelim_map.txt"
 	params:
-		libdir = config["rdir"] + "/kraken2_db/library/{library_highres}"
+		libdir = config["rdir"] + "/kraken2_db/tmp",
+		libname = "{library_highres}"
 	conda:
 		config["wdir"] + "/envs/kraken2.yaml"
 	shell:
 		"""
-		LC_ALL=C grep '^>' {input.fasta} | sed 's/^>//' > {params.libdir}/tmp.accnos
-		NSEQ=$(wc -l {params.libdir}/tmp.accnos | cut -d' ' -f1)
-		printf 'TAXID\\n%.0s' $(seq 1 $NSEQ) | paste - {params.libdir}/tmp.accnos | paste - <(cut -d'|' -f3 {params.libdir}/tmp.accnos) > {output.map}
-		rm {params.libdir}/tmp.accnos
+		LC_ALL=C grep '^>' {input.fasta} | sed 's/^>//' > {params.libdir}/tmp_{params.libname}.accnos
+		NSEQ=$(wc -l {params.libdir}/tmp_{params.libname}.accnos | cut -d' ' -f1)
+		printf 'TAXID\\n%.0s' $(seq 1 $NSEQ) | paste - {params.libdir}/tmp_{params.libname}.accnos | paste - <(cut -d'|' -f3 {params.libdir}/tmp_{params.libname}.accnos) > {output.map}
+		rm {params.libdir}/tmp_{params.libname}.accnos
 		"""
 
 if config["kingdoms_highres"]:
-	rule separate_contam_ncbi:
+	rule filter_contam_ncbi:
 		input:
-			id_contam = config["cdir"] + "/decontamination/contam_id.accnos",
-			fasta = config["rdir"] + "/kraken2_db/library/{library_highres}/library.fna",
-			map = config["rdir"] + "/kraken2_db/library/{library_highres}/prelim_map.txt"
+			id_contam = config["rdir"] + "/decontamination/contam_id.accnos",
+			fasta = config["rdir"] + "/kraken2_db/tmp/{library_highres}_library.fna",
+			map = config["rdir"] + "/kraken2_db/tmp/{library_highres}_prelim_map.txt"
 		output:
-			fasta_contam = config["cdir"] + "/decontamination/{library_highres}_library_contam.fna"
+			fasta_contam = config["rdir"] + "/decontamination/{library_highres}_library_contam.fna",
+			fasta_noncontam = config["rdir"] + "/kraken2_db/library/{library_highres}/library.fna",
+			map_noncontam = config["rdir"] + "/kraken2_db/library/{library_highres}/prelim_map.txt"
 		conda:
 			config["wdir"] + "/envs/bbmap.yaml"
 		log:
@@ -314,53 +317,52 @@ if config["kingdoms_highres"]:
 		shell:
 			"""
 			filterbyname.sh in={input.fasta} out={output.fasta_contam} names={input.id_contam} include=t
+			filterbyname.sh in={input.fasta} out={output.fasta_noncontam} names={input.id_contam} include=f
+			grep -v -F -f {input.id_contam} {input.map} > {output.map_noncontam}
 			"""
 
 	rule remove_contam_ncbi:
 		input:
 			contam = config["rdir"] + "/decontamination/highres_db_conterm_prediction_filt",
-			fasta_contam = config["cdir"] + "/decontamination/{library_highres}_library_contam.fna"
+			fasta_contam = config["rdir"] + "/decontamination/{library_highres}_library_contam.fna",
+			fasta_noncontam = config["rdir"] + "/kraken2_db/library/{library_highres}/library.fna",
+			map_noncontam = config["rdir"] + "/kraken2_db/library/{library_highres}/prelim_map.txt",
+			fasta_tmp = config["rdir"] + "/kraken2_db/tmp/{library_highres}_library.fna",
+			map_tmp = config["rdir"] + "/kraken2_db/tmp/{library_highres}_prelim_map.txt"
 		output:
-			cleaned_fasta = config["cdir"] + "/decontamination/{library_highres}_cleaned.fna",
-			cleaned_map = config["cdir"] + "/decontamination/{library_highres}_cleaned_map.txt"
+			cleaned_fasta = config["rdir"] + "/decontamination/{library_highres}_cleaned.fna",
+			cleaned_map = config["rdir"] + "/decontamination/{library_highres}_cleaned_map.txt"
 		params:
 			script = config["wdir"] + "/scripts/remove_contamination.R",
-			contamdir = config["cdir"] + "/decontamination"
+			contam_dir = config["rdir"] + "/decontamination",
+			libname = "{library_highres}"
 		conda:
 			config["wdir"] + "/envs/r.yaml"
 		log:
 			config["rdir"] + "/logs/{library_highres}_contam_remove.log"
 		shell:
 			"""
-			{params.script} -i {output.fasta_contam} -c {input.contam} -o {output.cleaned_fasta} &>> {log}
-			LC_ALL=C grep '^>' {output.cleaned_fasta} | sed 's/^>//' > "{params.contam_dir}/tmp.accnos"
-			NSEQ=$(wc -l "{params.contam_dir}/tmp.accnos" | cut -d' ' -f1)
-			printf 'TAXID\n%.0s' $(seq 1 $NSEQ) | paste - "{params.contam_dir}/tmp.accnos" | paste - <(cut -d'|' -f3 "{params.contam_dir}/tmp.accnos") > {output.cleaned_map}
-			rm "{params.contam_dir}/tmp.accnos"
+			{params.script} -i {input.fasta_contam} -c {input.contam} -o {output.cleaned_fasta} &>> {log}
+			LC_ALL=C grep '^>' {output.cleaned_fasta} | sed 's/^>//' > "{params.contam_dir}/tmp_{params.libname}.accnos"
+			NSEQ=$(wc -l "{params.contam_dir}/tmp_{params.libname}.accnos" | cut -d' ' -f1)
+			printf 'TAXID\\n%.0s' $(seq 1 $NSEQ) | paste - "{params.contam_dir}/tmp_{params.libname}.accnos" | paste - <(cut -d'|' -f3 "{params.contam_dir}/tmp_{params.libname}.accnos") > {output.cleaned_map}
+			rm "{params.contam_dir}/tmp_{params.libname}.accnos"
+			cat {output.cleaned_map} >> {input.map_noncontam}
+			cat {output.cleaned_fasta} >> {input.fasta_noncontam}
+			rm {input.fasta_tmp} {input.map_tmp}
 			"""
 
-	rule concat_cleaned_ncbi:
+else:
+	rule move_library_ncbi:
 		input:
-			id_contam = config["cdir"] + "/decontamination/contam_id.accnos",
-			fasta = config["rdir"] + "/kraken2_db/library/{library_highres}/library.fna",
-			map = config["rdir"] + "/kraken2_db/library/{library_highres}/prelim_map.txt",
-			cleaned_fasta = config["cdir"] + "/decontamination/{library_highres}_cleaned.fna",
-			cleaned_map = config["cdir"] + "/decontamination/{library_highres}_cleaned_map.txt"
+			fasta = config["rdir"] + "/kraken2_db/tmp/{library_highres}_library.fna",
+			map = config["rdir"] + "/kraken2_db/tmp/{library_highres}_prelim_map.txt"
 		output:
-			done = config["cdir"] + "/decontamination/{library_highres}_cleaning.done"
-		params:
-			tmpdir = config["rdir"] + "/kraken2_db/tmp/{library_highres}"
-		conda:
-			config["wdir"] + "/envs/bbmap.yaml"
+			fasta = config["rdir"] + "/kraken2_db/library/{library_highres}/library.fna",
+			map = config["rdir"] + "/kraken2_db/library/{library_highres}/prelim_map.txt"
 		shell:
 			"""
-			mv {input.fasta} "{params.tmpdir}/library.fna"
-			filterbyname.sh in="{params.tmpdir}/library.fna" out={input.fasta} names={input.id_contam} include=f
-			mv {input.map} "{params.tmpdir}/prelim_map.txt"
-			grep -v -F -f {input.id_contam} "{params.tmpdir}/prelim_map.txt" > {input.map}
-			cat {input.cleaned_fasta} >> {input.fasta}
-			cat {input.cleaned_map} >> {input.map}
-			rm "{params.tmpdir}/prelim_map.txt" "{params.tmpdir}/library.fna"
-			touch {output}
+			mv {input.fasta} {output.fasta}
+			mv {input.map} {output.map}
 			"""
 

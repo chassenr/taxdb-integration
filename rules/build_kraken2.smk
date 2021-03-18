@@ -49,11 +49,11 @@ rule format_taxonomy:
 if config["kingdoms_highres"]:
 	rule cat_library:
 		input:
-			fasta_ncbi = expand(config["rdir"] + "/kraken2_db/library/{library_highres}/library.fna", library_highres = LIBRARY_HIGHRES),
-			fasta_gtdb = config["rdir"] + "/kraken2_db/library/gtdb/library.fna",
+			fasta_ncbi = expand(config["rdir"] + "/kraken2_db/tmp/{library_highres}_library.fna", library_highres = LIBRARY_HIGHRES),
+			fasta_gtdb = config["rdir"] + "/kraken2_db/tmp/gtdb_library.fna",
 			fasta_checkv = config["rdir"] + "/kraken2_db/library/checkv/library.fna",
-			map_ncbi = expand(config["rdir"] + "/kraken2_db/library/{library_highres}/library.fna", library_highres = LIBRARY_HIGHRES),
-			map_gtdb = config["rdir"] + "/kraken2_db/library/gtdb/prelim_map.txt",
+			map_ncbi = expand(config["rdir"] + "/kraken2_db/tmp/{library_highres}_prelim_map.txt", library_highres = LIBRARY_HIGHRES),
+			map_gtdb = config["rdir"] + "/kraken2_db/tmp/gtdb_prelim_map.txt",
 			map_checkv = config["rdir"] + "/kraken2_db/library/checkv/prelim_map.txt"
 		output:
 			tmp_fna = config["rdir"] + "/kraken2_db/tmp/library.fna",
@@ -80,7 +80,7 @@ if config["kingdoms_highres"]:
 			cmap = config["rdir"] + "/decontamination/cmap.txt",
 			contam = config["rdir"] + "/decontamination/highres_db_conterm_prediction",
 			contam_filt = config["rdir"] + "/decontamination/highres_db_conterm_prediction_filt",
-			id_contam = config["cdir"] + "/decontamination/contam_id.accnos"
+			id_contam = config["rdir"] + "/decontamination/contam_id.accnos"
 		params:
 			script = config["wdir"] + "/scripts/get_kingdoms_conterminator.R",
 			tmpdir = config["rdir"] + "/decontamination/tmp",
@@ -105,7 +105,7 @@ if config["kingdoms_highres"]:
 			# run conterminator
 			KSTR=$(cat {output.kstring})
 			XSTR=$(cat {output.xstring})
-			conterminator dna {input.tmp_fna} {output.cmap} {params.prefix} {params.tmpdir} --mask-lower-case 1 --ncbi-tax-dump {params.taxdir} --threads {threads} --split-memory-limit {params.cmem} --blacklist $XSTR --kingdoms $KSTR
+			conterminator dna {input.tmp_fna} {output.cmap} {params.prefix} {params.tmpdir} --mask-lower-case 1 --ncbi-tax-dump {params.taxdir} --threads {threads} --split-memory-limit {params.cmem} --blacklist $XSTR --kingdoms $KSTR &>> {log}
 			awk -v FS="\\t" -v OFS="\\t" '$5 >= 0 && $6 >= 0' {output.contam} > {output.contam_filt}
 			cut -f2 {output.contam_filt} | sort | uniq > {output.id_contam}
 			"""
