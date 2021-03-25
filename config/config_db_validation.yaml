@@ -25,7 +25,7 @@ threads: 1
 krakenbuild_threads: 32
 
 ps_kmer_length:
-  #- 35
+  - 35
   - 25
 
 ps_minimizer_length:
@@ -44,5 +44,33 @@ kraken_confidence:
 
 kraken_rtl:
   - 0
+  - 0.1
+  - 0.15
   - 0.25
+
+# parameters for metagenome simulation
+library_name:
+  - fungi
+  - invertebrate
+  - plant
+  - protozoa
+  - vertebrate_mammalian
+  - vertebrate_other
+
+random_link: "https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/005/845/GCF_000005845.2_ASM584v2/GCF_000005845.2_ASM584v2_genomic.fna.gz"
+
+download_threads: 32
+
+read_length:
+  - 150
+
+insert_size: 350
+
+sim_seqdepth: 1e7
+
+sim_threads: 32
+
+short_read_length:
+  - 80
+  - 40
 

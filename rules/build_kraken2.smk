@@ -78,9 +78,7 @@ if config["kingdoms_highres"]:
 			kstring = config["rdir"] + "/decontamination/conterminator_string.txt",
 			xstring = config["rdir"] + "/decontamination/conterminator_blacklist.txt",
 			cmap = config["rdir"] + "/decontamination/cmap.txt",
-			contam = config["rdir"] + "/decontamination/highres_db_conterm_prediction",
-			contam_filt = config["rdir"] + "/decontamination/highres_db_conterm_prediction_filt",
-			id_contam = config["rdir"] + "/decontamination/contam_id.accnos"
+			contam = config["rdir"] + "/decontamination/highres_db_conterm_prediction"
 		params:
 			script = config["wdir"] + "/scripts/get_kingdoms_conterminator.R",
 			tmpdir = config["rdir"] + "/decontamination/tmp",
@@ -101,12 +99,22 @@ if config["kingdoms_highres"]:
 			touch {output.delnodes}
 			touch {output.merged}
 			# parse taxid string for conterminator kingdoms parameter
-			{params.script} -t {params.taxdir} -k "{params.kingdoms}" -s "{params.taxdir}/accessionTaxa.sql" -o {output.kstring} -x {output.xstring}
+			{params.script} -t {params.taxdir} -k "{params.kingdoms}" -s "{params.taxdir}/accessionTaxa.sql" -o {output.kstring} -x {output.xstring} &>> {log}
 			# run conterminator
 			KSTR=$(cat {output.kstring})
 			XSTR=$(cat {output.xstring})
 			conterminator dna {input.tmp_fna} {output.cmap} {params.prefix} {params.tmpdir} --mask-lower-case 1 --ncbi-tax-dump {params.taxdir} --threads {threads} --split-memory-limit {params.cmem} --blacklist $XSTR --kingdoms $KSTR &>> {log}
-			awk -v FS="\\t" -v OFS="\\t" '$5 >= 0 && $6 >= 0' {output.contam} > {output.contam_filt}
+			"""
+
+	rule parse_contam_highres:
+		input:
+			contam = config["rdir"] + "/decontamination/highres_db_conterm_prediction"
+		output:
+			contam_filt = config["rdir"] + "/decontamination/highres_db_conterm_prediction_filt",
+			id_contam = config["rdir"] + "/decontamination/contam_id.accnos"
+		shell:
+			"""
+			awk -v FS="\\t" -v OFS="\\t" '$5 >= 0 && $6 >= 0' {input.contam} > {output.contam_filt}
 			cut -f2 {output.contam_filt} | sort | uniq > {output.id_contam}
 			"""
 

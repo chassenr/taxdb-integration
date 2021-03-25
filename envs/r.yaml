@@ -5,6 +5,7 @@ channels:
 dependencies:
   - r-base
   - r-tidyverse
+  - r-tidytable
   - r-crayon
   - r-optparse
   - r-config
@@ -15,3 +16,6 @@ dependencies:
   - r-rentrez
   - r-seqinr
   - bioconductor-iranges
+  - r-caret
+  - r-e1071
+  - r-vegan

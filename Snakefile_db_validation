@@ -21,14 +21,28 @@ MS = config["ps_minimizer_spaces"]
 CONF = config["kraken_confidence"]
 RTL = config["kraken_rtl"]
 LIBRARY_HIGHRES = config["library_highres"]
+LIBRARY_NAME = config["library_name"]
+RL = config["read_length"]
+SERL = config["short_read_length"]
 
 wildcard_constraints:
-	library_highres = '|'.join(LIBRARY_HIGHRES)
+	library_highres = '|'.join(LIBRARY_HIGHRES),
+	library_name = '|'.join(LIBRARY_NAME),
+	rtl = "[0-9\.]+"
 
 rule all:
 	input:
 		#hash_nolim = expand(config["sdir"] + "/db_coarse_k{kl}_m{ml}_s{ms}_nolim/hash.k2d", kl = KL, ml = ML, ms = MS),
-		hash_mem220 = expand(config["sdir"] + "/db_coarse_k{kl}_m{ml}_s{ms}_mem220/hash.k2d", kl = KL, ml = ML, ms = MS)
+		#hash_mem220 = expand(config["sdir"] + "/db_coarse_k{kl}_m{ml}_s{ms}_mem220/hash.k2d", kl = KL, ml = ML, ms = MS),
+		#tax_select = config["sdir"] + "/sim_out/genomes_select.txt",
+		#sim_url = config["sdir"] + "/sim_out/genome_links.txt",
+		#sim_table_wr = config["sdir"] + "/sim_out/sim_genomes_table_wr.txt"
+		#sim_abund = config["sdir"] + "/sim_out/sim_PE_out_abund.txt",
+		#sim_fq_R1 = expand(config["sdir"] + "/sim_out/sim_PE_{rl}_out/1/R1.fq", rl = RL),
+		#sim_fq_R2 = expand(config["sdir"] + "/sim_out/sim_PE_{rl}_out/1/R2.fq", rl = RL)
+		simstats_SE = expand(config["sdir"] + "/sim_out/sim_SE_{serl}_out/coarse_k{kl}_m{ml}_s{ms}_nolim_c{conf}_rtl{rtl}_stats_taxongroups.txt", serl = SERL, kl = KL, ml = ML, ms = MS, conf = CONF, rtl = RTL),
+		#simstats_SE = expand(config["sdir"] + "/sim_out/sim_SE_{serl}_out/coarse_k{kl}_m{ml}_s{ms}_mem220_c{conf}_rtl{rtl}_stats_taxongroups.txt", serl = SERL, kl = KL, ml = ML, ms = MS, conf = CONF, rtl = RTL),
+		simstats_PE = expand(config["sdir"] + "/sim_out/sim_PE_{rl}_out/coarse_k{kl}_m{ml}_s{ms}_nolim_c{conf}_rtl{rtl}_stats_taxongroups.txt", rl = RL, kl = KL, ml = ML, ms = MS, conf = CONF, rtl = RTL)
 
 # delete library and taxonomy dirs in each db to save disk space if bracken db not planned
 
@@ -36,4 +50,6 @@ rule all:
 ##### load rules #####
 '''
 include: "rules/db_validation_coarse.smk"
+include: "rules/db_validation_sim.smk"
+include: "rules/db_validation_classify.smk"
 

@@ -1,0 +1,20 @@
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - numpy
+  - pandas
+  - docopt
+  - scipy
+  - biopython
+  - art
+  - pyfastx
+  - fqtools
+  - pip
+  - pip:
+    - pytest
+    - pytest-dependency
+    - pytest-console-scripts
+    - MGSIM
+
