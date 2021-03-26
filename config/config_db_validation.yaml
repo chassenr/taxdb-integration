@@ -46,6 +46,7 @@ kraken_rtl:
   - 0
   - 0.1
   - 0.15
+  - 0.2
   - 0.25
 
 # parameters for metagenome simulation
