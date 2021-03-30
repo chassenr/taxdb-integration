@@ -26,10 +26,8 @@ wildcard_constraints:
 
 rule all:
 	input:
-		fasta = expand(config["rdir"] + "/kraken2_db/library/{library_highres}/library.fna", library_highres = LIBRARY_HIGHRES),
-		cleaned_gtdb = config["rdir"] + "/decontamination/gtdb_cleaned.fna" if config["kingdoms_highres"] else [],
-		cleaned_ncbi = expand(config["rdir"] + "/decontamination/{library_highres}_cleaned.fna", library_highres = LIBRARY_HIGHRES) if config["kingdoms_highres"] else [],
-		hash = config["rdir"] + "/kraken2_db/hash.k2d"
+		hash_pro = config["rdir"] + "/kraken2_db_pro/hash.k2d",
+		hash_euk = config["rdir"] + "/kraken2_db_euk/hash.k2d"
 		
 
 '''

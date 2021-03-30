@@ -6,11 +6,6 @@ cdir: "/storage/hdd1/chh/TaxDB/Test1/coarse"
 # Default parameters
 threads: 1
 
-# select from which sources to combine the high resolution database
-include_ncbi: "yes"
-inlcude_gtdb: "yes"
-include_checkv: "yes"
-
 # Define wildcard values for NCBI partitions
 library_name:
   - fungi
@@ -126,15 +121,6 @@ checkv_derep_chunks: 5
 # Parameters for formatting taxonomy
 tax_script: "/storage/hdd1/chh/Repos/Metagenomics-Index-Correction/tax_from_gtdb.py"
 
-# optional: conterminator for high-res database (if applicable, choose combination of below)
-# prokaryotes: bacteria and archaea (GTDB)
-# fungi: fungi
-# protists: protozoa and algae (plants that are not Streptophytes)
-# plants: Streptophytes
-# metazoa: higher (non-plant) eukaryotes
-kingdoms_highres: "prokaryotes,fungi,protists"
-# kingdoms_highres: ""
-
 # Include UniVec databases
 univec: "UniVec_Core"
 
@@ -144,17 +130,7 @@ krakenbuild_threads: 32
 kmer_len: 31
 minimizer_len: 23
 minimizer_spaces: 4
-max_dbsize: 450000000000
-
-# Parameter sweep
-ps_kmer_length:
-  - 35
-  - 25
-ps_minimizer_length:
-  - 23
-ps_minimizer_spaces:
-  - 4
-kraken_classify_threads: 16
+max_dbsize: 700000000000
 
 # settings for coarse DB
 rank_coarse:

@@ -24,6 +24,7 @@ LIBRARY_HIGHRES = config["library_highres"]
 LIBRARY_NAME = config["library_name"]
 RL = config["read_length"]
 SERL = config["short_read_length"]
+DBSIZE = config["max_dbsize"]
 
 wildcard_constraints:
 	library_highres = '|'.join(LIBRARY_HIGHRES),
@@ -32,8 +33,9 @@ wildcard_constraints:
 
 rule all:
 	input:
+		#hash_nolim_pro = expand(config["sdir"] + "/db_highres_k{kl}_m{ml}_s{ms}_nolim_pro/hash.k2d", kl = KL, ml = ML, ms = MS)
 		#hash_nolim = expand(config["sdir"] + "/db_coarse_k{kl}_m{ml}_s{ms}_nolim/hash.k2d", kl = KL, ml = ML, ms = MS),
-		#hash_mem220 = expand(config["sdir"] + "/db_coarse_k{kl}_m{ml}_s{ms}_mem220/hash.k2d", kl = KL, ml = ML, ms = MS),
+		#hash_mem = expand(config["sdir"] + "/db_coarse_k{kl}_m{ml}_s{ms}_mem{dbsize}/hash.k2d", kl = KL, ml = ML, ms = MS, dbsize = DBSIZE),
 		#tax_select = config["sdir"] + "/sim_out/genomes_select.txt",
 		#sim_url = config["sdir"] + "/sim_out/genome_links.txt",
 		#sim_table_wr = config["sdir"] + "/sim_out/sim_genomes_table_wr.txt"
@@ -41,16 +43,20 @@ rule all:
 		#sim_fq_R1 = expand(config["sdir"] + "/sim_out/sim_PE_{rl}_out/1/R1.fq", rl = RL),
 		#sim_fq_R2 = expand(config["sdir"] + "/sim_out/sim_PE_{rl}_out/1/R2.fq", rl = RL)
 		#simstats_SE = expand(config["sdir"] + "/sim_out/sim_SE_{serl}_out/coarse_k{kl}_m{ml}_s{ms}_nolim_c{conf}_rtl{rtl}_stats_taxongroups.txt", serl = SERL, kl = KL, ml = ML, ms = MS, conf = CONF, rtl = RTL),
-		#simstats_SE = expand(config["sdir"] + "/sim_out/sim_SE_{serl}_out/coarse_k{kl}_m{ml}_s{ms}_mem220_c{conf}_rtl{rtl}_stats_taxongroups.txt", serl = SERL, kl = KL, ml = ML, ms = MS, conf = CONF, rtl = RTL),
+		simstats_SE = expand(config["sdir"] + "/sim_out/sim_SE_{serl}_out/coarse_k{kl}_m{ml}_s{ms}_mem{dbsize}_c{conf}_rtl{rtl}_stats_taxongroups.txt", serl = SERL, kl = KL, ml = ML, ms = MS, conf = CONF, rtl = RTL, dbsize = DBSIZE),
 		#simstats_PE = expand(config["sdir"] + "/sim_out/sim_PE_{rl}_out/coarse_k{kl}_m{ml}_s{ms}_nolim_c{conf}_rtl{rtl}_stats_taxongroups.txt", rl = RL, kl = KL, ml = ML, ms = MS, conf = CONF, rtl = RTL)
-		#simstats_PE = expand(config["sdir"] + "/sim_out/sim_PE_{rl}_out/coarse_k{kl}_m{ml}_s{ms}_mem220_c{conf}_rtl{rtl}_stats_taxongroups.txt", rl = RL, kl = KL, ml = ML, ms = MS, conf = CONF, rtl = RTL)
+		simstats_PE = expand(config["sdir"] + "/sim_out/sim_PE_{rl}_out/coarse_k{kl}_m{ml}_s{ms}_mem{dbsize}_c{conf}_rtl{rtl}_stats_taxongroups.txt", rl = RL, kl = KL, ml = ML, ms = MS, conf = CONF, rtl = RTL, dbsize = DBSIZE),
+		#conifer_PE = expand(config["sdir"] + "/sim_out/sim_PE_{rl}_out/highres_k{kl}_m{ml}_s{ms}_nolim_c{conf}_pro.conifer_out", rl = RL, kl = KL, ml = ML, ms = MS, conf = CONF, rtl = RTL),
+		#conifer_SE = expand(config["sdir"] + "/sim_out/sim_SE_{serl}_out/highres_k{kl}_m{ml}_s{ms}_nolim_c{conf}_pro.conifer_out", serl = SERL, kl = KL, ml = ML, ms = MS, conf = CONF, rtl = RTL)
 
 # delete library and taxonomy dirs in each db to save disk space if bracken db not planned
 
 '''
 ##### load rules #####
 '''
-include: "rules/db_validation_coarse.smk"
-include: "rules/db_validation_sim.smk"
-include: "rules/db_validation_classify.smk"
+include: "rules/db_validation_highres_pro.smk"
+#include: "rules/db_validation_coarse.smk"
+#include: "rules/db_validation_sim.smk"
+include: "rules/db_validation_classify_highres_pro.smk"
+include: "rules/db_validation_classify_coarse.smk"
 

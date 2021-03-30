@@ -25,7 +25,7 @@ threads: 1
 krakenbuild_threads: 32
 
 ps_kmer_length:
-  - 35
+  #- 35
   - 25
 
 ps_minimizer_length:
@@ -34,7 +34,9 @@ ps_minimizer_length:
 ps_minimizer_spaces:
   - 4
 
-max_dbsize: 220000000000
+max_dbsize: 
+  - 220
+  - 190
 
 kraken_classify_threads: 16
 
@@ -74,4 +76,8 @@ sim_threads: 32
 short_read_length:
   - 80
   - 40
+
+# manually decide on best paremter settings for coarse DB for sorting
+best_coarse_PE: ""
+best_coarse_SE: ""
 

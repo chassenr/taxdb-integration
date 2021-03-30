@@ -170,10 +170,10 @@ rule masking_gtdb:
 	input:
 		file_list = config["rdir"] + "/kraken2_genomes/file_names_derep_genomes.txt",
 		gtdb = config["rdir"] + "/tax_combined/gtdb_derep_taxonomy.txt",
-		nodes = config["rdir"] + "/kraken2_db/taxonomy/nodes.dmp",
-		names = config["rdir"] + "/kraken2_db/taxonomy/names.dmp"
+		nodes = config["rdir"] + "/kraken2_taxonomy/nodes.dmp",
+		names = config["rdir"] + "/kraken2_taxonomy/names.dmp"
 	output:
-		fasta = config["rdir"] + "/kraken2_db/tmp/gtdb_library.fna"
+		fasta = config["rdir"] + "/kraken2_db_pro/library/gtdb/library.fna"
 	conda:
 		config["wdir"] + "/envs/kraken2.yaml"
 	threads: config["masking_threads"]
@@ -184,11 +184,11 @@ rule masking_gtdb:
 
 rule prelim_map_gtdb:
 	input:  
-		fasta = config["rdir"] + "/kraken2_db/tmp/gtdb_library.fna"
+		fasta = config["rdir"] + "/kraken2_db_pro/library/gtdb/library.fna"
 	output:
-		map = config["rdir"] + "/kraken2_db/tmp/gtdb_prelim_map.txt"
+		map = config["rdir"] + "/kraken2_db_pro/library/gtdb/prelim_map.txt"
 	params: 
-		libdir = config["rdir"] + "/kraken2_db/tmp"
+		libdir = config["rdir"] + "/kraken2_db_pro/library/gtdb"
 	conda:
 		config["wdir"] + "/envs/kraken2.yaml"
 	shell:
@@ -198,69 +198,4 @@ rule prelim_map_gtdb:
 		printf 'TAXID\\n%.0s' $(seq 1 $NSEQ) | paste - {params.libdir}/tmp_gtdb.accnos | paste - <(cut -d'|' -f3 {params.libdir}/tmp_gtdb.accnos) > {output.map}
 		rm {params.libdir}/tmp_gtdb.accnos
 		"""
-
-if config["kingdoms_highres"]:
-	rule filter_contam_gtdb:
-		input:
-			id_contam = config["rdir"] + "/decontamination/contam_id.accnos",
-			fasta = config["rdir"] + "/kraken2_db/tmp/gtdb_library.fna",
-			map = config["rdir"] + "/kraken2_db/tmp/gtdb_prelim_map.txt"
-		output:
-			fasta_contam = config["rdir"] + "/decontamination/gtdb_library_contam.fna",
-			fasta_noncontam = config["rdir"] + "/kraken2_db/library/gtdb/library.fna",
-			map_noncontam = config["rdir"] + "/kraken2_db/library/gtdb/prelim_map.txt"
-		conda:
-			config["wdir"] + "/envs/bbmap.yaml"
-		log:
-			config["rdir"] + "/logs/gtdb_contam_filter.log"
-		shell:
-			"""
-			filterbyname.sh in={input.fasta} out={output.fasta_contam} names={input.id_contam} include=t
-			filterbyname.sh in={input.fasta} out={output.fasta_noncontam} names={input.id_contam} include=f
-			grep -v -F -f {input.id_contam} {input.map} > {output.map_noncontam}
-			"""
-
-	rule remove_contam_gtdb:
-		input:
-			contam = config["rdir"] + "/decontamination/highres_db_conterm_prediction_filt",
-			fasta_contam = config["rdir"] + "/decontamination/gtdb_library_contam.fna",
-			fasta_noncontam = config["rdir"] + "/kraken2_db/library/gtdb/library.fna",
-			map_noncontam = config["rdir"] + "/kraken2_db/library/gtdb/prelim_map.txt",
-			fasta_tmp = config["rdir"] + "/kraken2_db/tmp/gtdb_library.fna",
-			map_tmp = config["rdir"] + "/kraken2_db/tmp/gtdb_prelim_map.txt"
-		output:
-			cleaned_fasta = config["rdir"] + "/decontamination/gtdb_cleaned.fna",
-			cleaned_map = config["rdir"] + "/decontamination/gtdb_cleaned_map.txt"
-		params:
-			script = config["wdir"] + "/scripts/remove_contamination.R",
-			contam_dir = config["rdir"] + "/decontamination"
-		conda:
-			config["wdir"] + "/envs/r.yaml"
-		log:
-			config["rdir"] + "/logs/gtdb_contam_remove.log"
-		shell:
-			"""
-			{params.script} -i {input.fasta_contam} -c {input.contam} -o {output.cleaned_fasta} &>> {log}
-			LC_ALL=C grep '^>' {output.cleaned_fasta} | sed 's/^>//' > "{params.contam_dir}/tmp_gtdb.accnos"
-			NSEQ=$(wc -l "{params.contam_dir}/tmp_gtdb.accnos" | cut -d' ' -f1)
-			printf 'TAXID\\n%.0s' $(seq 1 $NSEQ) | paste - "{params.contam_dir}/tmp_gtdb.accnos" | paste - <(cut -d'|' -f3 "{params.contam_dir}/tmp_gtdb.accnos") > {output.cleaned_map}
-			rm "{params.contam_dir}/tmp_gtdb.accnos"
-			cat {output.cleaned_map} >> {input.map_noncontam}
-			cat {output.cleaned_fasta} >> {input.fasta_noncontam}
-			rm {input.fasta_tmp} {input.map_tmp}
-			"""
-
-else:
-	rule move_library_gtdb:
-		input:
-			fasta = config["rdir"] + "/kraken2_db/tmp/gtdb_library.fna",
-			map = config["rdir"] + "/kraken2_db/tmp/gtdb_prelim_map.txt"
-		output:
-			fasta = config["rdir"] + "/kraken2_db/library/gtdb/library.fna",
-			map = config["rdir"] + "/kraken2_db/library/gtdb/prelim_map.txt"
-		shell:
-			"""
-			mv {input.fasta} {output.fasta}
-			mv {input.map} {output.map}
-			"""
 
