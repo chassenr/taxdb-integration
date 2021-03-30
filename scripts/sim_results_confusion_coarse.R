@@ -175,9 +175,6 @@ tax_in_class[tax_in_class == "random"] <- "NA"
 # apply RTL threshold
 tax_out_class[kraken_out$rtl < opt$rtl, ] <- "NA"
 
-# directly compare tax assignments
-tax_comparison <- tax_in_class == tax_out_class
-
 
 ### calculate confusion matrix ####
 

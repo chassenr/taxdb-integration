@@ -35,7 +35,7 @@ sim_summarize <- function(simpath) {
   cm_domain$Reference <- factor(cm_domain$Reference, levels = c("Archaea", "Bacteria", "Eukaryota", "Viruses", "NA"))
   cm_domain$mem_kmer <- paste(cm_domain$memory, cm_domain$kmer, sep = "_")
   
-  pdf(file.path(simpath, "cm_domain.pdf"), width = 10, height = 9)
+  pdf(file.path(simpath, paste0(basename(simpath), "_cm_domain.pdf")), width = 12, height = 9)
   par(
     ann = F,
     mfcol = c(
@@ -117,7 +117,7 @@ sim_summarize <- function(simpath) {
   stats_domain$class <- factor(stats_domain$class, levels = c("Archaea", "Bacteria", "Eukaryota", "Viruses", "NA"))
   stats_domain$mem_kmer <- paste(stats_domain$memory, stats_domain$kmer, sep = "_")
   
-  pdf(file.path(simpath, "stats_domain.pdf"), width = 10, height = 9)
+  pdf(file.path(simpath, paste0(basename(simpath), "_stats_domain.pdf")), width = 12, height = 9)
   par(
     ann = F,
     mfcol = c(
@@ -212,7 +212,7 @@ sim_summarize <- function(simpath) {
   cm_taxongroups$Reference <- factor(cm_taxongroups$Reference, levels = c("Archaea", "Bacteria", "Viruses", "Fungi", "Protists", "Plants", "Metazoa", "NA"))
   cm_taxongroups$mem_kmer <- paste(cm_taxongroups$memory, cm_taxongroups$kmer, sep = "_")
   
-  pdf(file.path(simpath, "cm_taxongroups.pdf"), width = 10, height = 9)
+  pdf(file.path(simpath, paste0(basename(simpath), "_cm_taxongroups.pdf")), width = 12, height = 9)
   par(
     ann = F, 
     mfcol = c(
@@ -294,7 +294,7 @@ sim_summarize <- function(simpath) {
   stats_taxongroups$class <- factor(stats_taxongroups$class, levels = c("Archaea", "Bacteria", "Viruses", "Fungi", "Protists", "Plants", "Metazoa", "NA"))
   stats_taxongroups$mem_kmer <- paste(stats_taxongroups$memory, stats_taxongroups$kmer, sep = "_")
   
-  pdf(file.path(simpath, "stats_taxongroups.pdf"), width = 10, height = 9)
+  pdf(file.path(simpath, paste0(basename(simpath), "_stats_taxongroups.pdf")), width = 12, height = 9)
   par(
     ann = F, 
     mfcol = c(
