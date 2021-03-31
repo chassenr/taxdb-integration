@@ -14,8 +14,8 @@ These results are in ```*_cm_taxongroups.pdf``` and ```*_stats_taxongroups.pdf``
 The corresponding legend for these plots is in ```sim_legend_coarse.pdf```.
 
 
-For the second classification step using the high-resolution database only for prokaryotes and viruses, we calculated the number and percentage of correctly classified reads, reads incorrectly assigned to other prokaryotic or viral taxa, eukaryotic or random reads incorrectly assigned to a prokaryotic or viral taxon, and unassigned reads at each taxonomic rank. 
-The absolute read number are in ```*_taxlevels_abs.pdf``` and the percentages in ```*_taxlevels_rel.pdf```.
+For the second classification step using the high-resolution database only for prokaryotes and viruses, we calculated the number and percentage of correctly classified reads, prokaryotic or viral reads incorrectly assigned to other prokaryotic or viral taxa, eukaryotic or random reads incorrectly assigned to a prokaryotic or viral taxon, and unassigned reads at each taxonomic rank. 
+The absolute read numbers are shown in a stacked plot in ```*_taxlevels_abs.pdf``` and the stacked percentages in ```*_taxlevels_rel.pdf```. 
 
 
 ### Conclusion
