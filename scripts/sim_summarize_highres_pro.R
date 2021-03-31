@@ -403,8 +403,10 @@ sim_summarize <- function(simpath, ground_truth) {
   )
 }
 
+ground_truth_SE_40 <- 5937901
+ground_truth_SE_80 <- 5894762
 ground_truth_PE_150 <- 5812590
 
-SE_40 <- sim_summarize("C:/Users/chassenrueck/Documents/Bioinf_projects/NCBI_taxdb_integration/Sim_olorin/SE_40", ground_truth)
-SE_80 <- sim_summarize("C:/Users/chassenrueck/Documents/Bioinf_projects/NCBI_taxdb_integration/Sim_olorin/SE_80", ground_truth)
-PE_150 <- sim_summarize("C:/Users/chassenrueck/Documents/Bioinf_projects/NCBI_taxdb_integration/Sim_olorin/PE_150", ground_truth_PE_150)
+SE_40_highres_pro <- sim_summarize("/storage/hdd1/chh/TaxDB/Test1/simulation/sim_out/sim_SE_40_out", ground_truth_SE_40)
+SE_80_highres_pro <- sim_summarize("/storage/hdd1/chh/TaxDB/Test1/simulation/sim_out/sim_SE_80_out", ground_truth_SE_80)
+PE_150_highres_pro <- sim_summarize("/storage/hdd1/chh/TaxDB/Test1/simulation/sim_out/sim_PE_150_out", ground_truth_PE_150)

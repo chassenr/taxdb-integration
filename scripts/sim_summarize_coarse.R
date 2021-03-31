@@ -142,14 +142,14 @@ sim_summarize <- function(simpath) {
         box("plot")
         points(
           as.numeric(tmp$class),
-          tmp$Specificity,
+          tmp$Precision,
           pch = 3,
           col = "blue",
           lwd = 2
         )
         points(
           as.numeric(tmp$class),
-          tmp$Sensitivity,
+          tmp$Recall,
           pch = 1,
           col = "red",
           lwd = 2
@@ -319,14 +319,14 @@ sim_summarize <- function(simpath) {
         box("plot")
         points(
           as.numeric(tmp$class),
-          tmp$Specificity,
+          tmp$Precision,
           pch = 3,
           col = "blue",
           lwd = 2
         )
         points(
           as.numeric(tmp$class),
-          tmp$Sensitivity,
+          tmp$Recall,
           pch = 1,
           col = "red",
           lwd = 2
@@ -371,11 +371,11 @@ sim_summarize <- function(simpath) {
   )
 }
 
-SE_40 <- sim_summarize("C:/Users/chassenrueck/Documents/Bioinf_projects/NCBI_taxdb_integration/Sim_olorin/SE_40")
-SE_80 <- sim_summarize("C:/Users/chassenrueck/Documents/Bioinf_projects/NCBI_taxdb_integration/Sim_olorin/SE_80")
-PE_150 <- sim_summarize("C:/Users/chassenrueck/Documents/Bioinf_projects/NCBI_taxdb_integration/Sim_olorin/PE_150")
+SE_40_coarse <- sim_summarize("/storage/hdd1/chh/TaxDB/Test1/simulation/sim_out/sim_SE_40_out")
+SE_80_coarse <- sim_summarize("/storage/hdd1/chh/TaxDB/Test1/simulation/sim_out/sim_SE_80_out")
+PE_150_coarse <- sim_summarize("/storage/hdd1/chh/TaxDB/Test1/simulation/sim_out/sim_PE_150_out")
 
-pdf("C:/Users/chassenrueck/Documents/Bioinf_projects/NCBI_taxdb_integration/Sim_olorin/sim_legend.pdf", width = 5, height = 5)
+pdf("/storage/hdd1/chh/TaxDB/Test1/simulation/sim_out/sim_legend_coarse.pdf", width = 5, height = 5)
 par(ann = F, mfrow = c(2, 1), mar = c(5, 3, 5, 3), xpd = NA)
 image(
   x = seq(0, 10, length.out = 50),
@@ -399,7 +399,7 @@ par(mar = c(5, 3, 7, 3))
 plot.new()
 legend(
   "top",
-  legend = c("Specificity", "Sensitivity", "F1 score"),
+  legend = c("Precision", "Recall", "F1 score"),
   col = c("blue", "red", "green"),
   pch = c(3, 1, 5),
   pt.cex = 1.3,
