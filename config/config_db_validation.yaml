@@ -4,11 +4,6 @@ rdir: "/storage/hdd1/chh/TaxDB/Test1"
 cdir: "/storage/hdd1/chh/TaxDB/Test1/coarse"
 sdir: "/storage/hdd1/chh/TaxDB/Test1/simulation"
 
-# select from which sources to combine the high resolution database
-include_ncbi: "yes"
-inlcude_gtdb: "yes"
-include_checkv: "yes"
-
 # define taxonomic partitions for highres db that were included
 library_highres:
   - fungi
@@ -40,17 +35,6 @@ max_dbsize:
 
 kraken_classify_threads: 16
 
-kraken_confidence:
-  - 0
-  - 0.1
-
-kraken_rtl:
-  - 0
-  - 0.1
-  - 0.15
-  - 0.2
-  - 0.25
-
 # parameters for metagenome simulation
 library_name:
   - fungi
@@ -77,7 +61,34 @@ short_read_length:
   - 80
   - 40
 
-# manually decide on best paremter settings for coarse DB for sorting
-best_coarse_PE: ""
-best_coarse_SE: ""
+# Parameters for kraken classification (coarse DB)
+
+kraken_confidence_coarse:
+  - 0
+  - 0.1
+
+kraken_rtl_coarse:
+  - 0
+  - 0.1
+  - 0.15
+  - 0.2
+  - 0.25
+
+# Parameters for kraken classification (highres DB)
+
+kraken_confidence_highres:
+  - 0
+  - 0.1
+
+kraken_rtl_highres:
+  - 0
+  - 0.1
+  - 0.15
+  - 0.2
+  - 0.25
+  - 0.3
+  - 0.35
+  - 0.4
+  - 0.45
+  - 0.5
 

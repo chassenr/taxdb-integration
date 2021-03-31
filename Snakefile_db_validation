@@ -18,8 +18,10 @@ configfile: "config/config_db_validation.yaml"
 KL = config["ps_kmer_length"]
 ML = config["ps_minimizer_length"]
 MS = config["ps_minimizer_spaces"]
-CONF = config["kraken_confidence"]
-RTL = config["kraken_rtl"]
+CONF_COARSE = config["kraken_confidence_coarse"]
+RTL_COARSE = config["kraken_rtl_coarse"]
+CONF_HIGHRES = config["kraken_confidence_highres"]
+RTL_HIGHRES = config["kraken_rtl_highres"]
 LIBRARY_HIGHRES = config["library_highres"]
 LIBRARY_NAME = config["library_name"]
 RL = config["read_length"]
@@ -29,25 +31,15 @@ DBSIZE = config["max_dbsize"]
 wildcard_constraints:
 	library_highres = '|'.join(LIBRARY_HIGHRES),
 	library_name = '|'.join(LIBRARY_NAME),
-	rtl = "[0-9\.]+"
+	rtl_coarse = "[0-9\.]+",
+	rtl_highres = "[0-9\.]+"
 
 rule all:
 	input:
-		#hash_nolim_pro = expand(config["sdir"] + "/db_highres_k{kl}_m{ml}_s{ms}_nolim_pro/hash.k2d", kl = KL, ml = ML, ms = MS)
-		#hash_nolim = expand(config["sdir"] + "/db_coarse_k{kl}_m{ml}_s{ms}_nolim/hash.k2d", kl = KL, ml = ML, ms = MS),
-		#hash_mem = expand(config["sdir"] + "/db_coarse_k{kl}_m{ml}_s{ms}_mem{dbsize}/hash.k2d", kl = KL, ml = ML, ms = MS, dbsize = DBSIZE),
-		#tax_select = config["sdir"] + "/sim_out/genomes_select.txt",
-		#sim_url = config["sdir"] + "/sim_out/genome_links.txt",
-		#sim_table_wr = config["sdir"] + "/sim_out/sim_genomes_table_wr.txt"
-		#sim_abund = config["sdir"] + "/sim_out/sim_PE_out_abund.txt",
-		#sim_fq_R1 = expand(config["sdir"] + "/sim_out/sim_PE_{rl}_out/1/R1.fq", rl = RL),
-		#sim_fq_R2 = expand(config["sdir"] + "/sim_out/sim_PE_{rl}_out/1/R2.fq", rl = RL)
-		#simstats_SE = expand(config["sdir"] + "/sim_out/sim_SE_{serl}_out/coarse_k{kl}_m{ml}_s{ms}_nolim_c{conf}_rtl{rtl}_stats_taxongroups.txt", serl = SERL, kl = KL, ml = ML, ms = MS, conf = CONF, rtl = RTL),
-		simstats_SE = expand(config["sdir"] + "/sim_out/sim_SE_{serl}_out/coarse_k{kl}_m{ml}_s{ms}_mem{dbsize}_c{conf}_rtl{rtl}_stats_taxongroups.txt", serl = SERL, kl = KL, ml = ML, ms = MS, conf = CONF, rtl = RTL, dbsize = DBSIZE),
-		#simstats_PE = expand(config["sdir"] + "/sim_out/sim_PE_{rl}_out/coarse_k{kl}_m{ml}_s{ms}_nolim_c{conf}_rtl{rtl}_stats_taxongroups.txt", rl = RL, kl = KL, ml = ML, ms = MS, conf = CONF, rtl = RTL)
-		simstats_PE = expand(config["sdir"] + "/sim_out/sim_PE_{rl}_out/coarse_k{kl}_m{ml}_s{ms}_mem{dbsize}_c{conf}_rtl{rtl}_stats_taxongroups.txt", rl = RL, kl = KL, ml = ML, ms = MS, conf = CONF, rtl = RTL, dbsize = DBSIZE),
-		#conifer_PE = expand(config["sdir"] + "/sim_out/sim_PE_{rl}_out/highres_k{kl}_m{ml}_s{ms}_nolim_c{conf}_pro.conifer_out", rl = RL, kl = KL, ml = ML, ms = MS, conf = CONF, rtl = RTL),
-		#conifer_SE = expand(config["sdir"] + "/sim_out/sim_SE_{serl}_out/highres_k{kl}_m{ml}_s{ms}_nolim_c{conf}_pro.conifer_out", serl = SERL, kl = KL, ml = ML, ms = MS, conf = CONF, rtl = RTL)
+		#PE_cm_domain_filt_nolim = expand(config["sdir"] + "/sim_out/sim_PE_{rl}_out/highres_k{kl}_m{ml}_s{ms}_nolim_c{conf_highres}_rtl{rtl_highres}_pro_coarse_c{conf_coarse}_rtl{rtl_coarse}_cm_domain_filt.txt", rl = RL, kl = KL, ml = ML, ms = MS, conf_highres = CONF_HIGHRES, rtl_highres = RTL_HIGHRES, conf_coarse = CONF_COARSE, rtl_coarse = RTL_COARSE),
+		PE_cm_domain_filt_mem = expand(config["sdir"] + "/sim_out/sim_PE_{rl}_out/highres_k{kl}_m{ml}_s{ms}_mem{dbsize}_c{conf_highres}_rtl{rtl_highres}_pro_coarse_c{conf_coarse}_rtl{rtl_coarse}_cm_domain_filt.txt", rl = RL, kl = KL, ml = ML, ms = MS, conf_highres = CONF_HIGHRES, rtl_highres = RTL_HIGHRES, conf_coarse = CONF_COARSE, rtl_coarse = RTL_COARSE, dbsize = DBSIZE),
+		#SE_cm_domain_filt_nolim = expand(config["sdir"] + "/sim_out/sim_SE_{serl}_out/highres_k{kl}_m{ml}_s{ms}_nolim_c{conf_highres}_rtl{rtl_highres}_pro_coarse_c{conf_coarse}_rtl{rtl_coarse}_cm_domain_filt.txt", serl = SERL, kl = KL, ml = ML, ms = MS, conf_highres = CONF_HIGHRES, rtl_highres = RTL_HIGHRES, conf_coarse = CONF_COARSE, rtl_coarse = RTL_COARSE),
+		SE_cm_domain_filt_mem = expand(config["sdir"] + "/sim_out/sim_SE_{serl}_out/highres_k{kl}_m{ml}_s{ms}_mem{dbsize}_c{conf_highres}_rtl{rtl_highres}_pro_coarse_c{conf_coarse}_rtl{rtl_coarse}_cm_domain_filt.txt", serl = SERL, kl = KL, ml = ML, ms = MS, conf_highres = CONF_HIGHRES, rtl_highres = RTL_HIGHRES, conf_coarse = CONF_COARSE, rtl_coarse = RTL_COARSE, dbsize = DBSIZE)
 
 # delete library and taxonomy dirs in each db to save disk space if bracken db not planned
 
@@ -58,5 +50,5 @@ include: "rules/db_validation_highres_pro.smk"
 #include: "rules/db_validation_coarse.smk"
 #include: "rules/db_validation_sim.smk"
 include: "rules/db_validation_classify_highres_pro.smk"
-include: "rules/db_validation_classify_coarse.smk"
+#include: "rules/db_validation_classify_coarse.smk"
 
