@@ -1,4 +1,4 @@
-### Validation of the 2-step classification approach
+## Validation of the 2-step classification approach
 
 To assess the performance of the 2-step classification approach, 3 metagenomes were simulated from the same simulated community to approximate 2x150bp PE sequencing, 1x80bp (short read sequencing), and 1x40bp reads (aDNA).
 
