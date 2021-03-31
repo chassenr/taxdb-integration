@@ -14,8 +14,8 @@ These results are in ```*_cm_taxongroups.pdf``` and ```*_stats_taxongroups.pdf``
 The corresponding legend for these plots is in ```sim_legend_coarse.pdf```.
 
 
-For the second classification step using the high-resolution database only for prokaryotes and viruses, we calculated the number and percentage of correctly classified reads, prokaryotic or viral reads incorrectly assigned to other prokaryotic or viral taxa, eukaryotic or random reads incorrectly assigned to a prokaryotic or viral taxon, and unassigned reads at each taxonomic rank. 
-The absolute read numbers are shown in a stacked plot in ```*_taxlevels_abs.pdf``` and the stacked percentages in ```*_taxlevels_rel.pdf```. 
+For the second classification step using the high-resolution database only for prokaryotes and viruses, we calculated the number and percentage of correctly classified reads, prokaryotic or viral reads incorrectly assigned to other prokaryotic or viral taxa, eukaryotic or random reads incorrectly assigned to a prokaryotic or viral taxon, and unassigned reads at each taxonomic rank. Unclassified reads or reads assigned to root were removed from these calculations. Therefore, no unassigned reads are present at kingdom level.
+The absolute read numbers are shown in a stacked plot in ```*_taxlevels_abs.pdf``` and the stacked percentages in ```*_taxlevels_rel.pdf```. Along the x-axis are shown the results using a RTL threshold from 0 to 0.5 for the high-resolution database, further grouped by the confidence threshold used for the high-resolution DB classification, the RTL threshold applied after the coarse DB classification, and the confidence threshold used for the coarse DB classification.
 
 
 ### Conclusion
