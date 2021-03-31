@@ -2,6 +2,8 @@
 *
 !images
 !images/*
+!benchmark
+!benchmark/*
 !scripts
 !scripts/*
 !scripts/common
