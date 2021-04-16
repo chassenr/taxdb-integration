@@ -19,3 +19,5 @@ dependencies:
   - r-caret
   - r-e1071
   - r-vegan
+  - r-httr
+  - r-furrr

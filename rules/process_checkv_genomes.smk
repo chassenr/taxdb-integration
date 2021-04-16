@@ -4,7 +4,9 @@ rule download_genomes_checkv:
 		clusters = config["rdir"] + "/checkv/checkv_clusters.tsv",
 		meta_genbank = config["rdir"] + "/checkv/checkv_genbank.tsv",
 		meta_circular = config["rdir"] + "/checkv/checkv_circular.tsv",
-		fna_reps = config["cdir"] + "/checkv/checkv_reps.fna"
+		fna_reps = config["cdir"] + "/checkv/checkv_reps.fna",
+		faa = config["rdir"] + "/checkv/checkv_full.faa",
+		faa_reps = config["cdir"] + "/checkv/checkv_reps.faa"
 	params:
 		checkv_link = config["checkv_link"],
 		outdir = config["rdir"] + "/checkv/"
@@ -20,6 +22,8 @@ rule download_genomes_checkv:
 		mv {params.outdir}/checkv_tmp/checkv-db-*/genome_db/checkv_genbank.tsv {output.meta_genbank}
 		mv {params.outdir}/checkv_tmp/checkv-db-*/genome_db/checkv_circular.tsv {output.meta_circular}
 		mv {params.outdir}/checkv_tmp/checkv-db-*/genome_db/checkv_reps.fna {output.fna_reps}
+		mv {params.outdir}/checkv_tmp/checkv-db-*/genome_db/checkv_full.faa {output.faa}
+		mv {params.outdir}/checkv_tmp/checkv-db-*/genome_db/checkv_reps.faa {output.faa_reps}
 		rm -rf "{params.outdir}/checkv_tmp"
 		rm {params.outdir}/*.tar.gz
 		"""

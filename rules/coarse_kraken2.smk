@@ -173,7 +173,7 @@ rule add_univec:
 		rm "{params.libdir}/tmp.fna"
 		grep '^>' {output.fasta} | sed 's/^>//' > {params.libdir}/tmp.accnos
 		NSEQ=$(wc -l {params.libdir}/tmp.accnos | cut -d' ' -f1)
-		printf 'TAXID\\n%.0s' $(seq 1 $NSEQ) | paste - {params.libdir}/tmp.accnos | paste - <(cut -d'|' -f3 {params.libdir}/tmp.accnos) > {output.map}
+		printf 'TAXID\\n%.0s' $(seq 1 $NSEQ) | paste - {params.libdir}/tmp.accnos | paste - <(cut -d'|' -f2 {params.libdir}/tmp.accnos) > {output.map}
 		rm {params.libdir}/tmp.accnos
 		"""
 

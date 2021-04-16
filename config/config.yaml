@@ -1,7 +1,7 @@
 # Basic dirs
 wdir: "/storage/hdd1/chh/Repos/taxdb-integration"
-rdir: "/storage/hdd1/chh/TaxDB/Test1"
-cdir: "/storage/hdd1/chh/TaxDB/Test1/coarse"
+rdir: "/storage/hdd1/chh/TaxDB"
+cdir: "/storage/hdd1/chh/TaxDB/coarse"
 
 # Default parameters
 threads: 1
@@ -51,36 +51,58 @@ filter_ncbi_fields:
   fungi: "genome_size,gc_avg,ctg_L50"
   protozoa: "genome_size,gc_avg,ctg_L50"
   plant: "genome_size,gc_avg,ctg_L50"
+  invertebrate: "genome_size,gc_avg,ctg_L50"
+  vertebrate_mammalian: "genome_size,gc_avg,ctg_L50"
+  vertebrate_other: "genome_size,gc_avg,ctg_L50"
 
 filter_ncbi_abs:
   fungi: "-1,-1,-1"
   protozoa: "-1,-1,-1"
   plant: "-1,-1,-1"
+  invertebrate: "-1,-1,-1"
+  vertebrate_mammalian: "-1,-1,-1"
+  vertebrate_other: "-1,-1,-1"
 
 filter_ncbi_rel:
   fungi: "0.1,0.1,0.1"
   protozoa: "0.1,0.1,0.1"
   plant: "0.1,0.1,0.1"
+  invertebrate: "0.1,0.1,0.1"
+  vertebrate_mammalian: "0.1,0.1,0.1"
+  vertebrate_other: "0.1,0.1,0.1"
 
 filter_ncbi_dif:
   fungi: "0.1,1,0.25"
   protozoa: "0.1,1,0.25"
   plant: "0.1,1,0.25"
+  invertebrate: "0.1,1,0.25"
+  vertebrate_mammalian: "0.1,1,0.25"
+  vertebrate_other: "0.1,1,0.25"
 
 filter_ncbi_sign:
   fungi: "greater,both,greater"
   protozoa: "greater,both,greater"
   plant: "greater,both,greater"
+  invertebrate: "greater,both,greater"
+  vertebrate_mammalian: "greater,both,greater"
+  vertebrate_other: "greater,both,greater"
 
 # Optional: include custom assemblies
-custom_ncbi:
+custom_ncbi_pre_derep:
   fungi: ""
   protozoa: ""
   plant: ""
+  invertebrate: ""
+  vertebrate_mammalian: ""
+  vertebrate_other: ""
 
-custom_gtdb: ""
+custom_ncbi_post_derep: ""
 
-custom_checkv: ""
+custom_gtdb_pre_derep: ""
+custom_gtdb_post_derep: ""
+
+custom_checkv_pre_derep: ""
+custom_checkv_post_derep: ""
 
 # Parameters for dereplicating genomes
 derep_threads: 32

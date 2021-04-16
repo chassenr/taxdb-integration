@@ -9,7 +9,9 @@ package.list <- c(
   "crayon",
   "optparse",
   "tidyverse",
-  "data.table"
+  "data.table",
+  "httr",
+  "furrr"
 )
 
 # Function to check if packages are installed
@@ -81,6 +83,13 @@ option_list <- list(
     default = NULL,
     help = "minimum assembly level",
     metavar = "character"
+  ),
+  make_option(
+    c("-c", "--cpus"), 
+    type = "integer", 
+    default = 1,
+    help = "number of cpus to use [default: 1]",
+    metavar = "number"
   ),
   make_option(
     c("-o", "--output"),
@@ -196,24 +205,67 @@ summary_combined <- rbind(
 ) %>% 
   select(-group, -acc_short)
 
-# format input file for aria2
-download_links <- summary_combined %>% 
+# run url check in parallel
+plan(multisession, workers = opt$cpus)
+
+# format input file for aria2 (nucleotide and protein)
+summary_combined_links <- summary_combined %>% 
   mutate(
-    file_name = paste0(basename(V20), "_genomic.fna.gz"),
     link = gsub("^ftp", "http", V20),
-    full_link = paste(link, file_name, sep = "/")
+    file_fna = paste0(basename(V20), "_genomic.fna.gz"),
+    file_faa = paste0(basename(V20), "_protein.faa.gz"),
+    link_fna = paste(link, file_fna, sep = "/"),
+    link_faa = paste(link, file_faa, sep = "/"),
+    # check if protein file is available
+    faa_available = !future_map_lgl(
+      link_faa,
+      http_error
+    )
   ) %>% 
-  select(full_link)
+  select(-link, -file_fna, -file_faa)
+
+# only keep genomes with proteins if available for each taxid
+summary_combined_with_faa <- summary_combined_links %>% 
+  filter(faa_available)
+summary_combined_no_faa <- summary_combined_links %>% 
+  filter(!V7 %in% summary_combined_with_faa$V7)
+summary_combined_good <- bind_rows(summary_combined_with_faa, summary_combined_no_faa)
 
 # print some summary stats
-msg(paste0("There are ", nrow(refseq), " RefSeq assemblies.\n"))
-msg(paste0("There are ", nrow(genbank), " Genbank assemblies, ", nrow(genbank_clean), " were retained at the selected assembly level.\n"))
+msg(
+  paste0(
+    "There are ",
+    nrow(refseq),
+    " RefSeq assemblies.\n"
+  )
+)
+msg(
+  paste0(
+    "There are ",
+    nrow(genbank), 
+    " Genbank assemblies, ", 
+    nrow(genbank_clean),
+    " were retained at the selected assembly level.\n"
+  )
+)
+msg(
+  paste0(
+    nrow(summary_combined_with_faa),
+    " genomes of ",
+    length(table(summary_combined_with_faa$V7)),
+    " species have predicted proteins, ", 
+    length(table(summary_combined_no_faa$V7)),
+    " species (",
+    nrow(summary_combined_no_faa),
+    " genomes) do not have any genomes with predicted proteins.\n"
+  )
+)
 
 
 ### write output ###
 
 write.table(
-  summary_combined,
+  summary_combined_good[, 1:22],
   opt$summary,
   quote = F,
   sep = "\t",
@@ -222,7 +274,7 @@ write.table(
 )
 
 write.table(
-  download_links,
+  summary_combined_good[, 23:25],
   opt$output,
   quote = F,
   sep = "\t",

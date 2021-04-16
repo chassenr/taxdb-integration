@@ -26,17 +26,20 @@ wildcard_constraints:
 
 rule all:
 	input:
-		hash_pro = config["rdir"] + "/kraken2_db_pro/hash.k2d",
-		hash_euk = config["rdir"] + "/kraken2_db_euk/hash.k2d"
+		taxonomy = expand(config["rdir"] + "/{library_name}/assembly_taxonomy.txt", library_name = LIBRARY_NAME),
+		download_complete = expand(config["rdir"] + "/{library_name}/genomes/done", library_name = LIBRARY_NAME),
+		tax_filt = expand(config["rdir"] + "/{library_name}/assembly_taxonomy_filtered.txt", library_name = LIBRARY_NAME)
 		
 
 '''
 ##### load rules #####
 '''
 include: "rules/process_ncbi_genomes.smk"
-include: "rules/process_gtdb_genomes.smk"
-include: "rules/process_checkv_genomes.smk"
-include: "rules/build_kraken2.smk"
+#include: "rules/process_gtdb_genomes.smk"
+#include: "rules/process_checkv_genomes.smk"
+#include: "rules/build_kraken2.smk"
+#include: "rules/process_ncbi_proteins.smk"
 #include: "rules/coarse_genomes.smk"
 #include: "rules/coarse_kraken2.smk"
+#include: "rules/coarse_proteins.smk"
 

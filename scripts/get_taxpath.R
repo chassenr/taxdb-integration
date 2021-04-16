@@ -73,17 +73,10 @@ option_list <- list(
     metavar = "character"
   ),
   make_option(
-    c("-t", "--taxdump"), 
-    type = "character", 
-    default = NULL,
-    help = "directory containing NCBI nodes.dmp and names.dmp", 
-    metavar = "character"
-  ),
-  make_option(
     c("-s", "--sql"), 
     type = "character", 
     default = NULL,
-    help = "location and name of sql database that will be generated from the taxdump", 
+    help = "location and name of sql database  for the NCBI taxdump", 
     metavar = "character"
   ),
   make_option(
@@ -97,28 +90,16 @@ option_list <- list(
 opt_parser <- OptionParser(option_list = option_list)
 opt <- parse_args(opt_parser)
 
-if (is.null(opt$input) | is.null(opt$output) | is.null(opt$taxdump) | is.null(opt$sql)) {
+if (is.null(opt$input) | is.null(opt$output) | is.null(opt$sql)) {
   print_help(opt_parser)
   stop(
-    "You need to provide the assembly summary table, the location of the taxdump files and sql database, and the name of the output file.\n", 
+    "You need to provide the assembly summary table, the taxdump sql database, and the name of the output file.\n", 
     call. = FALSE
   )
 }
 
 
 ### retrieve taxonomy ####
-
-# format NCBI taxdump database
-if(!file.exists(opt$sql)) {
-  read.names.sql(
-    paste0(opt$taxdump, "/names.dmp"),
-    opt$sql
-  )
-  read.nodes.sql(
-    paste0(opt$taxdump, "/nodes.dmp"),
-    opt$sql
-  )
-}
 
 # read assembly summary
 assembly_summary <- fread(
