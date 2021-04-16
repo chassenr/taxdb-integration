@@ -4,6 +4,8 @@
 !images/*
 !benchmark
 !benchmark/*
+!assets
+!assets/*
 !scripts
 !scripts/*
 !scripts/common

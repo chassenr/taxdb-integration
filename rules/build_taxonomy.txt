@@ -1,0 +1,45 @@
+rule check_taxpath:
+	input:
+		gtdb = config["rdir"] + "/tax_combined/gtdb_derep_taxonomy.txt",
+		checkv = config["rdir"] + "/tax_combined/checkv_derep_taxonomy.txt",
+		ncbi = expand(config["rdir"] + "/tax_combined/{library_name}_derep_taxonomy.txt", library_name = LIBRARY_NAME),
+		added_nuc_ncbi = config["rdir"] + "/tax_combined/euk_custom_post_derep_taxonomy.txt" if config["custom_ncbi_post_derep"] else [],
+		added_nuc_gtdb = config["rdir"] + "/tax_combined/pro_custom_post_derep_taxonomy.txt" if config["custom_gtdb_post_derep"] else [],
+		added_nuc_checkv = config["rdir"] + "/tax_combined/vir_custom_post_derep_taxonomy.txt" if config["custom_checkv_post_derep"] else [],
+		added_prot_ncbi = config["custom_euk_prot"] if config["custom_euk_prot"] else [],
+		added_prot_gtdb = config["custom_pro_prot"] if config["custom_pro_prot"] else [],
+		added_prot_checkv = config["custom_vir_prot"] if config["custom_vir_prot"] else []
+	output:
+		tax_combined = config["rdir"] + "/tax_combined/full_taxonomy_combined.txt"
+	params:
+		outdir = config["rdir"] + "/tax_combined",
+		script = config["wdir"] + "/scripts/fix_ncbi_taxpath.R"
+	conda:
+		config["wdir"] + "/envs/r.yaml"
+	log:
+		config["rdir"] + "/logs/fix_ncbi_taxpath.log"
+	shell:
+		"""
+		cat {input} > "{params.outdir}/tmp"
+		{params.script} -i "{params.outdir}/tmp" -o "{output.tax_combined}" &>> {log}
+		rm "{params.outdir}/tmp"
+		"""
+
+rule build_taxonomy:
+	input:
+		tax_combined = config["rdir"] + "/tax_combined/full_taxonomy_combined.txt"
+	output:
+		tax_good = config["rdir"] + "/tax_combined/full_taxonomy_good.txt",
+		nodes = config["rdir"] + "/DB_taxonomy/nodes.dmp",
+		names = config["rdir"] + "/DB_taxonomy/names.dmp",
+	params:
+		script = config["gtdb_to_taxdump"],
+		taxdir = config["rdir"] + "/DB_taxonomy"
+	conda:
+		config["wdir"] + "/envs/tax.yaml"
+	log:
+		config["rdir"] + "/logs/build_common_taxonomy.log"
+	shell:
+		"""
+		{params.script} -o {params.outdir} {input.tax_combined}
+		"""

@@ -1,23 +1,44 @@
-rule fix_ncbi_taxpath:
+
+
+
+
+
+rule masking_ncbi:
 	input:
-		gtdb = config["rdir"] + "/tax_combined/gtdb_derep_taxonomy.txt",
-		checkv = config["rdir"] + "/tax_combined/checkv_derep_taxonomy.txt",
-		ncbi = expand(config["rdir"] + "/tax_combined/{library_highres}_derep_taxonomy.txt", library_highres = LIBRARY_HIGHRES)
+		file_list = config["rdir"] + "/kraken2_genomes/file_names_derep_genomes.txt",
+		ncbi = config["rdir"] + "/tax_combined/{library_highres}_derep_taxonomy.txt",
+		nodes = config["rdir"] + "/kraken2_db_euk/taxonomy/nodes.dmp",
+		names = config["rdir"] + "/kraken2_db_euk/taxonomy/names.dmp"
 	output:
-		tax_combined = config["rdir"] + "/tax_combined/derep_taxonomy_combined.txt"
-	params:
-		outdir = config["rdir"] + "/tax_combined",
-		script = config["wdir"] + "/scripts/fix_ncbi_taxpath.R"
+		fasta = config["rdir"] + "/kraken2_db_euk/library/{library_highres}/library.fna"
 	conda:
-		config["wdir"] + "/envs/r.yaml"
-	log:
-		config["rdir"] + "/logs/fix_ncbi_taxpath.log"
+		config["wdir"] + "/envs/kraken2.yaml"
+	threads: config["masking_threads"]
 	shell:
 		"""
-		cat {input} > "{params.outdir}/tmp"
-		{params.script} -i "{params.outdir}/tmp" -o "{output.tax_combined}" &>> {log}
-		rm "{params.outdir}/tmp"
+		cut -f1 {input.ncbi} | grep -F -f - {input.file_list} | parallel -j{threads} 'dustmasker -in {{}} -outfmt fasta' | sed -e '/^>/!s/[a-z]/x/g' >> {output.fasta}
 		"""
+
+rule prelim_map_ncbi:
+	input:
+		fasta = config["rdir"] + "/kraken2_db_euk/library/{library_highres}/library.fna"
+	output:
+		map = config["rdir"] + "/kraken2_db_euk/library/{library_highres}/prelim_map.txt"
+	params:
+		libdir = config["rdir"] + "/kraken2_db_euk/library/{library_highres}",
+		libname = "{library_highres}"
+	conda:
+		config["wdir"] + "/envs/kraken2.yaml"
+	shell:
+		"""
+		LC_ALL=C grep '^>' {input.fasta} | sed 's/^>//' > {params.libdir}/tmp_{params.libname}.accnos
+		NSEQ=$(wc -l {params.libdir}/tmp_{params.libname}.accnos | cut -d' ' -f1)
+		printf 'TAXID\\n%.0s' $(seq 1 $NSEQ) | paste - {params.libdir}/tmp_{params.libname}.accnos | paste - <(cut -d'|' -f3 {params.libdir}/tmp_{params.libname}.accnos) > {output.map}
+		rm {params.libdir}/tmp_{params.libname}.accnos
+		"""
+
+
+
 
 rule format_taxonomy:
 	input:

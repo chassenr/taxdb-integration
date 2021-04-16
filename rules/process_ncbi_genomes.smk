@@ -304,38 +304,3 @@ if config["custom_ncbi_post_derep"]:
 			done
 			awk -v FS="\\t" -v OFS="\\t" '{{print $2,$1}}' {input.tax_added} | sed '1d' > {output.tax}
 			"""
-
-rule masking_ncbi:
-	input:
-		file_list = config["rdir"] + "/kraken2_genomes/file_names_derep_genomes.txt",
-		ncbi = config["rdir"] + "/tax_combined/{library_highres}_derep_taxonomy.txt",
-		nodes = config["rdir"] + "/kraken2_db_euk/taxonomy/nodes.dmp",
-		names = config["rdir"] + "/kraken2_db_euk/taxonomy/names.dmp"
-	output:
-		fasta = config["rdir"] + "/kraken2_db_euk/library/{library_highres}/library.fna"
-	conda:
-		config["wdir"] + "/envs/kraken2.yaml"
-	threads: config["masking_threads"]
-	shell:
-		"""
-		cut -f1 {input.ncbi} | grep -F -f - {input.file_list} | parallel -j{threads} 'dustmasker -in {{}} -outfmt fasta' | sed -e '/^>/!s/[a-z]/x/g' >> {output.fasta}
-		"""
-
-rule prelim_map_ncbi:
-	input:
-		fasta = config["rdir"] + "/kraken2_db_euk/library/{library_highres}/library.fna"
-	output:
-		map = config["rdir"] + "/kraken2_db_euk/library/{library_highres}/prelim_map.txt"
-	params:
-		libdir = config["rdir"] + "/kraken2_db_euk/library/{library_highres}",
-		libname = "{library_highres}"
-	conda:
-		config["wdir"] + "/envs/kraken2.yaml"
-	shell:
-		"""
-		LC_ALL=C grep '^>' {input.fasta} | sed 's/^>//' > {params.libdir}/tmp_{params.libname}.accnos
-		NSEQ=$(wc -l {params.libdir}/tmp_{params.libname}.accnos | cut -d' ' -f1)
-		printf 'TAXID\\n%.0s' $(seq 1 $NSEQ) | paste - {params.libdir}/tmp_{params.libname}.accnos | paste - <(cut -d'|' -f3 {params.libdir}/tmp_{params.libname}.accnos) > {output.map}
-		rm {params.libdir}/tmp_{params.libname}.accnos
-		"""
-
