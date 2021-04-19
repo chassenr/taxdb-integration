@@ -95,18 +95,30 @@ custom_ncbi_pre_derep:
   invertebrate: ""
   vertebrate_mammalian: ""
   vertebrate_other: ""
-
+custom_ncbi_pre_derep_dir:
+  fungi: ""
+  protozoa: ""
+  plant: ""
+  invertebrate: ""
+  vertebrate_mammalian: ""
+  vertebrate_other: ""
 custom_ncbi_post_derep: "/storage/hdd1/chh/Repos/taxdb-integration/assets/TARA_SMAGs.txt"
 
 custom_gtdb_pre_derep: ""
+custom_gtdb_pre_derep_dir: ""
 custom_gtdb_post_derep: ""
 
 custom_checkv_pre_derep: ""
+custom_checkv_pre_derep_dir: ""
 custom_checkv_post_derep: ""
 
-custom_euk_prot: "/storage/hdd1/chh/Repos/taxdb-integration/assets/EukProt_taxonomy_parsed.txt"
-custom_pro_prot: ""
-custom_vir_prot: ""
+custom_euk_prot_tax: "/storage/hdd1/chh/Repos/taxdb-integration/assets/EukProt_taxonomy_parsed.txt"
+custom_pro_prot_tax: ""
+custom_vir_prot_tax: ""
+
+custom_euk_prot_dir: "/storage/hdd1/chh/TaxDB/user_supplied/EukProt/proteins"
+custom_pro_prot_dir: ""
+custom_vir_prot_dir: ""
 
 # Parameters for dereplicating genomes
 derep_threads: 32
@@ -114,7 +126,7 @@ derep_threads: 32
 derep_lineage_exclude:
   fungi: ""
   invertebrate: ""
-  plant: "p__Streptophyta"
+  plant: ""
   protozoa: ""
   vertebrate_mammalian: ""
   vertebrate_other: ""
@@ -127,18 +139,33 @@ z_threshold_ncbi:
   fungi: 2
   plant: 2
   protozoa: 2
+  invertebrate: 2
+  vertebrate_mammalian: 2
+  vertebrate_other: 2
+
 m_threshold_ncbi:
   fungi: 0.01
   plant: 0.01
   protozoa: 0.01
+  invertebrate: 0.01
+  vertebrate_mammalian: 0.01
+  vertebrate_other: 0.01
+
 ncbi_derep_chunks:
   fungi: 5
   plant: 5
   protozoa: 5
+  invertebrate: 5
+  vertebrate_mammalian: 5
+  vertebrate_other: 5
+
 ani_fraglen_ncbi:
   fungi: 0.0005
   plant: 0.0005
   protozoa: 0.0005
+  invertebrate: 0.0005
+  vertebrate_mammalian: 0.0005
+  vertebrate_other: 0.0005
 
 z_threshold_checkv: 2
 m_threshold_checkv: 0.01

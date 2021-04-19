@@ -37,7 +37,72 @@ rule prelim_map_ncbi:
 		rm {params.libdir}/tmp_{params.libname}.accnos
 		"""
 
+rule masking_gtdb:
+        input:
+                file_list = config["rdir"] + "/kraken2_genomes/file_names_derep_genomes.txt",
+                gtdb = config["rdir"] + "/tax_combined/gtdb_derep_taxonomy.txt",
+                nodes = config["rdir"] + "/kraken2_taxonomy/nodes.dmp",
+                names = config["rdir"] + "/kraken2_taxonomy/names.dmp"
+        output:
+                fasta = config["rdir"] + "/kraken2_db_pro/library/gtdb/library.fna"
+        conda:
+                config["wdir"] + "/envs/kraken2.yaml"
+        threads: config["masking_threads"]
+        shell:
+                """
+                cut -f1 {input.gtdb} | grep -F -f - {input.file_list} | parallel -j{threads} 'dustmasker -in {{}} -outfmt fasta' | sed -e '/^>/!s/[a-z]/x/g' >> {output.fasta}
+                """
 
+rule prelim_map_gtdb:
+        input:
+                fasta = config["rdir"] + "/kraken2_db_pro/library/gtdb/library.fna"
+        output:
+                map = config["rdir"] + "/kraken2_db_pro/library/gtdb/prelim_map.txt"
+        params:
+                libdir = config["rdir"] + "/kraken2_db_pro/library/gtdb"
+        conda:
+                config["wdir"] + "/envs/kraken2.yaml"
+        shell:
+                """
+                LC_ALL=C grep '^>' {input.fasta} | sed 's/^>//' > {params.libdir}/tmp_gtdb.accnos
+                NSEQ=$(wc -l {params.libdir}/tmp_gtdb.accnos | cut -d' ' -f1)
+                printf 'TAXID\\n%.0s' $(seq 1 $NSEQ) | paste - {params.libdir}/tmp_gtdb.accnos | paste - <(cut -d'|' -f3 {params.libdir}/tmp_gtdb.accnos) > {output.map}
+                rm {params.libdir}/tmp_gtdb.accnos
+                """
+
+
+rule masking_checkv:
+        input:
+                file_list = config["rdir"] + "/kraken2_genomes/file_names_derep_genomes.txt",
+                checkv = config["rdir"] + "/tax_combined/checkv_derep_taxonomy.txt",
+                nodes = config["rdir"] + "/kraken2_db_pro/taxonomy/nodes.dmp",
+                names = config["rdir"] + "/kraken2_db_pro/taxonomy/names.dmp"
+        output:
+                fasta = config["rdir"] + "/kraken2_db_pro/library/checkv/library.fna"
+        conda:
+                config["wdir"] + "/envs/kraken2.yaml"
+        threads: config["masking_threads"]
+        shell:
+                """
+                cut -f1 {input.checkv} | grep -F -f - {input.file_list} | parallel -j{threads} 'dustmasker -in {{}} -outfmt fasta' | sed -e '/^>/!s/[a-z]/x/g' >> {output.fasta}
+                """
+
+rule prelim_map_checkv:
+        input:
+                fasta = config["rdir"] + "/kraken2_db_pro/library/checkv/library.fna"
+        output:
+                map = config["rdir"] + "/kraken2_db_pro/library/checkv/prelim_map.txt"
+        params:
+                libdir = config["rdir"] + "/kraken2_db_pro/library/checkv"
+        conda:
+                config["wdir"] + "/envs/kraken2.yaml"
+        shell:
+                """
+                LC_ALL=C grep '^>' {input.fasta} | sed 's/^>//' > {params.libdir}/tmp.accnos
+                NSEQ=$(wc -l {params.libdir}/tmp.accnos | cut -d' ' -f1)
+                printf 'TAXID\\n%.0s' $(seq 1 $NSEQ) | paste - {params.libdir}/tmp.accnos | paste - <(cut -d'|' -f3 {params.libdir}/tmp.accnos) > {output.map}
+                rm {params.libdir}/tmp.accnos
+                """
 
 
 rule format_taxonomy:

@@ -36,10 +36,11 @@ rule build_taxonomy:
 		script = config["gtdb_to_taxdump"],
 		taxdir = config["rdir"] + "/DB_taxonomy"
 	conda:
-		config["wdir"] + "/envs/tax.yaml"
+		config["wdir"] + "/envs/biopython.yaml"
 	log:
 		config["rdir"] + "/logs/build_common_taxonomy.log"
 	shell:
 		"""
-		{params.script} -o {params.outdir} {input.tax_combined}
+		cut -f1,2 {input.tax_combined} > {output.tax_good}
+		{params.script} -o {params.outdir} {output.tax_good}
 		"""

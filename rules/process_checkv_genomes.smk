@@ -1,12 +1,12 @@
 rule download_genomes_checkv:
 	output: 
 		fna = config["rdir"] + "/checkv/checkv_full.fna",
+		fna_reps = config["rdir"] + "/checkv/checkv_reps.fna",
+		faa = config["rdir"] + "/checkv/checkv_full.faa",
+		faa_reps = config["rdir"] + "/checkv/checkv_reps.faa",
 		clusters = config["rdir"] + "/checkv/checkv_clusters.tsv",
 		meta_genbank = config["rdir"] + "/checkv/checkv_genbank.tsv",
-		meta_circular = config["rdir"] + "/checkv/checkv_circular.tsv",
-		fna_reps = config["cdir"] + "/checkv/checkv_reps.fna",
-		faa = config["rdir"] + "/checkv/checkv_full.faa",
-		faa_reps = config["cdir"] + "/checkv/checkv_reps.faa"
+		meta_circular = config["rdir"] + "/checkv/checkv_circular.tsv"
 	params:
 		checkv_link = config["checkv_link"],
 		outdir = config["rdir"] + "/checkv/"
@@ -72,7 +72,8 @@ rule add_custom_checkv:
 		tax_added = config["rdir"] + "/checkv/checkv_taxonomy_added.txt"
 	params:
 		add = config["custom_checkv"],
-		dir = config["rdir"] + "/checkv/genomes"
+		dir = config["custom_checkv_pre_derep_dir"],
+		gendir = config["rdir"] + "/checkv/genomes"
 	shell:
 		"""
 		if [[ "{params.add}" != "" ]]
@@ -80,6 +81,10 @@ rule add_custom_checkv:
 		  ls -1 {params.dir} | grep -F -f <(cut -f1 {params.add}) > {params.dir}/tmp
 		  if [[ "$(wc -l < {params.dir}/tmp)" -eq "$(wc -l < {params.add})" ]]
 		  then
+		    cat {params.dir}/tmp | while read line
+		    do
+		      ln -sf "$line" {params.gendir}
+		    done
 		    cat {input.tax_checkv} {params.add} > {output.tax_added}
 		  fi
 		  rm {params.dir}/tmp
@@ -95,7 +100,7 @@ rule derep_checkv:
 		split_done = config["rdir"] + "/checkv/genomes/done",
 		checkv_taxonomy = config["rdir"] + "/checkv/checkv_taxonomy_added.txt"
 	output:
-		derep_meta = config["rdir"] + "/checkv/checkv_derep_taxonomy_meta.txt"
+		derep_meta = config["rdir"] + "/checkv/checkv-derep-genomes_results.tsv"
 	params:
 		indir = config["rdir"] + "/checkv/genomes",
 		outdir = config["rdir"] + "/checkv/derep_genomes",
@@ -113,14 +118,13 @@ rule derep_checkv:
 		"""
 		mkdir -p {params.outdir}
 		cd {params.outdir}
-		derepG --threads {threads} --in-dir {params.indir} --taxa {input.checkv_taxonomy} --tmp ./ --db {params.derep_db} --threshold {params.z_threshold} --mash-threshold {params.m_threshold} --debug --slurm-config {params.derep_slurm} --chunk-size {params.derep_chunks} --slurm-arr-size 10000 &>> {log}
-		mv *derep-genomes_results.tsv {output.derep_meta}
+		derepG --threads {threads} --in-dir {params.indir} --taxa {input.checkv_taxonomy} --tmp ./ --db {params.derep_db} --prefix ../checkv --threshold {params.z_threshold} --mash-threshold {params.m_threshold} --debug --slurm-config {params.derep_slurm} --chunk-size {params.derep_chunks} --slurm-arr-size 10000 &>> {log}
 		# do not delete redundant genomes until DB workflow is finished, work with soft links for remaining steps
 		"""
 
 rule collect_checkv_genomes:
 	input:
-		derep_meta = config["rdir"] + "/checkv/checkv_derep_taxonomy_meta.txt",
+		derep_meta = config["rdir"] + "/checkv/checkv-derep-genomes_results.tsv",
 		checkv_taxonomy = config["rdir"] + "/checkv/checkv_taxonomy_added.txt"
 	output:
 		tax = config["rdir"] + "/tax_combined/checkv_derep_taxonomy.txt"
@@ -149,36 +153,20 @@ rule collect_checkv_genomes:
 		fi
 		"""
 
-rule masking_checkv:
-	input:
-		file_list = config["rdir"] + "/kraken2_genomes/file_names_derep_genomes.txt",
-		checkv = config["rdir"] + "/tax_combined/checkv_derep_taxonomy.txt",
-		nodes = config["rdir"] + "/kraken2_db_pro/taxonomy/nodes.dmp",
-		names = config["rdir"] + "/kraken2_db_pro/taxonomy/names.dmp"
-	output:
-		fasta = config["rdir"] + "/kraken2_db_pro/library/checkv/library.fna"
-	conda:
-		config["wdir"] + "/envs/kraken2.yaml"
-	threads: config["masking_threads"]
-	shell:
-		"""
-		cut -f1 {input.checkv} | grep -F -f - {input.file_list} | parallel -j{threads} 'dustmasker -in {{}} -outfmt fasta' | sed -e '/^>/!s/[a-z]/x/g' >> {output.fasta}
-		"""
-
-rule prelim_map_checkv:
-	input:  
-		fasta = config["rdir"] + "/kraken2_db_pro/library/checkv/library.fna"
-	output:
-		map = config["rdir"] + "/kraken2_db_pro/library/checkv/prelim_map.txt"
-	params: 
-		libdir = config["rdir"] + "/kraken2_db_pro/library/checkv"
-	conda:
-		config["wdir"] + "/envs/kraken2.yaml"
-	shell:
-		"""
-		LC_ALL=C grep '^>' {input.fasta} | sed 's/^>//' > {params.libdir}/tmp.accnos
-		NSEQ=$(wc -l {params.libdir}/tmp.accnos | cut -d' ' -f1)
-		printf 'TAXID\\n%.0s' $(seq 1 $NSEQ) | paste - {params.libdir}/tmp.accnos | paste - <(cut -d'|' -f3 {params.libdir}/tmp.accnos) > {output.map}
-		rm {params.libdir}/tmp.accnos
-		"""
+if config["custom_checkv_post_derep"]:
+	rule add_custom_checkv_post_derep:
+		output:
+			tax_added = config["rdir"] + "/tax_combined/vit_custom_post_derep_taxonomy.txt"
+		params:
+			add = config["custom_checkv_post_derep"],
+			outdir = config["rdir"] + "/derep_combined/"
+		shell:
+			"""
+			mkdir -p {params.outdir}
+			cut -f4 {input.tax_added} | sed '1d' | while read line
+			do
+			  ln -sf "$line" {params.outdir}
+			done
+			awk -v FS="\\t" -v OFS="\\t" '{{print $2,$1}}' {input.tax_added} | sed '1d' > {output.tax}
+			"""
 

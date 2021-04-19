@@ -194,7 +194,7 @@ rule add_custom_ncbi_pre_derep:
 		tax_added = config["rdir"] + "/{library_name}/assembly_taxonomy_added.txt"
 	params:
 		add = lambda wildcards: config["custom_ncbi_pre_derep"][wildcards.library_name],
-		dir = config["rdir"] + "/{library_name}/custom_genomes",
+		dir = lambda wildcards: config["custom_ncbi_pre_derep_dir"][wildcards.library_name],
 		gendir = config["rdir"] + "/{library_name}/genomes"
 	shell:
 		"""
@@ -222,7 +222,7 @@ rule derep_ncbi:
 		download_complete = config["rdir"] + "/{library_name}/genomes/done",
 		taxonomy = config["rdir"] + "/{library_name}/assembly_taxonomy_added.txt"
 	output:
-		derep_meta = config["rdir"] + "/{library_name}/derep_taxonomy_meta.txt"
+		derep_meta = config["rdir"] + "/{library_name}/assembly-derep-genomes_results.tsv"
 	params:
 		dir = config["rdir"] + "/{library_name}",
 		indir = config["rdir"] + "/{library_name}/genomes",
@@ -250,14 +250,13 @@ rule derep_ncbi:
 		  cp {input.taxonomy} "{params.dir}/assembly_taxonomy_select.txt"
 		fi
 		cd {params.outdir}
-		derepG --threads {threads} --in-dir {params.indir} --taxa "{params.dir}/assembly_taxonomy_select.txt" --tmp ./ --db {params.derep_db} --threshold {params.z_threshold} --mash-threshold {params.m_threshold} --ani-fraglen-fraction {params.ani_fraglen} --debug --slurm-config {params.derep_slurm} --chunk-size {params.derep_chunks} --slurm-arr-size 10000 &>> {log}
-		mv *derep-genomes_results.tsv {output.derep_meta}
+		derepG --threads {threads} --in-dir {params.indir} --taxa "{params.dir}/assembly_taxonomy_select.txt" --tmp ./ --db {params.derep_db} --prefix ../assembly --threshold {params.z_threshold} --mash-threshold {params.m_threshold} --ani-fraglen-fraction {params.ani_fraglen} --debug --slurm-config {params.derep_slurm} --chunk-size {params.derep_chunks} --slurm-arr-size 10000 &>> {log}
 		# do not delete redundant genomes until DB workflow is finished, work with soft links for remaining steps
 		"""
 
 rule collect_ncbi_genomes:
 	input:
-		derep_meta = config["rdir"] + "/{library_name}/derep_taxonomy_meta.txt",
+		derep_meta = config["rdir"] + "/{library_name}/assembly-derep-genomes_results.tsv",
 		taxonomy = config["rdir"] + "/{library_name}/assembly_taxonomy_select.txt",
 		url = config["rdir"] + "/{library_name}/assembly_url_genomic.txt"
 	output:

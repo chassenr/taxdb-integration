@@ -80,7 +80,35 @@ rule download_gtdb_ncbi:
 		# cut -f5,1 {input.gtdb_links} | awk '{{print $2"\\n out="$1".md5"}}' > "{params.outdir}/links_md5"
 		"""
 
-# to add cusom assemblies, manually include genome files in the respective directories and provide the taxonomy file name in the config file for custom_ncbi
+# also download gtdb reps separately to augment any missing species in the NCBI download
+rule download_gtdb_reps:
+	input:
+		ar_tax = config["rdir"] + "/gtdb/metadata/ar_tax.tsv",
+		bac_tax = config["rdir"] + "/gtdb/metadata/bac_tax.tsv",
+		ar_meta = config["rdir"] + "/gtdb/metadata/ar_meta.tsv",
+		bac_meta = config["rdir"] + "/gtdb/metadata/bac_meta.tsv"
+	output:
+		gtdb_reps = config["cdir"] + "/gtdb/gtdb_reps_tax.txt"
+	params:
+		outdir = config["rdir"] + "/gtdb",
+		gtdb_link = config["gtdb_link"]
+	threads: config["download_onefile"]
+	conda:
+		config["wdir"] + "/envs/download.yaml"
+	log:
+		config["rdir"] + "/logs/download_coarse_gtdb.log"
+	shell:
+		"""
+		aria2c -c -l "{params.outdir}/reps_links.log" -d {params.outdir} --max-tries=20 --retry-wait=5 -x {threads} -j {threads} -s {threads} "{params.gtdb_link}/genomic_files_reps/gtdb_genomes_reps.tar.gz" &>> {log}
+		# wget -P {params.outdir} "{params.gtdb_link}/genomic_files_reps/gtdb_genomes_reps.tar.gz"
+		tar -C {params.outdir} -xzf "{params.outdir}/gtdb_genomes_reps.tar.gz"
+		mv {params.outdir}/gtdb_genomes_reps_* "{params.outdir}/reps_genomes/"
+		rm "{params.outdir}/gtdb_genomes_reps.tar.gz"
+		awk -v FS="\\t" -v OFS="\\t" '$16 == "t"' {input.ar_meta} | cut -f1 | grep -F -f - {input.ar_tax} | sed 's/^[RG][SB]_//' > {output.gtdb_reps}
+		awk -v FS="\\t" -v OFS="\\t" '$16 == "t"' {input.bac_meta} | cut -f1 | grep -F -f - {input.bac_tax} | sed 's/^[RG][SB]_//' >> {output.gtdb_reps}
+		"""
+
+# to add cusom assemblies, manually include genome files in the respective directories and provide the taxonomy file name in the config file
 rule add_custom_gtdb:
 	input:
 		download_info = config["rdir"] + "/gtdb/metadata/gtdb_download_info.txt"
@@ -89,7 +117,8 @@ rule add_custom_gtdb:
 		tax_added = config["rdir"] + "/gtdb/metadata/gtdb_taxonomy_added.txt"
 	params:
 		add = config["custom_gtdb"],
-		dir = config["rdir"] + "/gtdb/genomes"
+		dir = config["custom_gtdb_pre_derep_dir"],
+		gendir = config["rdir"] + "/gtdb/genomes"
 	shell:
 		"""
 		# parse taxonomy file
@@ -100,6 +129,10 @@ rule add_custom_gtdb:
 		  ls -1 {params.dir} | grep -F -f <(cut -f1 {params.add}) > {params.dir}/tmp
 		  if [[ "$(wc -l < {params.dir}/tmp)" -eq "$(wc -l < {params.add})" ]]
 		  then
+		    cat {params.dir}/tmp | while read line
+		    do
+		      ln -sf "$line" {params.gendir}
+		    done
 		    cat {output.tax_gtdb} {params.add} > {output.tax_added}
 		  fi
 		  rm {params.dir}/tmp
@@ -115,7 +148,7 @@ rule derep_gtdb:
 		download_complete_ncbi = config["rdir"] + "/gtdb/genomes/done",
 		tax_added = config["rdir"] + "/gtdb/metadata/gtdb_taxonomy_added.txt"
 	output:
-		derep_meta = config["rdir"] + "/gtdb/metadata/gtdb_derep_taxonomy_meta.txt"
+		derep_meta = config["rdir"] + "/gtdb/metadata/gtdb-derep-genomes_results.tsv"
 	params:
 		indir = config["rdir"] + "/gtdb/genomes",
 		outdir = config["rdir"] + "/gtdb/derep_genomes",
@@ -133,20 +166,19 @@ rule derep_gtdb:
 		"""
 		mkdir -p {params.outdir}
 		cd {params.outdir}
-		derepG --threads {threads} --in-dir {params.indir} --taxa {input.tax_added} --tmp ./ --db {params.derep_db} --threshold {params.z_threshold} --mash-threshold {params.m_threshold} --debug --slurm-config {params.derep_slurm} --chunk-size {params.derep_chunks} --slurm-arr-size 10000 &>> {log}
-		mv *derep-genomes_results.tsv {output.derep_meta}
+		derepG --threads {threads} --in-dir {params.indir} --taxa {input.tax_added} --tmp ./ --db {params.derep_db} --prefix ../metadata/gtdb --threshold {params.z_threshold} --mash-threshold {params.m_threshold} --debug --slurm-config {params.derep_slurm} --chunk-size {params.derep_chunks} --slurm-arr-size 10000 &>> {log}
 		# do not delete redundant genomes until DB workflow is finished, work with soft links for remaining steps
 		"""
 
 rule collect_gtdb_genomes:
  	input:
- 		derep_meta = config["rdir"] + "/gtdb/metadata/gtdb_derep_taxonomy_meta.txt",
-		gtdb_reps = config["cdir"] + "/gtdb/gtdb_reps_tax.txt"
+ 		derep_meta = config["rdir"] + "/gtdb/metadata/gtdb-derep-genomes_results.tsv",
+		gtdb_reps = config["rdir"] + "/gtdb/gtdb_reps_tax.txt"
  	output:
  		tax = config["rdir"] + "/tax_combined/gtdb_derep_taxonomy.txt"
 	params:
 		metadir = config["rdir"] + "/gtdb/metadata",
-		repdir = config["cdir"] + "/gtdb/genomes",
+		repdir = config["rdir"] + "/gtdb/reps_genomes",
 		outdir = config["rdir"] + "/derep_combined/"
 	shell:
 		"""
@@ -156,7 +188,7 @@ rule collect_gtdb_genomes:
 		  ln -sf "$line" {params.outdir}
 		done
 		awk -v FS="\\t" -v OFS="\\t" '{{print $2,$1}}' {input.derep_meta} | sed '1d' > {output.tax}
-		# for the species not in the dereplicated set (because there genomes could not be obtained from genbank/refseq) take at least the GTDB reps form the coars DB
+		# for the species not in the dereplicated set (because there genomes could not be obtained from genbank/refseq) take at least the GTDB reps
 		cut -f1 {input.derep_meta} | sed '1d' | sort -t$'\\t' | uniq | grep -v -F -f - {input.gtdb_reps} > "{params.metadir}/tmp_reps.txt"
 		cut -f1 "{params.metadir}/tmp_reps.txt" | sed 's/$/_genomic\.fna\.gz/' | while read line
 		do
@@ -166,36 +198,20 @@ rule collect_gtdb_genomes:
 		rm "{params.metadir}/tmp_reps.txt"
 		"""
 
-rule masking_gtdb:
-	input:
-		file_list = config["rdir"] + "/kraken2_genomes/file_names_derep_genomes.txt",
-		gtdb = config["rdir"] + "/tax_combined/gtdb_derep_taxonomy.txt",
-		nodes = config["rdir"] + "/kraken2_taxonomy/nodes.dmp",
-		names = config["rdir"] + "/kraken2_taxonomy/names.dmp"
-	output:
-		fasta = config["rdir"] + "/kraken2_db_pro/library/gtdb/library.fna"
-	conda:
-		config["wdir"] + "/envs/kraken2.yaml"
-	threads: config["masking_threads"]
-	shell:
-		"""
-		cut -f1 {input.gtdb} | grep -F -f - {input.file_list} | parallel -j{threads} 'dustmasker -in {{}} -outfmt fasta' | sed -e '/^>/!s/[a-z]/x/g' >> {output.fasta}
-		"""
-
-rule prelim_map_gtdb:
-	input:  
-		fasta = config["rdir"] + "/kraken2_db_pro/library/gtdb/library.fna"
-	output:
-		map = config["rdir"] + "/kraken2_db_pro/library/gtdb/prelim_map.txt"
-	params: 
-		libdir = config["rdir"] + "/kraken2_db_pro/library/gtdb"
-	conda:
-		config["wdir"] + "/envs/kraken2.yaml"
-	shell:
-		"""
-		LC_ALL=C grep '^>' {input.fasta} | sed 's/^>//' > {params.libdir}/tmp_gtdb.accnos
-		NSEQ=$(wc -l {params.libdir}/tmp_gtdb.accnos | cut -d' ' -f1)
-		printf 'TAXID\\n%.0s' $(seq 1 $NSEQ) | paste - {params.libdir}/tmp_gtdb.accnos | paste - <(cut -d'|' -f3 {params.libdir}/tmp_gtdb.accnos) > {output.map}
-		rm {params.libdir}/tmp_gtdb.accnos
-		"""
+if config["custom_gtdb_post_derep"]:
+	rule add_custom_gtdb_post_derep:
+		output:
+			tax_added = config["rdir"] + "/tax_combined/pro_custom_post_derep_taxonomy.txt"
+		params:
+			add = config["custom_gtdb_post_derep"],
+			outdir = config["rdir"] + "/derep_combined/"
+		shell:
+			"""
+			mkdir -p {params.outdir}
+			cut -f4 {input.tax_added} | sed '1d' | while read line
+			do
+			  ln -sf "$line" {params.outdir}
+			done
+			awk -v FS="\\t" -v OFS="\\t" '{{print $2,$1}}' {input.tax_added} | sed '1d' > {output.tax}
+                        """
 
