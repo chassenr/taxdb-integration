@@ -72,22 +72,17 @@ rule add_custom_checkv:
 		tax_added = config["rdir"] + "/checkv/checkv_taxonomy_added.txt"
 	params:
 		add = config["custom_checkv"],
-		dir = config["custom_checkv_pre_derep_dir"],
 		gendir = config["rdir"] + "/checkv/genomes"
 	shell:
 		"""
 		if [[ "{params.add}" != "" ]]
 		then
-		  ls -1 {params.dir} | grep -F -f <(cut -f1 {params.add}) > {params.dir}/tmp
-		  if [[ "$(wc -l < {params.dir}/tmp)" -eq "$(wc -l < {params.add})" ]]
-		  then
-		    cat {params.dir}/tmp | while read line
-		    do
-		      ln -sf "$line" {params.gendir}
-		    done
-		    cat {input.tax_checkv} {params.add} > {output.tax_added}
-		  fi
-		  rm {params.dir}/tmp
+		  cut -f3 {params.add} | while read line
+		  do
+		    ln -sf "$line" {params.gendir}
+		  done
+		  cat {input.tax_checkv} > {output.tax_added}
+		  cut -f1,2 {params.add} >> {output.tax_added}
 		else
 		  cp {input.tax_checkv} {output.tax_added}
 		fi
@@ -163,10 +158,10 @@ if config["custom_checkv_post_derep"]:
 		shell:
 			"""
 			mkdir -p {params.outdir}
-			cut -f4 {input.tax_added} | sed '1d' | while read line
+			cut -f4 {params.add} | sed '1d' | while read line
 			do
 			  ln -sf "$line" {params.outdir}
 			done
-			awk -v FS="\\t" -v OFS="\\t" '{{print $2,$1}}' {input.tax_added} | sed '1d' > {output.tax}
+			awk -v FS="\\t" -v OFS="\\t" '{{print $2,$1}}' {params.add} | sed '1d' > {output.tax}
 			"""
 

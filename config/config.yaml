@@ -88,14 +88,10 @@ filter_ncbi_sign:
   vertebrate_other: "greater,both,greater"
 
 # Optional: include custom assemblies
+# pre_derep: 4 column table with accession, taxonomic path, location fna, location faa (if available, otherwise NA)
+# post_derep: format is the same as for derep metadata output (with header row)
+# proteins: 3 column table with accession, taxonomic path, location faa
 custom_ncbi_pre_derep:
-  fungi: ""
-  protozoa: ""
-  plant: ""
-  invertebrate: ""
-  vertebrate_mammalian: ""
-  vertebrate_other: ""
-custom_ncbi_pre_derep_dir:
   fungi: ""
   protozoa: ""
   plant: ""
@@ -105,20 +101,14 @@ custom_ncbi_pre_derep_dir:
 custom_ncbi_post_derep: "/storage/hdd1/chh/Repos/taxdb-integration/assets/TARA_SMAGs.txt"
 
 custom_gtdb_pre_derep: ""
-custom_gtdb_pre_derep_dir: ""
 custom_gtdb_post_derep: ""
 
 custom_checkv_pre_derep: ""
-custom_checkv_pre_derep_dir: ""
 custom_checkv_post_derep: ""
 
-custom_euk_prot_tax: "/storage/hdd1/chh/Repos/taxdb-integration/assets/EukProt_taxonomy_parsed.txt"
-custom_pro_prot_tax: ""
-custom_vir_prot_tax: ""
-
-custom_euk_prot_dir: "/storage/hdd1/chh/TaxDB/user_supplied/EukProt/proteins"
-custom_pro_prot_dir: ""
-custom_vir_prot_dir: ""
+custom_euk_prot: "/storage/hdd1/chh/Repos/taxdb-integration/assets/EukProt_taxonomy_parsed.txt"
+custom_pro_prot: ""
+custom_vir_prot: ""
 
 # Parameters for dereplicating genomes
 derep_threads: 32

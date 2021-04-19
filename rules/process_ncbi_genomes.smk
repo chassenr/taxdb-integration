@@ -186,7 +186,6 @@ rule filter_assemblies:
 		{params.script} -t "{input.taxonomy}" -m "{input.contig_stats}" -p "{params.fields}" --absolute_cutoff="{params.abs_cut}" -r "{params.rel_cut}" -d "{params.cut_dif}" -s "{params.cut_sign}" -o {output.tax_filt} &>> {log}
 		"""
 
-# to add cusom assemblies, manually include genome files in the respective directories and provide the taxonomy file name in the config file for custom_ncbi
 rule add_custom_ncbi_pre_derep:
 	input:
 		tax_ncbi = config["rdir"] + "/{library_name}/assembly_taxonomy_filtered.txt"
@@ -194,22 +193,17 @@ rule add_custom_ncbi_pre_derep:
 		tax_added = config["rdir"] + "/{library_name}/assembly_taxonomy_added.txt"
 	params:
 		add = lambda wildcards: config["custom_ncbi_pre_derep"][wildcards.library_name],
-		dir = lambda wildcards: config["custom_ncbi_pre_derep_dir"][wildcards.library_name],
 		gendir = config["rdir"] + "/{library_name}/genomes"
 	shell:
 		"""
 		if [[ "{params.add}" != "" ]]
 		then
-		  ls -1 {params.dir} | grep -F -f <(cut -f1 {params.add}) > {params.dir}/tmp
-		  if [[ "$(wc -l < {params.dir}/tmp)" -eq "$(wc -l < {params.add})" ]]
-		  then
-		    cat {params.dir}/tmp | while read line
-		    do
-		      ln -sf "$line" {params.gendir}
-		    done
-		    cat {input.tax_ncbi} {params.add} > {output.tax_added}
-		  fi
-		  rm {params.dir}/tmp
+		  cut -f3 {params.add} | while read line
+		  do
+		    ln -sf "$line" {params.gendir}
+		  done
+		  cat {input.tax_ncbi} > {output.tax_added}
+		  cut -f1,2 {params.add} >> {output.tax_added}
 		else
 		  cp {input.tax_ncbi} {output.tax_added}
 		fi
@@ -297,9 +291,9 @@ if config["custom_ncbi_post_derep"]:
 		shell:
 			"""
 			mkdir -p {params.outdir}
-			cut -f4 {input.tax_added} | sed '1d' | while read line
+			cut -f4 {params.add} | sed '1d' | while read line
 			do
 			  ln -sf "$line" {params.outdir}
 			done
-			awk -v FS="\\t" -v OFS="\\t" '{{print $2,$1}}' {input.tax_added} | sed '1d' > {output.tax}
+			awk -v FS="\\t" -v OFS="\\t" '{{print $2,$1}}' {params.add} | sed '1d' > {output.tax}
 			"""

@@ -88,7 +88,7 @@ rule download_gtdb_reps:
 		ar_meta = config["rdir"] + "/gtdb/metadata/ar_meta.tsv",
 		bac_meta = config["rdir"] + "/gtdb/metadata/bac_meta.tsv"
 	output:
-		gtdb_reps = config["cdir"] + "/gtdb/gtdb_reps_tax.txt"
+		gtdb_reps = config["rdir"] + "/gtdb/metadata/gtdb_reps_tax.txt"
 	params:
 		outdir = config["rdir"] + "/gtdb",
 		gtdb_link = config["gtdb_link"]
@@ -117,7 +117,6 @@ rule add_custom_gtdb:
 		tax_added = config["rdir"] + "/gtdb/metadata/gtdb_taxonomy_added.txt"
 	params:
 		add = config["custom_gtdb"],
-		dir = config["custom_gtdb_pre_derep_dir"],
 		gendir = config["rdir"] + "/gtdb/genomes"
 	shell:
 		"""
@@ -126,16 +125,12 @@ rule add_custom_gtdb:
 		# add additional genomes if provided
 		if [[ "{params.add}" != "" ]]
 		then
-		  ls -1 {params.dir} | grep -F -f <(cut -f1 {params.add}) > {params.dir}/tmp
-		  if [[ "$(wc -l < {params.dir}/tmp)" -eq "$(wc -l < {params.add})" ]]
-		  then
-		    cat {params.dir}/tmp | while read line
-		    do
-		      ln -sf "$line" {params.gendir}
-		    done
-		    cat {output.tax_gtdb} {params.add} > {output.tax_added}
-		  fi
-		  rm {params.dir}/tmp
+		  cut -f3 {params.add} | while read line
+		  do
+		    ln -sf "$line" {params.gendir}
+		  done
+		  cat {output.tax_gtdb} > {output.tax_added}
+		  cut -f1,2 {params.add} >> {output.tax_added}
 		else
 		  cp {output.tax_gtdb} {output.tax_added}
 		fi
@@ -173,7 +168,7 @@ rule derep_gtdb:
 rule collect_gtdb_genomes:
  	input:
  		derep_meta = config["rdir"] + "/gtdb/metadata/gtdb-derep-genomes_results.tsv",
-		gtdb_reps = config["rdir"] + "/gtdb/gtdb_reps_tax.txt"
+		gtdb_reps = config["rdir"] + "/gtdb/metadata/gtdb_reps_tax.txt"
  	output:
  		tax = config["rdir"] + "/tax_combined/gtdb_derep_taxonomy.txt"
 	params:
@@ -208,10 +203,10 @@ if config["custom_gtdb_post_derep"]:
 		shell:
 			"""
 			mkdir -p {params.outdir}
-			cut -f4 {input.tax_added} | sed '1d' | while read line
+			cut -f4 {params.add} | sed '1d' | while read line
 			do
 			  ln -sf "$line" {params.outdir}
 			done
-			awk -v FS="\\t" -v OFS="\\t" '{{print $2,$1}}' {input.tax_added} | sed '1d' > {output.tax}
-                        """
+			awk -v FS="\\t" -v OFS="\\t" '{{print $2,$1}}' {params.add} | sed '1d' > {output.tax}
+			"""
 
