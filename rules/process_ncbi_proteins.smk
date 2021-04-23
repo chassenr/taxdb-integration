@@ -4,7 +4,6 @@ rule download_proteins_ncbi:
 		tax = config["rdir"] + "/tax_combined/{library_name}_derep_taxonomy.txt",
 		tax_good = config["rdir"] + "/tax_combined/full_taxonomy_good.txt"
 	output:
-		download_complete = config["rdir"] + "/{library_name}/proteins/done",
 		tax_prot = config["rdir"] + "/{library_name}/assembly_protein_taxonomy.txt"
 	params:
 		outdir = config["rdir"] + "/{library_name}/proteins"
@@ -22,7 +21,6 @@ rule download_proteins_ncbi:
 		find {params.outdir} -type f -name '*.gz' | xargs -n 1 basename | sort > "{params.outdir}/tmp2"
 		if diff "{params.outdir}/tmp1" "{params.outdir}/tmp2"
 		then
-		  touch "{params.outdir}/done"
 		  cut -d'_' -f1,2 "{params.outdir}/tmp1" | grep -F -f - {input.tax_good} > {output.tax_prot}
 		fi
 		rm "{params.outdir}/links.list" "{params.outdir}/links.log" "{params.outdir}/tmp1" "{params.outdir}/tmp2"
@@ -30,6 +28,7 @@ rule download_proteins_ncbi:
 
 rule custom_ncbi_proteins_pre_derep:
 	input:
+		tax = config["rdir"] + "/tax_combined/{library_name}_derep_taxonomy.txt",
 		tax_good = config["rdir"] + "/tax_combined/full_taxonomy_good.txt",
 		tax_prot = config["rdir"] + "/{library_name}/assembly_protein_taxonomy.txt"
 	output:
@@ -41,12 +40,13 @@ rule custom_ncbi_proteins_pre_derep:
 		"""
 		if [[ "{params.add}" != "" ]]
 		then
-		  awk '$4 != "NA"' {params.add} | cut -f4 | while read line
+		  awk '$4 != "NA"' {params.add} | grep -F -f <(cut -f1 {input.tax}) > "{params.outdir}/tmp"
+		  cut -f4 "{params.outdir}/tmp" | while read line
 		  do
 		    ln -sf "$line" {params.outdir}
 		  done
 		  cat {input.tax_prot} > {output.tax_prot_added}
-		  awk '$4 != "NA"' {params.add} | cut -f1 | grep -F -f - {input.tax_good} >> {output.tax_prot_added}
+		  awk '$4 != "NA"' "{params.outdir}/tmp" | cut -f1 | grep -F -f - {input.tax_good} >> {output.tax_prot_added}
 		else
 		  cp {input.tax_prot} {output.tax_prot_added}
 		fi
@@ -68,6 +68,7 @@ rule collect_ncbi_proteins:
 		  ln -sf "$line" {params.outdir}
 		done
 		touch {output.linked}
+		"""
 
 if config["custom_euk_prot"]:
 	rule add_custom_euk_prot:

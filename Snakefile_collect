@@ -22,17 +22,18 @@ wildcard_constraints:
 
 rule all:
 	input:
-		taxonomy = expand(config["rdir"] + "/{library_name}/assembly_taxonomy.txt", library_name = LIBRARY_NAME),
-		download_complete = expand(config["rdir"] + "/{library_name}/genomes/done", library_name = LIBRARY_NAME),
-		tax_filt = expand(config["rdir"] + "/{library_name}/assembly_taxonomy_filtered.txt", library_name = LIBRARY_NAME),
-		derep_meta = expand(config["rdir"] + "/{library_name}/derep_taxonomy_meta.txt", library_name = LIBRARY_NAME)
+		gtdb_links = config["rdir"] + "/gtdb/metadata/gtdb_download_info.txt",
+		#taxonomy = expand(config["rdir"] + "/{library_name}/assembly_taxonomy.txt", library_name = LIBRARY_NAME),
+		#download_complete = expand(config["rdir"] + "/{library_name}/genomes/done", library_name = LIBRARY_NAME),
+		#tax_filt = expand(config["rdir"] + "/{library_name}/assembly_taxonomy_filtered.txt", library_name = LIBRARY_NAME),
+		#derep_meta = expand(config["rdir"] + "/{library_name}/assembly-derep-genomes_results.tsv", library_name = LIBRARY_NAME)
 		
 
 '''
 ##### load rules #####
 '''
-include: "rules/process_ncbi_genomes.smk"
-#include: "rules/process_gtdb_genomes.smk"
+#include: "rules/process_ncbi_genomes.smk"
+include: "rules/process_gtdb_genomes.smk"
 #include: "rules/process_checkv_genomes.smk"
 #include: "rules/process_ncbi_proteins.smk"
 

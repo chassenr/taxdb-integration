@@ -162,7 +162,10 @@ m_threshold_checkv: 0.01
 checkv_derep_chunks: 5
 
 # Parameters for formatting taxonomy
-tax_script: "/storage/hdd1/chh/Repos/Metagenomics-Index-Correction/tax_from_gtdb.py"
+gtdb_to_taxdump: "/storage/hdd1/chh/Repos/gtdb_to_taxdump/gtdb_to_taxdump.py"
+
+# threads to generate accession2taxid
+taxmap_threads: 64
 
 # Include UniVec databases
 univec: "UniVec_Core"

@@ -60,6 +60,7 @@ rule split_fasta:
 	shell:
 		"""
 		# thanks: https://gist.github.com/astatham/621901
+		mkdir -p {params.outdir}
 		cd {params.outdir}
 		cat {input} | awk '{{ if (substr($0, 1, 1)==">") {{filename=(substr($0,2) ".fa")}} print $0 > filename }}'
 		touch done
@@ -71,7 +72,7 @@ rule add_custom_checkv:
 	output:
 		tax_added = config["rdir"] + "/checkv/checkv_taxonomy_added.txt"
 	params:
-		add = config["custom_checkv"],
+		add = config["custom_checkv_pre_derep"],
 		gendir = config["rdir"] + "/checkv/genomes"
 	shell:
 		"""

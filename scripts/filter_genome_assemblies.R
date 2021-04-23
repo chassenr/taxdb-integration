@@ -7,8 +7,7 @@
 # Check if packages are installed
 package.list <- c(
   "crayon",
-  "optparse",
-  "data.table"
+  "optparse"
 )
 
 # Function to check if packages are installed
@@ -75,6 +74,13 @@ option_list <- list(
     metavar = "character"
   ),
   make_option(
+    c("-n", "--ncbi"),
+    type = "character",
+    default = NULL,
+    help = "assembly summary table from NCBI",
+    metavar = "character"
+  ),
+  make_option(
     c("-p", "--parameters"),
     type = "character", 
     default = NULL, 
@@ -121,7 +127,7 @@ option_list <- list(
 opt_parser <- OptionParser(option_list = option_list)
 opt <- parse_args(opt_parser)
 
-if (is.null(opt$tax) | is.null(opt$meta) |
+if (is.null(opt$tax) | is.null(opt$meta) | is.null(opt$ncbi) |
     is.null(opt$parameters) | is.null(opt$absolute_cutoff) |
     is.null(opt$relative_cutoff) | is.null(opt$difference) |
     is.null(opt$sign) | is.null(opt$output)) {
@@ -171,28 +177,41 @@ filter_assemblies <- function(accnos, meta, abs.cut, rel.cut, cut.dif, sign) {
 
 ### read input data ####
 
-metadata <- data.frame(
-  read.table(
-    opt$meta, 
-    h = T, 
-    sep = "\t"),
+metadata <- read.table(
+  opt$meta, 
+  h = T, 
+  sep = "\t",
   stringsAsFactors = F
 )
 
-tax <- data.frame(
-  fread(
-    opt$tax, 
-    h = F, 
-    sep = "\t"),
+tax <- read.table(
+  opt$tax, 
+  h = F, 
+  sep = "\t",
+  stringsAsFactors = F
+)
+
+ncbi <- read.table(
+  opt$ncbi,
+  h = F,
+  sep = "\t",
+  quote = "",
+  comment.char = "",
   stringsAsFactors = F
 )
 
 metadata <- metadata[match(tax$V1, metadata$accession), ]
+ncbi <- ncbi[match(tax$V1, ncbi$V1), ]
 
-if(!all.equal(metadata$accession, tax$V1)) {
+if(!all.equal(metadata$accession, tax$V1) | !all.equal(ncbi$V1, tax$V1)) {
   stop("taxonomy and metadata files are not in the correct order", call. = FALSE)
 }
 
+meta <- data.frame(
+  metadata,
+  ncbi,
+  stringsAsFactors = F
+)
 
 ### parse command line options ####
 
@@ -206,11 +225,34 @@ if(any(!params %in% colnames(metadata))) {
   stop("Parameters for filtering not found in metadata", call. = FALSE)
 }
 
+### some pre-filtering to remove inconsistently small assemblies
+# if species has representative genome, remove assemblies that are smaller than 5% of genome length of representative
+
+prefilter_accnos <- c()
+for(i in unique(tax$V2)) {
+  tmp <- meta[tax$V2 == i, ]
+  if(any(tmp$V5 != "na")) {
+    prefilter_accnos <- c(
+      prefilter_accnos,
+      tmp$accession[tmp$genome_size >= 0.05 * min(tmp$genome_size[tmp$V5 != "na"])]
+    )
+  } else {
+    prefilter_accnos <- c(
+      prefilter_accnos,
+      tmp$accession
+    )
+  }
+}
+
+meta_pre <- meta[meta$accession %in% prefilter_accnos, ]
+tax_pre <- tax[meta$accession %in% prefilter_accnos, ]
+msg(paste0(nrow(tax_pre), " assemblies passed the genome size pre-filter\n"))
+
 
 ### loop through individual filters ####
 
-metadata_filt <- metadata
-tax_filt <- tax
+metadata_filt <- meta_pre
+tax_filt <- tax_pre
 for(k in 1:length(params)) {
   filter_accnos <- c()
   for(i in unique(tax_filt$V2)) {

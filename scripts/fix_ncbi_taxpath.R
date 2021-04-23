@@ -91,14 +91,16 @@ if (is.null(opt$input) | is.null(opt$output)) {
 
 ### fix NCBI duplicate tax levels ####
 
-# this includes NCBI taxonomy for euks and viruses
+# this includes all concatenated taxonomy
 taxpath <- fread(
   opt$input,
   h = F,
   sep = "\t",
   quote = "",
   col.names = c("accnos", "path")
-) %>% 
+) %>%
+  arrange(accnos) %>%
+  filter(duplicated(accnos) == FALSE) %>%
   separate(
     path,
     sep = ";",

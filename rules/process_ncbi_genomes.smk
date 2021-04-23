@@ -167,7 +167,8 @@ rule get_taxpath:
 rule filter_assemblies:
 	input:
 		taxonomy = config["rdir"] + "/{library_name}/assembly_taxonomy.txt",
-		contig_stats = config["rdir"] + "/{library_name}/metadata/genome_metadata.txt"
+		contig_stats = config["rdir"] + "/{library_name}/metadata/genome_metadata.txt",
+		assembly_summary = config["rdir"] + "/{library_name}/assembly_summary_combined.txt"
 	output:
 		tax_filt = config["rdir"] + "/{library_name}/assembly_taxonomy_filtered.txt"
 	params:
@@ -183,7 +184,7 @@ rule filter_assemblies:
 		config["rdir"] + "/logs/filter_ncbi_assemblies_{library_name}.log"
 	shell:
 		"""
-		{params.script} -t "{input.taxonomy}" -m "{input.contig_stats}" -p "{params.fields}" --absolute_cutoff="{params.abs_cut}" -r "{params.rel_cut}" -d "{params.cut_dif}" -s "{params.cut_sign}" -o {output.tax_filt} &>> {log}
+		{params.script} -t "{input.taxonomy}" -m "{input.contig_stats}" -n "{input.assembly_summary}" -p "{params.fields}" --absolute_cutoff="{params.abs_cut}" -r "{params.rel_cut}" -d "{params.cut_dif}" -s "{params.cut_sign}" -o {output.tax_filt} &>> {log}
 		"""
 
 rule add_custom_ncbi_pre_derep:
@@ -244,7 +245,8 @@ rule derep_ncbi:
 		  cp {input.taxonomy} "{params.dir}/assembly_taxonomy_select.txt"
 		fi
 		cd {params.outdir}
-		derepG --threads {threads} --in-dir {params.indir} --taxa "{params.dir}/assembly_taxonomy_select.txt" --tmp ./ --db {params.derep_db} --prefix ../assembly --threshold {params.z_threshold} --mash-threshold {params.m_threshold} --ani-fraglen-fraction {params.ani_fraglen} --debug --slurm-config {params.derep_slurm} --chunk-size {params.derep_chunks} --slurm-arr-size 10000 &>> {log}
+		derepG --threads {threads} --in-dir {params.indir} --prefix ../assembly --taxa "{params.dir}/assembly_taxonomy_select.txt" --tmp ./ --db {params.derep_db} --threshold {params.z_threshold} --mash-threshold {params.m_threshold} --ani-fraglen-fraction {params.ani_fraglen} --debug --slurm-config {params.derep_slurm} --chunk-size {params.derep_chunks} --slurm-arr-size 10000 &>> {log}
+		# mv *-derep-genomes_results.tsv {output.derep_meta}
 		# do not delete redundant genomes until DB workflow is finished, work with soft links for remaining steps
 		"""
 

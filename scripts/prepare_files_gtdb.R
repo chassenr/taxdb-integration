@@ -11,7 +11,9 @@ package.list <- c(
   "optparse",
   "tidyverse",
   "data.table",
-  "scales"
+  "scales",
+  "httr",
+  "furrr"
 )
 
 # Function to check if packages are installed
@@ -118,6 +120,13 @@ option_list <- list(
     default = NULL, 
     help = "Name of output file with assembly metadata", 
     metavar = "character"
+  ),
+  make_option(
+    c("-c", "--cpus"),
+    type = "integer",
+    default = 1,
+    help = "number of cpus to use [default: 1]",
+    metavar = "number"
   )
 )
 
@@ -315,6 +324,11 @@ msg(paste("Generating", comma(nrow(gtdb_links %>% filter(!grepl("UBA", gtdb_geno
 
 
 ### Create necessary files For downloading fasta files ####
+# and check for availability of protein data
+
+# run url check in parallel
+plan(multisession, workers = opt$cpus)
+
 out_file_links <- gtdb_links %>%
   mutate(
     link = gsub("^ftp", "http", link),
@@ -322,9 +336,16 @@ out_file_links <- gtdb_links %>%
     download_link = paste(link, filename, sep = "/"),
     outfile = paste0(gsub("GB_|RS_", "", gtdb_genome), "_genomic.fna.gz"),
     acc = gsub("GB_|RS_", "", gtdb_genome),
-    md5file = paste(link, "md5checksums.txt", sep = "/")
+    md5file = paste(link, "md5checksums.txt", sep = "/"),
+    filename_faa = paste0(basename(link), "_protein.faa.gz"),
+    download_link_faa = paste(link, filename_faa, sep = "/"),
+    outfile_faa = paste0(gsub("GB_|RS_", "", gtdb_genome), "_protein.faa.gz"),
+    faa_available = !future_map_lgl(
+      download_link_faa,
+      http_error
+    )
   ) %>%
-  select(gtdb_genome, download_link, filename, outfile, md5file, acc, tax_string)
+  select(gtdb_genome, download_link, filename, outfile, md5file, acc, tax_string, download_link_faa, filename_faa, outfile_faa, faa_available)
 
 
 ### get assembly metadata ####

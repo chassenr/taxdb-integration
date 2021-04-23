@@ -45,11 +45,12 @@ rule parse_gtdb_metadata:
 		script = config["wdir"] + "/scripts/prepare_files_gtdb.R"
 	conda:
 		config["wdir"] + "/envs/r.yaml"
+	threads: config["download_threads"]
 	log:
                 config["rdir"] + "/logs/parse_gtdb_metadata.log"
 	shell:
 		"""
-		{params.script} -a {input.ar_tax} -b {input.bac_tax} -A {input.ar_meta} -B {input.bac_meta} -r {input.genomes_refseq} -g {input.genomes_genbank} -o {output.gtdb_links} -m {output.gtdb_meta} &>> {log}
+		{params.script} -a {input.ar_tax} -b {input.bac_tax} -A {input.ar_meta} -B {input.bac_meta} -r {input.genomes_refseq} -g {input.genomes_genbank} -o {output.gtdb_links} -m {output.gtdb_meta} -c {threads} &>> {log}
 		"""	
 	
 rule download_gtdb_ncbi:
@@ -109,14 +110,14 @@ rule download_gtdb_reps:
 		"""
 
 # to add cusom assemblies, manually include genome files in the respective directories and provide the taxonomy file name in the config file
-rule add_custom_gtdb:
+rule add_custom_gtdb_pre_derep:
 	input:
 		download_info = config["rdir"] + "/gtdb/metadata/gtdb_download_info.txt"
 	output:
 		tax_gtdb = config["rdir"] + "/gtdb/metadata/gtdb_taxonomy.txt",
 		tax_added = config["rdir"] + "/gtdb/metadata/gtdb_taxonomy_added.txt"
 	params:
-		add = config["custom_gtdb"],
+		add = config["custom_gtdb_pre_derep"],
 		gendir = config["rdir"] + "/gtdb/genomes"
 	shell:
 		"""
