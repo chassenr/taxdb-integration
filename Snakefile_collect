@@ -13,7 +13,7 @@ Run: snakemake -s Snakefile
 ##### set minimum snakemake version #####
 # min_version("5.1.2")
 
-configfile: "config/config.yaml"
+configfile: "config/config_collect.yaml"
 
 LIBRARY_NAME = config["library_name"]
 
@@ -22,18 +22,24 @@ wildcard_constraints:
 
 rule all:
 	input:
-		gtdb_links = config["rdir"] + "/gtdb/metadata/gtdb_download_info.txt",
+		#gtdb_links = config["rdir"] + "/gtdb/metadata/gtdb_download_info.txt",
 		#taxonomy = expand(config["rdir"] + "/{library_name}/assembly_taxonomy.txt", library_name = LIBRARY_NAME),
 		#download_complete = expand(config["rdir"] + "/{library_name}/genomes/done", library_name = LIBRARY_NAME),
 		#tax_filt = expand(config["rdir"] + "/{library_name}/assembly_taxonomy_filtered.txt", library_name = LIBRARY_NAME),
-		#derep_meta = expand(config["rdir"] + "/{library_name}/assembly-derep-genomes_results.tsv", library_name = LIBRARY_NAME)
+		#derep_meta = expand(config["rdir"] + "/{library_name}/assembly-derep-genomes_results.tsv", library_name = LIBRARY_NAME),
+		#tax_combined = config["rdir"] + "/tax_combined/full_taxonomy_combined.txt",
+		names = config["rdir"] + "/DB_taxonomy/names.dmp",
+		gen2taxid = config["rdir"] + "/tax_combined/full_genome2taxid.txt"
 		
 
 '''
 ##### load rules #####
 '''
-#include: "rules/process_ncbi_genomes.smk"
-include: "rules/process_gtdb_genomes.smk"
+include: "rules/process_ncbi_genomes.smk"
+#include: "rules/process_gtdb_genomes.smk"
 #include: "rules/process_checkv_genomes.smk"
-#include: "rules/process_ncbi_proteins.smk"
+include: "rules/process_ncbi_proteins.smk"
+include: "rules/process_gtdb_proteins.smk"
+include: "rules/process_checkv_proteins.smk"
+include: "rules/build_taxonomy.smk"
 

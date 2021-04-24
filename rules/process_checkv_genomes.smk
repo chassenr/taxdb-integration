@@ -37,7 +37,8 @@ rule parse_taxa_checkv:
                 names = config["rdir"] + "/ncbi_taxdump/names.dmp"
 	output:
 		checkv_taxonomy = config["rdir"] + "/checkv/checkv_taxonomy.txt",
-		reps_metadata = config["rdir"] + "/checkv/checkv_reps_metadata.txt"
+		reps_metadata = config["rdir"] + "/checkv/checkv_reps_metadata.txt",
+		reps_tax = config["rdir"] + "/checkv/checkv_reps_taxonomy.txt"
 	params:
 		script = config["wdir"] + "/scripts/parse_checkv_taxonomy.R",
 		outdir = config["rdir"]
@@ -48,6 +49,7 @@ rule parse_taxa_checkv:
 	shell:
 		"""
 		{params.script} -g {input.meta_genbank} -i {input.meta_circular} -c {input.clusters} -t "{params.outdir}/ncbi_taxdump" -s "{params.outdir}/ncbi_taxdump/accessionTaxa.sql" -o {output.checkv_taxonomy} -m {output.reps_metadata}
+		cut -f1,10 {output.reps_metadata} | sed '1d' > {output.reps_tax}
 		"""
 
 rule split_fasta:
@@ -57,12 +59,16 @@ rule split_fasta:
 		done = config["rdir"] + "/checkv/genomes/done"
 	params:
 		outdir = config["rdir"] + "/checkv/genomes/"
+	conda:
+		config["wdir"] + "/envs/parallel.yaml"
+	threads: config["parallel_threads"]
 	shell:
 		"""
 		# thanks: https://gist.github.com/astatham/621901
 		mkdir -p {params.outdir}
 		cd {params.outdir}
 		cat {input} | awk '{{ if (substr($0, 1, 1)==">") {{filename=(substr($0,2) ".fa")}} print $0 > filename }}'
+		find . -type f -name '*.fa' | parallel -j {threads} gzip {{}}
 		touch done
 		"""
 
@@ -140,7 +146,7 @@ rule collect_checkv_genomes:
 		if [[ $(cut -f2 {input.checkv_taxonomy} | sort -t$'\\t' | uniq | wc -l) != $(cut -f1 {input.derep_meta} | sed '1d' | sort -t$'\\t' | uniq | wc -l) ]]
 		then
 		  cut -f2 {input.checkv_taxonomy} | sort -t$'\\t' | uniq | grep -v -F -f <(cut -f1 {input.derep_meta} | sed '1d' | sort -t$'\\t' | uniq) | grep -F -f - {input.checkv_taxonomy} > "{params.gendir}/../tmp"
-		  cut -f1 "{params.gendir}/../tmp" | sed 's/$/\.fa/' | while read line
+		  cut -f1 "{params.gendir}/../tmp" | sed 's/$/\.fa\.gz/' | while read line
 		  do
 		    ln -sf "{params.gendir}/$line" {params.outdir}
 		  done
@@ -152,7 +158,7 @@ rule collect_checkv_genomes:
 if config["custom_checkv_post_derep"]:
 	rule add_custom_checkv_post_derep:
 		output:
-			tax_added = config["rdir"] + "/tax_combined/vit_custom_post_derep_taxonomy.txt"
+			tax_added = config["rdir"] + "/tax_combined/vir_custom_post_derep_taxonomy.txt"
 		params:
 			add = config["custom_checkv_post_derep"],
 			outdir = config["rdir"] + "/derep_combined/"

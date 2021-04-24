@@ -1,0 +1,31 @@
+import glob
+import pandas as pd
+
+"""
+Author: Christiane Hassenrueck, Antonio Fernandez-Guerra
+Acknowledgements: Chiara Vanni
+Affiliation: MARUM - Center for Marine Environmental Sciences University of Bremen
+Aim: Create high resolution taxonomic database for all domains of life using GTDB and NCBI taxonomy
+Run: snakemake -s Snakefile
+"""
+
+# from snakemake.utils import validate, min_version
+##### set minimum snakemake version #####
+# min_version("5.1.2")
+
+configfile: "config/config_kraken2.yaml"
+
+LIBRARY_NAME = config["library_name"]
+
+wildcard_constraints:
+	library_name = '|'.join(LIBRARY_NAME)
+
+rule all:
+	input:
+		map = config["rdir"] + "/" + config["db_name"] + "/tmp/prelim_map.txt"
+
+'''
+##### load rules #####
+'''
+include: "rules/kraken2_module.smk"
+

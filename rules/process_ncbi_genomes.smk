@@ -286,7 +286,7 @@ rule collect_ncbi_genomes:
 if config["custom_ncbi_post_derep"]:
 	rule add_custom_ncbi_post_derep:
 		output:
-			tax_added = config["rdir"] + "/tax_combined/euk_custom_post_derep_taxonomy.txt"
+			tax = config["rdir"] + "/tax_combined/euk_custom_post_derep_taxonomy.txt"
 		params:
 			add = config["custom_ncbi_post_derep"],
 			outdir = config["rdir"] + "/derep_combined/"

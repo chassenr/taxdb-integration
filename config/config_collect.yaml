@@ -26,6 +26,9 @@ library_coarse:
   - vertebrate_other
   - invertebrate
 
+# number of threads for simple parallel processes
+parallel_threads: 64
+
 # Parameters for downloading files
 download_threads: 32
 download_onefile: 16
@@ -166,45 +169,4 @@ gtdb_to_taxdump: "/storage/hdd1/chh/Repos/gtdb_to_taxdump/gtdb_to_taxdump.py"
 
 # threads to generate accession2taxid
 taxmap_threads: 64
-
-# Include UniVec databases
-univec: "UniVec_Core"
-
-# Parameters for building krakendb
-masking_threads: 32
-krakenbuild_threads: 32
-kmer_len: 31
-minimizer_len: 23
-minimizer_spaces: 4
-max_dbsize: 700000000000
-
-# settings for coarse DB
-rank_coarse:
-  fungi: "family"
-  invertebrate: "class"
-  plant: "family"
-  protozoa: "family"
-  vertebrate_mammalian: "class"
-  vertebrate_other: "class"
-
-coarse_sublineage:
-  fungi: ""
-  invertebrate: ""
-  plant: "p__Streptophyta"
-  protozoa: ""
-  vertebrate_mammalian: ""
-  vertebrate_other: ""
-
-rank_sublineage:
-  fungi: "family"
-  invertebrate: "class"
-  plant: "class"
-  protozoa: "family"
-  vertebrate_mammalian: "class"
-  vertebrate_other: "class"
-
-nmax_coarse: 3
-
-# maximum memory for conterminator
-cmem: "500G"
 

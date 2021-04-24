@@ -1,8 +1,8 @@
 #!/bin/bash
 
-ACCNOS=$1
-TAXID=$2
-GENDIR=$3
+ACCNOS=$(echo $1 | sed 's/\s/\t/' | cut -f1)
+TAXID=$(echo $1 | sed 's/\s/\t/' | cut -f2)
+GENDIR=$2
 
 if ls $GENDIR/$ACCNOS* 1> /dev/null 2>&1
 then

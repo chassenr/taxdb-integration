@@ -1,0 +1,79 @@
+# Basic dirs
+wdir: "/storage/hdd1/chh/Repos/taxdb-integration"
+rdir: "/storage/hdd1/chh/TaxDB"
+cdir: "/storage/hdd1/chh/TaxDB/coarse"
+
+# Default parameters
+threads: 1
+
+# number of threads for simple parallel processes
+parallel_threads: 64
+
+# select presets for building kraken DB
+# allowed options are 
+#   "user" (user-supplied table of accessions and species taxids required)
+#   "coarse" (sorting DB)
+#   "highres_pro" (high resolution DB with only prokaryotes and viruses)
+#   "onestep" (high resolution for prokaryotes and viruses, coarse resolution for eukaryotes)
+kraken2_preset: "coarse"
+
+# location of file with input accessions and taxids for user input
+kraken2_custom: ""
+
+# DB name (to avoid overwriting output if more than 1 DB is built)
+db_name: "kraken2_coarse_db_nolim"
+
+# Include UniVec databases
+univec: "UniVec_Core"
+ncbi_server: "http://ftp.ncbi.nlm.nih.gov"
+
+# enable conterminator (only suitable for coarse and onestep presets or similar custom DB selection)
+kingdoms: "prokaryotes,fungi,protists,plants,metazoa"
+
+# maximum memory for conterminator
+cmem: "500G"
+
+# Parameters for building krakendb
+masking_threads: 64
+krakenbuild_threads: 32
+kmer_len: 25
+minimizer_len: 23
+minimizer_spaces: 4
+max_dbsize: 700000000000
+
+# additional settings for coarse preset
+library_name:
+  - fungi
+  - invertebrate
+  - plant
+  - protozoa
+  - vertebrate_mammalian
+  - vertebrate_other
+
+rank_coarse:
+  fungi: "family"
+  invertebrate: "class"
+  plant: "family"
+  protozoa: "family"
+  vertebrate_mammalian: "class"
+  vertebrate_other: "class"
+
+coarse_sublineage:
+  fungi: ""
+  invertebrate: ""
+  plant: "p__Streptophyta"
+  protozoa: ""
+  vertebrate_mammalian: ""
+  vertebrate_other: ""
+
+rank_sublineage:
+  fungi: "family"
+  invertebrate: "class"
+  plant: "class"
+  protozoa: "family"
+  vertebrate_mammalian: "class"
+  vertebrate_other: "class"
+
+nmax_coarse: 3
+
+
