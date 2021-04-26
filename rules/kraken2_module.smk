@@ -216,6 +216,7 @@ if config["kingdoms"]:
 			contam = config["rdir"] + "/" + config["db_name"] + "/decontamination/db_conterm_prediction"
 		params:
 			script = config["wdir"] + "/scripts/get_kingdoms_conterminator.R",
+			kingdoms = config["kingdoms"],
 			tmpdir = config["rdir"] + "/" + config["db_name"] + "/decontamination/tmp",
 			taxdir = config["rdir"] + "/DB_taxonomy/",
 			prefix = config["rdir"] + "/" + config["db_name"] + "/decontamination/db",
@@ -230,7 +231,7 @@ if config["kingdoms"]:
 			# prepare fasta header mapping file for conterminator
 			cut -f2,3 {input.map} > {output.cmap}
 			# parse taxid string for conterminator kingdoms parameter
-			{params.script} -t {params.taxdir} -k "prokaryotes,fungi,protists,plants,metazoa" -s "{params.taxdir}/accessionTaxa.sql" -o {output.kstring} -x {output.xstring}
+			{params.script} -t {params.taxdir} -k "{params.kingdoms}" -s "{params.taxdir}/accessionTaxa.sql" -o {output.kstring} -x {output.xstring}
 			# run conterminator
 			KSTR=$(cat {output.kstring})
 			XSTR=$(cat {output.xstring})
@@ -346,12 +347,12 @@ if config["univec"]:
 			rm {params.libdir}/tmp.accnos
 			"""
 
-rule build_kraken_coarse:
+rule build_kraken2_db:
 	input:
 		univec_fasta = config["rdir"] + "/" + config["db_name"] + "/library/" + config["univec"] + "/library.fna",
 		univec_map = config["rdir"] + "/" + config["db_name"] + "/library/" + config["univec"] + "/prelim_map.txt",
 		lib_fasta = config["rdir"] + "/" + config["db_name"] + "/library/selection/library.fna",
-		libmap = config["rdir"] + "/" + config["db_name"] + "/library/selection/prelim_map.txt"
+		lib_map = config["rdir"] + "/" + config["db_name"] + "/library/selection/prelim_map.txt"
 	output:
 		hash = config["rdir"] + "/" + config["db_name"] + "/hash.k2d",
 		opts = config["rdir"] + "/" + config["db_name"] + "/opts.k2d",
@@ -373,5 +374,59 @@ rule build_kraken_coarse:
 		kraken2-build --build --threads {threads} --db {params.dbdir} --kmer-len {params.kmer_len} --minimizer-len {params.min_len} --minimizer-spaces {params.min_spaces} --max-db-size {params.max_dbsize} &>> {log}
 	"""
 
+# thanks to: https://stackoverflow.com/questions/61905249/lambda-function-in-snakemake-output
+def getTargetFiles():
+	targets = list()
+	for l in LIBRARY_NAME:
+		targets.append(config["custom_ncbi_pre_derep"][l])
+	return targets
 
+rule collect_quick_download_info:
+	input:
+		kraken2_select = config["rdir"] + "/" + config["db_name"] + "/kraken2_select_accessions.txt",
+		ncbi_links = expand(config["rdir"] + "/{library_name}/assembly_url_genomic.txt", library_name = LIBRARY_NAME),
+		gtdb_links = config["rdir"] + "/gtdb/metadata/gtdb_download_info.txt"
+	output:
+		download_links = config["rdir"] + "/" + config["db_name"] + "/quick_collect/download_links.txt",
+		custom_links = config["rdir"] + "/" + config["db_name"] + "/quick_collect/custom_links.txt",
+		done = config["rdir"] + "/" + config["db_name"] + "/quick_collect/done"
+	params:
+		gendir = config["rdir"] + "/" + config["db_name"] + "/genomes",
+		outdir = config["rdir"] + "/" + config["db_name"] + "/quick_collect/genomes/",
+		add_ncbi_pre_derep = getTargetFiles(),
+		add_ncbi_post_derep = config["custom_ncbi_post_derep"],
+		add_gtdb_pre_derep = config["custom_gtdb_pre_derep"],
+		add_gtdb_post_derep = config["custom_gtdb_post_derep"],
+		add_checkv_pre_derep = config["custom_checkv_pre_derep"],
+		add_checkv_post_derep = config["custom_checkv_post_derep"]
+	conda: 
+		config["wdir"] + "/envs/parallel.yaml"
+	threads: config["parallel_threads"]
+	log:
+		config["rdir"] + "/logs/" + config["db_name"] + "_quick_collect.log"
+	shell:
+		"""
+		cat {input.ncbi_links} | cut -f1 | grep -F -f <(cut -f1 {input.kraken2_select}) > {output.download_links}
+		cut -f2 {input.gtdb_links} | grep -F -f <(cut -f1 {input.kraken2_select}) >> {output.download_links}
+		for file in {params.add_ncbi_pre_derep} {params.add_gtdb_pre_derep} {params.add_checkv_pre_derep}
+		do
+		  if [[ "$file" != "n" ]]
+		  then
+		    cut -f1,3 $file | grep -F -f <(cut -f1 {input.kraken2_select}) >> {output.custom_links}
+		  fi
+		done
+		for file in {params.add_ncbi_post_derep} {params.add_gtdb_post_derep} {params.add_checkv_post_derep}
+		do
+		  if [[ "$file" != "n" ]]
+		  then
+		    cut -f2,4 $file | grep -F -f <(cut -f1 {input.kraken2_select}) >> {output.custom_links}
+		  fi
+		done
+		mkdir -p {params.outdir}
+		cat {output.custom_links} {output.download_links} | grep -o -F -f <(cut -f1 {input.kraken2_select}) | grep -v -F -f - {input.kraken2_select} | cut -f1 | parallel -j {threads} 'cp {params.gendir}/{{}}* {params.outdir}'
+		if [[ $(ls -1 {params.outdir} | cat - {output.download_links} {output.custom_links} | wc -l) == $(cat {input.kraken2_select} | wc -l) ]]
+		then
+		  touch {output.done}
+		fi
+		"""
 

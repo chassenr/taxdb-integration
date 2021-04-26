@@ -31,7 +31,7 @@ ncbi_server: "http://ftp.ncbi.nlm.nih.gov"
 kingdoms: "prokaryotes,fungi,protists,plants,metazoa"
 
 # maximum memory for conterminator
-cmem: "500G"
+cmem: "450G"
 
 # Parameters for building krakendb
 masking_threads: 64
@@ -76,4 +76,19 @@ rank_sublineage:
 
 nmax_coarse: 3
 
+# for quick collect of genomes used to build the DB, also import info about user supplied genomes
+custom_ncbi_pre_derep:
+  fungi: "n"
+  protozoa: "n"
+  plant: "n"
+  invertebrate: "n"
+  vertebrate_mammalian: "n"
+  vertebrate_other: "n"
+custom_ncbi_post_derep: "/storage/hdd1/chh/Repos/taxdb-integration/assets/TARA_SMAGs.txt"
+
+custom_gtdb_pre_derep: "n"
+custom_gtdb_post_derep: "n"
+
+custom_checkv_pre_derep: "n"
+custom_checkv_post_derep: "n"
 

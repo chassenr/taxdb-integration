@@ -113,18 +113,20 @@ if (is.null(opt$output) | is.null(opt$taxdump) | is.null(opt$sql)) {
 ### retrieve taxid for each path in dereplicated database ####
 
 # format NCBI taxdump database
-read.names.sql(
-  paste0(opt$taxdump, "/names.dmp"),
-  opt$sql
-)
-read.nodes.sql(
-  paste0(opt$taxdump, "/nodes.dmp"),
-  opt$sql
-)
+if(!file.exists(opt$sql)) {
+  read.names.sql(
+    paste0(opt$taxdump, "/names.dmp"),
+    opt$sql
+  )
+  read.nodes.sql(
+    paste0(opt$taxdump, "/nodes.dmp"),
+    opt$sql
+  )
+}
 
 # select the phylum groupings for:
 phylum_list <- list(
-  # bacteria, archaea (always taxid 2 and 3, no need to select)
+  # bacteria, archaea (taken from domain list)
   c(),
   # fungi
   c(
@@ -137,10 +139,14 @@ phylum_list <- list(
     "p__Mucoromycota",
     "p__Zoopagomycota"
   ),
-  # protist and algae: to be selected based on exclusion
+  # protist: to be selected based on exclusion
   c(),
-  # higher plants
-  c("p__Streptophyta"),
+  # Viridiplantae
+  c(
+    "p__Streptophyta",
+    "p__Chlorophyta",
+    "p__Rhodophyta"
+  ),
   # metazoa
   c(
     "p__Acanthocephala",
@@ -173,7 +179,7 @@ names(phylum_list) <- c("prokaryotes", "fungi", "protists", "plants", "metazoa")
 
 # domain list
 domains <- c("d__Archaea", "d__Bacteria", "d__Eukaryota", "d__Viruses")
-tmp <- getId(gsub("^d__", "", domains), opt$sql) %>% 
+tmp <- getId(domains, opt$sql) %>% 
   strsplit(., split = ",") %>% 
   unlist() %>% 
   getTaxonomy(., opt$sql)
@@ -189,7 +195,7 @@ taxid_list <- map(
   1:length(phylum_list),
   function(X) {
     if(!is.null(phylum_list[[X]])) {
-      tmp <- getId(gsub("^p__", "", phylum_list[[X]]), opt$sql) %>% 
+      tmp <- getId(phylum_list[[X]], opt$sql) %>% 
         strsplit(., split = ",") %>% 
         unlist() %>% 
         getTaxonomy(., opt$sql)
@@ -202,8 +208,6 @@ taxid_list <- map(
 names(taxid_list) <- names(phylum_list)
 
 # parse string for conterminator
-# taxid 2 and 3 will always be archaea and bacteria
-# euks are taxid 4
 conterminator_string <- gsub(
   ")(", 
   "),(",
@@ -211,13 +215,27 @@ conterminator_string <- gsub(
     "'",
     ifelse(c("prokaryotes") %in% kingdoms, paste0("(",paste(domains_taxid[1:2], collapse = "||"), ")"), ""),
     ifelse(c("fungi") %in% kingdoms, paste0("(",paste(taxid_list$fungi, collapse = "||"), ")"), ""),
-    ifelse(c("plants") %in% kingdoms, paste0("(", taxid_list$plants, ")"), ""),
+    ifelse(c("plants") %in% kingdoms, paste0("(", paste(taxid_list$plants, collapse = "||"), ")"), ""),
     ifelse(c("metazoa") %in% kingdoms, paste0("(", paste(taxid_list$metazoa, collapse = "||"), ")"), ""),
     ifelse(c("protists") %in% kingdoms, paste0("(", domains_taxid[3], "&&!", paste(unlist(taxid_list), collapse = "&&!"), ")"), ""),
     "'"
   ),
   fixed = T
 )
+
+# blacklist viruses and p__Eukaryota
+tmp <- getId("p__Eukaryota", opt$sql) %>%
+  strsplit(., split = ",") %>%
+  unlist() %>%
+  getTaxonomy(., opt$sql)
+blacklist_string <- paste0(
+  "'", 
+  domains_taxid[4],
+  ",",
+  gsub(" ", "", rownames(tmp)[is.na(tmp[, "class"]) & !is.na(tmp[, "phylum"])]),
+  "'"
+)
+rm(tmp)
 
 # write output
 write.table(
@@ -229,7 +247,7 @@ write.table(
   quote = F
 )
 write.table(
-  paste0("'", domains_taxid[4], "'"),
+  blacklist_string,
   opt$blacklist,
   sep = "\t",
   col.names = F,

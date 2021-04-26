@@ -48,6 +48,8 @@ rule build_taxonomy:
 		"""
 		cut -f1,2 {input.tax_combined} > {output.tax_good}
 		{params.script} -o {params.taxdir} {output.tax_good} &>> {log}
+		sed '/\#/d' -i {params.taxdir}/merged.dmp
+		sed '/\#/d' -i {params.taxdir}/delnodes.dmp 
 		"""
 
 # this needs to be collected separately to use the fixed taxpath and exclude accessions without proteins
