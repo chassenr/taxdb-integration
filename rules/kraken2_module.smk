@@ -115,8 +115,8 @@ if config["kraken2_preset"] == "highres_pro":
 		input:
 			gtdb = config["rdir"] + "/tax_combined/gtdb_derep_taxonomy.txt",
 			checkv = config["rdir"] + "/tax_combined/checkv_derep_taxonomy.txt",
-			added_nuc_gtdb = config["rdir"] + "/tax_combined/pro_custom_post_derep_taxonomy.txt" if config["custom_gtdb_post_derep"] else [],
-			added_nuc_checkv = config["rdir"] + "/tax_combined/vir_custom_post_derep_taxonomy.txt" if config["custom_checkv_post_derep"] else [],
+			added_nuc_gtdb = config["rdir"] + "/tax_combined/pro_custom_post_derep_taxonomy.txt" if config["custom_gtdb_post_derep"] != "n" else [],
+			added_nuc_checkv = config["rdir"] + "/tax_combined/vir_custom_post_derep_taxonomy.txt" if config["custom_checkv_post_derep"] != "n" else [],
 			gen2taxid = config["rdir"] + "/tax_combined/full_genome2taxid.txt"
 		output:
 			kraken2_select = config["rdir"] + "/" + config["db_name"] + "/kraken2_select_accessions.txt"
@@ -140,7 +140,7 @@ if config["kraken2_preset"] == "highres_pro":
 			do
 			  ln -sf "$line" {params.outdir}
 			done
-			if [[ $(wc -l {input.kraken2_select}) == $(find {params.outdir} -type f -name '*.gz' | wc -l) ]]
+			if [[ $(cat {input.kraken2_select} | wc -l) == $(find {params.outdir} -name '*.gz' | wc -l) ]]
 			then
 			  touch {output.linked}
 			fi
@@ -162,7 +162,7 @@ if config["kraken2_preset"] == "user":
 			do
 			  ln -sf "$line" {params.outdir}
 			done
-			if [[ $(wc -l {input.kraken2_select}) == $(find {params.outdir} -type f -name '*.gz' | wc -l) ]]
+			if [[ $(cat {input.kraken2_select | wc -l}) == $(find {params.outdir} -name '*.gz' | wc -l) ]]
 			then
 			  touch {output.linked}
 			fi
@@ -179,8 +179,7 @@ rule format_fasta_kraken2:
 		gendir = config["rdir"] + "/" + config["db_name"] + "/genomes"
 	conda:
 		config["wdir"] + "/envs/kraken2.yaml"
-	threads:
-		config["parallel_threads"]
+	threads: config["parallel_threads"]
 	shell:
 		"""
 		cut -f1,3 {input.kraken2_select} | parallel -j{threads} '{params.script} {{}} {params.gendir}' | sed -e '/^>/!s/[a-z]/x/g' >> {output.library}
@@ -204,25 +203,39 @@ rule prelim_map:
 		"""
 
 if config["kingdoms"]:
+	rule format_taxid_conterminator:
+		input:
+			names = config["rdir"] + "/DB_taxonomy/names.dmp"
+		output:
+			kstring = config["rdir"] + "/" + config["db_name"] + "/decontamination/conterminator_string.txt",
+			xstring = config["rdir"] + "/" + config["db_name"] + "/decontamination/conterminator_blacklist.txt"
+		params:
+			script = config["wdir"] + "/scripts/get_kingdoms_conterminator.R",
+			kingdoms = config["kingdoms"],
+			taxdir = config["rdir"] + "/DB_taxonomy/"
+		conda:
+			config["wdir"] + "/envs/r.yaml"
+		shell:
+			"""
+			# parse taxid string for conterminator kingdoms parameter
+			{params.script} -t {params.taxdir} -k "{params.kingdoms}" -s "{params.taxdir}/accessionTaxa.sql" -o {output.kstring} -x {output.xstring}
+			"""
+
 	rule detect_contamination:
 		input:
 			fasta = config["rdir"] + "/" + config["db_name"] + "/tmp/library.fna",
 			map = config["rdir"] + "/" + config["db_name"] + "/tmp/prelim_map.txt",
 			names = config["rdir"] + "/DB_taxonomy/names.dmp",
-		output:
 			kstring = config["rdir"] + "/" + config["db_name"] + "/decontamination/conterminator_string.txt",
-			xstring = config["rdir"] + "/" + config["db_name"] + "/decontamination/conterminator_blacklist.txt",
+			xstring = config["rdir"] + "/" + config["db_name"] + "/decontamination/conterminator_blacklist.txt"
+		output:
 			cmap = config["rdir"] + "/" + config["db_name"] + "/decontamination/cmap.txt",
 			contam = config["rdir"] + "/" + config["db_name"] + "/decontamination/db_conterm_prediction"
 		params:
-			script = config["wdir"] + "/scripts/get_kingdoms_conterminator.R",
-			kingdoms = config["kingdoms"],
 			tmpdir = config["rdir"] + "/" + config["db_name"] + "/decontamination/tmp",
 			taxdir = config["rdir"] + "/DB_taxonomy/",
 			prefix = config["rdir"] + "/" + config["db_name"] + "/decontamination/db",
 			cmem = config["cmem"]
-		conda:
-			config["wdir"] + "/envs/r.yaml"
 		threads: config["parallel_threads"]
 		log:
 			config["rdir"] + "/logs/run_conterminator.log"
@@ -230,11 +243,9 @@ if config["kingdoms"]:
 			"""
 			# prepare fasta header mapping file for conterminator
 			cut -f2,3 {input.map} > {output.cmap}
-			# parse taxid string for conterminator kingdoms parameter
-			{params.script} -t {params.taxdir} -k "{params.kingdoms}" -s "{params.taxdir}/accessionTaxa.sql" -o {output.kstring} -x {output.xstring}
 			# run conterminator
-			KSTR=$(cat {output.kstring})
-			XSTR=$(cat {output.xstring})
+			KSTR=$(cat {input.kstring})
+			XSTR=$(cat {input.xstring})
 			conterminator dna {input.fasta} {output.cmap} {params.prefix} {params.tmpdir} --mask-lower-case 1 --ncbi-tax-dump {params.taxdir} --threads {threads} --split-memory-limit {params.cmem} --blacklist $XSTR --kingdoms $KSTR &>> {log}
 			"""
 
@@ -316,7 +327,7 @@ rule copy_taxonomy:
 	shell:
 		"""
 		mkdir -p {params.kraken_dir}
-		cp -r {params.taxdir} {params.kraken_tax}
+		cp -r {params.taxdir}/*.dmp {params.kraken_tax}
 		"""
 
 # to avoid ftp issue, recreate kraken2 code for adding UniVec files
@@ -349,15 +360,16 @@ if config["univec"]:
 
 rule build_kraken2_db:
 	input:
-		univec_fasta = config["rdir"] + "/" + config["db_name"] + "/library/" + config["univec"] + "/library.fna",
-		univec_map = config["rdir"] + "/" + config["db_name"] + "/library/" + config["univec"] + "/prelim_map.txt",
+		univec_fasta = config["rdir"] + "/" + config["db_name"] + "/library/" + config["univec"] + "/library.fna" if config["univec"] else [],
+		univec_map = config["rdir"] + "/" + config["db_name"] + "/library/" + config["univec"] + "/prelim_map.txt" if config["univec"] else [],
 		lib_fasta = config["rdir"] + "/" + config["db_name"] + "/library/selection/library.fna",
-		lib_map = config["rdir"] + "/" + config["db_name"] + "/library/selection/prelim_map.txt"
+		lib_map = config["rdir"] + "/" + config["db_name"] + "/library/selection/prelim_map.txt",
+		names = config["rdir"] + "/" + config["db_name"] + "/taxonomy/names.dmp"
 	output:
 		hash = config["rdir"] + "/" + config["db_name"] + "/hash.k2d",
 		opts = config["rdir"] + "/" + config["db_name"] + "/opts.k2d",
 		map  = config["rdir"] + "/" + config["db_name"] + "/seqid2taxid.map",
-		taxo = config["rdir"] + "/" + config["db_name"] + "/kraken2_db/taxo.k2d"
+		taxo = config["rdir"] + "/" + config["db_name"] + "/taxo.k2d"
 	params:
 		dbdir = config["rdir"] + "/" + config["db_name"],
 		kmer_len = config["kmer_len"],
@@ -381,31 +393,36 @@ def getTargetFiles():
 		targets.append(config["custom_ncbi_pre_derep"][l])
 	return targets
 
+# I always get the error message that one of the commands exited with a non-zero exit status,
+# but running the exact commands printed by snakemake manually does not produce any errors.
+# I have no idea how to fix that... running manually for now
 rule collect_quick_download_info:
 	input:
 		kraken2_select = config["rdir"] + "/" + config["db_name"] + "/kraken2_select_accessions.txt",
 		ncbi_links = expand(config["rdir"] + "/{library_name}/assembly_url_genomic.txt", library_name = LIBRARY_NAME),
-		gtdb_links = config["rdir"] + "/gtdb/metadata/gtdb_download_info.txt"
+		gtdb_links = config["rdir"] + "/gtdb/metadata/gtdb_download_info.txt",
+		conterm_out = config["rdir"] + "/" + config["db_name"] + "/decontamination/db_conterm_prediction" if config["kingdoms"] else []
 	output:
 		download_links = config["rdir"] + "/" + config["db_name"] + "/quick_collect/download_links.txt",
 		custom_links = config["rdir"] + "/" + config["db_name"] + "/quick_collect/custom_links.txt",
+		conterm_out = config["rdir"] + "/" + config["db_name"] + "/decontamination/db_conterm_prediction" if config["kingdoms"] else [],
 		done = config["rdir"] + "/" + config["db_name"] + "/quick_collect/done"
 	params:
 		gendir = config["rdir"] + "/" + config["db_name"] + "/genomes",
-		outdir = config["rdir"] + "/" + config["db_name"] + "/quick_collect/genomes/",
+		outdir = config["rdir"] + "/" + config["db_name"] + "/quick_collect",
 		add_ncbi_pre_derep = getTargetFiles(),
 		add_ncbi_post_derep = config["custom_ncbi_post_derep"],
 		add_gtdb_pre_derep = config["custom_gtdb_pre_derep"],
 		add_gtdb_post_derep = config["custom_gtdb_post_derep"],
 		add_checkv_pre_derep = config["custom_checkv_pre_derep"],
-		add_checkv_post_derep = config["custom_checkv_post_derep"]
+		add_checkv_post_derep = config["custom_checkv_post_derep"],
+		conterminator = config["kingdoms"]
 	conda: 
 		config["wdir"] + "/envs/parallel.yaml"
 	threads: config["parallel_threads"]
-	log:
-		config["rdir"] + "/logs/" + config["db_name"] + "_quick_collect.log"
 	shell:
 		"""
+		mkdir -p {params.outdir}
 		cat {input.ncbi_links} | cut -f1 | grep -F -f <(cut -f1 {input.kraken2_select}) > {output.download_links}
 		cut -f2 {input.gtdb_links} | grep -F -f <(cut -f1 {input.kraken2_select}) >> {output.download_links}
 		for file in {params.add_ncbi_pre_derep} {params.add_gtdb_pre_derep} {params.add_checkv_pre_derep}
@@ -422,11 +439,15 @@ rule collect_quick_download_info:
 		    cut -f2,4 $file | grep -F -f <(cut -f1 {input.kraken2_select}) >> {output.custom_links}
 		  fi
 		done
-		mkdir -p {params.outdir}
-		cat {output.custom_links} {output.download_links} | grep -o -F -f <(cut -f1 {input.kraken2_select}) | grep -v -F -f - {input.kraken2_select} | cut -f1 | parallel -j {threads} 'cp {params.gendir}/{{}}* {params.outdir}'
-		if [[ $(ls -1 {params.outdir} | cat - {output.download_links} {output.custom_links} | wc -l) == $(cat {input.kraken2_select} | wc -l) ]]
+		mkdir -p {params.outdir}/genomes
+		cat {output.custom_links} {output.download_links} | grep -o -F -f <(cut -f1 {input.kraken2_select}) | grep -v -F -f - {input.kraken2_select} | cut -f1 | parallel -j {threads} 'cp {params.gendir}/{{}}* {params.outdir}/genomes/'
+		if [[ $(ls -1 {params.outdir}/genomes | cat - {output.download_links} {output.custom_links} | wc -l) == $(cat {input.kraken2_select} | wc -l) ]]
 		then
 		  touch {output.done}
+		fi
+		if [[ "{params.conterminator}" != "" ]]
+		then
+		  cp {input.conterm_out} {output.conterm_out}
 		fi
 		"""
 
