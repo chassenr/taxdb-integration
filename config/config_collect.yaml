@@ -170,3 +170,9 @@ gtdb_to_taxdump: "/storage/hdd1/chh/Repos/gtdb_to_taxdump/gtdb_to_taxdump.py"
 # threads to generate accession2taxid
 taxmap_threads: 64
 
+# parameters for clustering (dereplicating) proteins
+cov: 0.8
+cov_mode: 1
+min_seq_id: 0.95
+
+

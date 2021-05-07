@@ -13,7 +13,7 @@ rule split_checkv_proteins:
 		mkdir -p {params.outdir}
 		cd {params.outdir}
 		# thanks to: https://bioinformatics.stackexchange.com/questions/3021/how-to-split-multifasta-based-on-partial-fasta-header
-		awk -F'_' '{{if(/^>/){{sub("^>", ""); name=$1"_"$2; print > name".faa"}}else{{print > name".faa"}}}}' {input.faa}
+		awk -F'_' '{{if(/^>/){{sub("^>", "");name=$1"_"$2;sub("^", ">");print > name".faa"}}else{{print > name".faa"}}}}' {input.faa}
 		find . -type f -name '*.faa' | parallel -j {threads} gzip {{}}
 		touch {output.done}
 		"""

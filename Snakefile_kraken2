@@ -22,10 +22,7 @@ wildcard_constraints:
 
 rule all:
 	input:
-		#map = config["rdir"] + "/" + config["db_name"] + "/tmp/prelim_map.txt",
-		#contam = config["rdir"] + "/" + config["db_name"] + "/decontamination/db_conterm_prediction"
-		hash = config["rdir"] + "/" + config["db_name"] + "/hash.k2d",
-		#done = config["rdir"] + "/" + config["db_name"] + "/quick_collect/done"
+		hash = config["rdir"] + "/" + config["db_name"] + "/hash.k2d"
 
 '''
 ##### load rules #####
