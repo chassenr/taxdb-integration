@@ -1,0 +1,20 @@
+# Basic dirs
+wdir: "/storage/hdd1/chh/Repos/taxdb-integration"
+rdir: "/storage/hdd1/chh/TaxDB"
+
+# Default parameters
+threads: 1
+
+# number of threads for simple parallel processes
+parallel_threads: 64
+
+# enable conterminator 
+# kingdoms: "prokaryotes,fungi,protists,plants,metazoa"
+kingdoms: ""
+
+# maximum memory for conterminator
+cmem: "450G"
+
+# number of threads for building kaiju database index
+kaiju_threads: 32
+

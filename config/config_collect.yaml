@@ -101,7 +101,7 @@ custom_ncbi_pre_derep:
   invertebrate: ""
   vertebrate_mammalian: ""
   vertebrate_other: ""
-custom_ncbi_post_derep: "/storage/hdd1/chh/Repos/taxdb-integration/assets/TARA_SMAGs.txt"
+custom_ncbi_post_derep: "/storage/hdd1/chh/Repos/taxdb-integration/assets/TARA_AP_combined.txt"
 
 custom_gtdb_pre_derep: ""
 custom_gtdb_post_derep: ""
