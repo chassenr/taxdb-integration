@@ -106,7 +106,9 @@ rule generate_nucl_accesion2taxid:
 	threads: config["taxmap_threads"]
 	shell:
 		"""
-		cut -f1,3 {input.gen2taxid} | parallel -j{threads} '{params.script} {{}} {params.gendir}' >> {output.acc2taxid}
+		find {params.gendir} -name '*.gz' > "{params.gendir}/../tax_combined/tmp_nucl_filelist.txt" 
+		cut -f1,3 {input.gen2taxid} | parallel -j{threads} '{params.script} {{}} "{params.gendir}/../tax_combined/tmp_nucl_filelist.txt"' >> {output.acc2taxid}
+		rm "{params.gendir}/../tax_combined/tmp_nucl_filelist.txt"
 		"""
 
 rule generate_prot_accesion2taxid:
