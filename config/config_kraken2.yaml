@@ -23,8 +23,8 @@ kraken2_preset: "highres_pro"
 kraken2_custom: ""
 
 # DB name (to avoid overwriting output if more than 1 DB is built)
-# db_name: "kraken2_highres_db_nolim"
-db_name: "kraken2_highres_pro_nolim_newtax"
+db_name: "kraken2_highres_pro_db_nolim"
+# db_name: "kraken2_coarse_db_nolim"
 
 # Include UniVec databases
 univec: "UniVec_Core"
@@ -44,7 +44,7 @@ krakenbuild_threads: 32
 kmer_len: 25
 minimizer_len: 23
 minimizer_spaces: 4
-max_dbsize: 500000000000
+max_dbsize: 700000000000
 
 # additional settings for coarse preset
 library_name:
@@ -79,6 +79,9 @@ rank_sublineage:
   vertebrate_mammalian: "class"
   vertebrate_other: "class"
 
+# the rank selected here for custom genomes should be the highest of the previous selection 
+rank_custom: "class"
+
 nmax_coarse: 3
 
 # for quick collect of genomes used to build the DB, also import info about user supplied genomes
@@ -91,7 +94,7 @@ custom_ncbi_pre_derep:
   invertebrate: "n"
   vertebrate_mammalian: "n"
   vertebrate_other: "n"
-custom_ncbi_post_derep: "/storage/hdd1/chh/Repos/taxdb-integration/assets/TARA_SMAGs.txt"
+custom_ncbi_post_derep: "/storage/hdd1/chh/Repos/taxdb-integration/assets/TARA_AP_combined_new.txt"
 
 custom_gtdb_pre_derep: "n"
 custom_gtdb_post_derep: "n"

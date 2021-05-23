@@ -13,7 +13,7 @@ rule extract_clustered_protein_accessions:
 	shell:
 		"""
 		mkdir -p {params.outdir}
-		grep '^>' {input.protein_clustered} | sed -e 's/^>//' -e 's/ *$//' > {params.outdir}/tmp
+		grep '^>' {input.protein_clustered} | sed -e 's/^>//' -e 's/\s.*$//' > {params.outdir}/tmp
 		{input.acc2taxid} > {output.acc2taxid_clustered}
 		rm {params.outdir}/tmp
 		"""

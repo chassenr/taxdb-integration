@@ -41,6 +41,40 @@ if config["kraken2_preset"] == "coarse":
 			touch {output.linked}
                         """
 
+	if config["custom_ncbi_post_derep"] != "n": 
+		rule add_custom_ncbi_coarse:
+			input:
+				tax_select = expand(config["rdir"] + "/" + config["db_name"] + "/{library_name}_kraken2_select_taxonomy.txt", library_name = LIBRARY_NAME),
+				gen2taxid = config["rdir"] + "/tax_combined/full_genome2taxid.txt",
+				tax_added = config["rdir"] + "/tax_combined/euk_custom_post_derep_taxonomy.txt"
+			output:
+				custom_select = config["rdir"] + "/" + config["db_name"] + "/custom_euk_kraken2_select_taxonomy.txt",
+				kraken2_select = config["rdir"] + "/" + config["db_name"] + "/custom_euk_kraken2_select_accessions.txt"
+			params:
+				script = config["wdir"] + "/scripts/coarse_selection_custom.R",
+				rank = config["rank_custom"],
+				nmax = config["nmax_coarse"],
+				dbdir = config["rdir"] + "/" + config["db_name"],
+				add = config["custom_ncbi_post_derep"],
+				gendir = config["rdir"] + "/derep_combined",
+				outdir = config["rdir"] + "/" + config["db_name"] + "/genomes/"
+			conda:
+				config["wdir"] + "/envs/r.yaml"
+			log:
+				config["rdir"] + "/logs/select_coarse_custom_ncbi.log"
+			shell:
+				"""
+				cat {input.tax_select} > "{params.dbdir}/tmp_ncbi_kraken2_select_taxonomy.txt"
+				{params.script} -t "{params.dbdir}/tmp_ncbi_kraken2_select_taxonomy.txt" -c {params.add} -r {params.rank} -n {params.nmax} -o {output.custom_select} &>>{log}
+				mkdir -p {params.outdir}
+				find {params.gendir} -name '*.gz' | grep -F -f <(cut -f1 {output.custom_select}) | while read line
+				do
+				  ln -sf "$line" {params.outdir}
+				done
+				cut -f1 {output.custom_select} | grep -F -f - {input.gen2taxid} > {output.kraken2_select}
+				rm "{params.dbdir}/tmp_ncbi_kraken2_select_taxonomy.txt"
+				"""
+
 	rule collect_gtdb_coarse:
 		input:
 			gtdb_reps = config["rdir"] + "/gtdb/metadata/gtdb_reps_tax.txt",
@@ -60,9 +94,40 @@ if config["kraken2_preset"] == "coarse":
 			cut -f1 {input.gtdb_reps} | grep -F -f - {input.gen2taxid} > {output.kraken2_select}
 			"""
 
+	if config["custom_gtdb_post_derep"] != "n":
+		rule add_custom_gtdb_coarse:
+			input:
+				gtdb_reps = config["rdir"] + "/gtdb/metadata/gtdb_reps_tax.txt",
+				gen2taxid = config["rdir"] + "/tax_combined/full_genome2taxid.txt",
+				tax_added = config["rdir"] + "/tax_combined/pro_custom_post_derep_taxonomy.txt"
+			output:
+				custom_select = config["rdir"] + "/" + config["db_name"] + "/custom_pro_kraken2_select_taxonomy.txt",
+				kraken2_select = config["rdir"] + "/" + config["db_name"] + "/custom_pro_kraken2_select_accessions.txt"
+			params:
+				script = config["wdir"] + "/scripts/coarse_selection_custom.R",
+				rank = "species",
+				nmax = 1,
+				add = config["custom_gtdb_post_derep"],
+				gendir = config["rdir"] + "/derep_combined",
+				outdir = config["rdir"] + "/" + config["db_name"] + "/genomes/"
+			conda:
+				config["wdir"] + "/envs/r.yaml"
+			log:
+				config["rdir"] + "/logs/select_coarse_custom_gtdb.log"
+			shell:
+				"""
+				{params.script} -t {input.gtdb_reps} -c {params.add} -r {params.rank} -n {params.nmax} -o {output.custom_select} &>>{log}
+				mkdir -p {params.outdir}
+				find {params.gendir} -name '*.gz' | grep -F -f <(cut -f1 {output.custom_select}) | while read line
+				do
+				  ln -sf "$line" {params.outdir}
+				done
+				cut -f1 {output.custom_select} | grep -F -f - {input.gen2taxid} > {output.kraken2_select}
+				"""
+
 	rule collect_checkv_coarse:
 		input:
-			reps_metadata = config["rdir"] + "/checkv/checkv_reps_metadata.txt",
+			reps_tax = config["rdir"] + "/checkv/checkv_reps_taxonomy.txt",
 			reps_fna = config["rdir"] + "/checkv/checkv_reps.fna",
 			gen2taxid = config["rdir"] + "/tax_combined/full_genome2taxid.txt"
 		output:
@@ -80,7 +145,7 @@ if config["kraken2_preset"] == "coarse":
 			cd {params.gendir}
 			cat {input.reps_fna} | awk '{{ if (substr($0, 1, 1)==">") {{filename=(substr($0,2) ".fa")}} print $0 > filename }}'
 			find . -type f -name '*.fa' | parallel -j {threads} gzip {{}}
-			cut -f1 {input.reps_metadata} | grep -F -f - {input.gen2taxid} > {output.kraken2_select}
+			cut -f1 {input.reps_tax} | grep -F -f - {input.gen2taxid} > {output.kraken2_select}
 
 			mkdir -p {params.outdir}
 			find {params.gendir} -name '*.gz' | grep -F -f <(cut -f1 {output.kraken2_select}) | while read line
@@ -90,12 +155,46 @@ if config["kraken2_preset"] == "coarse":
 			touch {output.linked}
 			"""
 
+	if config["custom_checkv_post_derep"] != "n":
+		rule add_custom_checkv_coarse:
+			input:
+				reps_tax = config["rdir"] + "/checkv/checkv_reps_taxonomy.txt",
+				gen2taxid = config["rdir"] + "/tax_combined/full_genome2taxid.txt",
+				tax_added = config["rdir"] + "/tax_combined/vir_custom_post_derep_taxonomy.txt"
+			output:
+				custom_select = config["rdir"] + "/" + config["db_name"] + "/custom_vir_kraken2_select_taxonomy.txt",
+				kraken2_select = config["rdir"] + "/" + config["db_name"] + "/custom_vir_kraken2_select_accessions.txt"
+			params:
+				script = config["wdir"] + "/scripts/coarse_selection_custom.R",
+				rank = "species",
+				nmax = 1,
+				add = config["custom_checkv_post_derep"],
+				gendir = config["rdir"] + "/derep_combined",
+				outdir = config["rdir"] + "/" + config["db_name"] + "/genomes/"
+			conda:
+				config["wdir"] + "/envs/r.yaml"
+			log:
+				config["rdir"] + "/logs/select_coarse_custom_gtdb.log"
+			shell:
+				"""
+				{params.script} -t {input.gtdb_reps} -c {params.add} -r {params.rank} -n {params.nmax} -o {output.custom_select} &>>{log}
+				mkdir -p {params.outdir}
+				find {params.gendir} -name '*.gz' | grep -F -f <(cut -f1 {output.custom_select}) | while read line
+				do
+				  ln -sf "$line" {params.outdir}
+				done
+				cut -f1 {output.custom_select} | grep -F -f - {input.gen2taxid} > {output.kraken2_select}
+				"""
+
 	rule check_coarse:
 		input:
 			kraken2_select_checkv = config["rdir"] + "/" + config["db_name"] + "/checkv_kraken2_select_accessions.txt",
 			kraken2_select_gtdb = config["rdir"] + "/" + config["db_name"] + "/gtdb_kraken2_select_accessions.txt",
 			kraken2_select_euk = expand(config["rdir"] + "/" + config["db_name"] + "/{library_name}_kraken2_select_accessions.txt", library_name = LIBRARY_NAME),
-			euk_linked = expand(config["rdir"] + "/" + config["db_name"] + "/genomes/{library_name}_done", library_name = LIBRARY_NAME)
+			euk_linked = expand(config["rdir"] + "/" + config["db_name"] + "/genomes/{library_name}_done", library_name = LIBRARY_NAME),
+			custom_euk = config["rdir"] + "/" + config["db_name"] + "/custom_euk_kraken2_select_accessions.txt" if config["custom_ncbi_post_derep"] != "n" else [],
+			custom_pro = config["rdir"] + "/" + config["db_name"] + "/custom_pro_kraken2_select_accessions.txt" if config["custom_gtdb_post_derep"] != "n" else [],
+			custom_vir = config["rdir"] + "/" + config["db_name"] + "/custom_vir_kraken2_select_accessions.txt" if config["custom_checkv_post_derep"] != "n" else []
 		output:
 			kraken2_select = config["rdir"] + "/" + config["db_name"] + "/kraken2_select_accessions.txt",
 			checked = config["rdir"] + "/" + config["db_name"] + "/genomes/done"
@@ -103,7 +202,7 @@ if config["kraken2_preset"] == "coarse":
 			outdir = config["rdir"] + "/" + config["db_name"] + "/genomes/"
 		shell:
 			"""
-			cat {input.kraken2_select_checkv} {input.kraken2_select_gtdb} {input.kraken2_select_euk} > {output.kraken2_select}
+			cat {input.kraken2_select_checkv} {input.kraken2_select_gtdb} {input.kraken2_select_euk} {input.custom_euk} {input.custom_pro} {input.custom_vir} > {output.kraken2_select}
 			if [[ $(cat {output.kraken2_select} | wc -l) == $(find {params.outdir} -name '*.gz' | wc -l) ]]
                         then
                           touch {output.checked}
