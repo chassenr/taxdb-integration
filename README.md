@@ -40,7 +40,7 @@ You will also need to compile the latest version of conterminator as described [
 
 ### Workflow description and configuration
 
-![Illustration of the main steps in the workflow](https://github.com/chassenr/taxdb-integration/blob/master/images/taxdb_workflow.jpg).
+![Illustration of the main steps in the workflow](https://github.com/chassenr/taxdb-integration/blob/master/images/taxdb_workflow.jpg)
 
 Further details about the configurable parameters are included in the comments of the config files for each workflow module.
 
@@ -62,10 +62,10 @@ To combine all these genomes within a common taxonomic framework, we use the scr
 As the file size of all genomes after dereplication is still too large to be used as input for building a kraken2 database on most systems (>> 1TB), it is necessary to further subset the available genomes to a more manageable number. This can be done manually or by using the presets offered in the kraken2 module of the workflow. Thes presets include:
 * coarse: GTDB and checkV representative genomes, up to 3 (user-configurable) genomes per class and genus for higher and microbial eukaryotes, respectively. The purpose of this database is to sort metagenomic reads by domain for a second classification step with a higher resolved database. The coarse preset includes the option to remove cross-domain contamination.
 * highres_pro: Dereplicated GTDB and checkV genomes for high resolution classification of prokaryotic reads. Not recommended without prior sorting by domain.
-* highres_micro ::warning:: not available yet ::warning:: 
-* highres_plant ::warning:: not available yet ::warning::
-* highres_metazoa ::warning:: not available yet ::warning::
-* onestep ::warning:: not available yet ::warning::
+* highres_micro :warning: not available yet :warning:
+* highres_plant :warning: not available yet :warning:
+* highres_metazoa :warning: not available yet :warning:
+* onestep :warning: not available yet :warning:
 
 For building the kraken2 database, the parameters kmer length, minimizer length, and minimizer spaces can be adjusted depending on the type of reads that you want to classify. We recommend a kmer of ~31-35 and ~25 for modern and ancient metagenomic reads, respectively.
 
@@ -77,7 +77,7 @@ All clustered protein sequences are converted into a kaiju database index. No fu
 
 ### DB composition
 
-![Number of genomes (sequences) per domain and taxonomic level represented in the database](https://github.com/chassenr/taxdb-integration/blob/master/images/db_stats.jpg).
+![Number of genomes (sequences) per domain and taxonomic level represented in the database](https://github.com/chassenr/taxdb-integration/blob/master/images/db_stats.jpg)
 
 
 ### Next steps and ToDos:
@@ -88,7 +88,7 @@ All clustered protein sequences are converted into a kaiju database index. No fu
 
 
 ### Running the workflow
-After adapting the [config.yaml](https://github.com/chassenr/taxdb-integration/blob/master/config/config.yaml) and [cluster.yaml](https://github.com/chassenr/taxdb-integration/blob/master/config/cluster.yaml) files, the workflow can be executed with the following command from within this repository:
+After adapting the workflow and cluster files, the workflow can be executed with the following command from within this repository:
 ```
 snakemake --use-conda -j 100 --cluster-config config/cluster.yaml --cluster "sbatch --export=ALL -t {cluster.time} --ntasks-per-node {cluster.ntasks_per_node} --nodes {cluster.nodes} --cpus-per-task {cluster.cpus_per_task} --partition {cluster.partition} --job-name {rulename}.{jobid}"
 ```
