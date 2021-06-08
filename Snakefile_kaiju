@@ -17,7 +17,9 @@ configfile: "config/config_kaiju.yaml"
 
 rule all:
 	input:
-		acc2taxid_clustered = config["rdir"] + "/kaiju_db/kaiju_select_accession2taxid.txt"
+		acc2taxid_clustered = config["rdir"] + "/kaiju_db/kaiju_select_accession2taxid.txt",
+		protein_formatted = config["rdir"] + "/kaiju_db/library/proteins.faa",
+		#kaiju = config["rdir"] + "/kaiju_db/proteins.fmi"
 
 '''
 ##### load rules #####

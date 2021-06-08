@@ -13,6 +13,19 @@ This workflow integrates several open source bioinformatic tools. Therefore, if 
 * Wood, D. E., Lu, J., & Langmead, B. (2019). Improved metagenomic analysis with Kraken 2. Genome Biology, 20(257), 1–13. https://doi.org/10.1186/s13059-019-1891-0
 * Steinegger, M., Salzberg, S. L. (2020). Terminating contamination: large-scale search identifies more than 2,000,000 contaminated entries in GenBank. Genome Biol 21,115. https://doi.org/10.1186/s13059-020-02023-1
 * Menzel, P., Krogh, A. (2016) Kaiju : Fast and sensitive taxonomic classification for metagenomics. Nat Commun 7: 11257. http://dx.doi.org/10.1038/ncomms11257
+* Steinegger, M. & Söding, J. (2017): MMseqs2 enables sensitive protein sequence searching for the analysis of massive data sets. Nat Biotechnol 35:1026–1028. https://doi.org/10.1038/nbt.3988
+
+
+### Repository contents
+
+* **Main directory**: Snakefiles for each workflow module
+* **rules**: Snakemake rules for each module of the workflow
+* **scripts**: Additional scripts called by the rules
+* **envs**: Conda environment configuration files (.yaml) 
+* **config**: Configuration files (.yaml) for each module of the workflow and for [SLURM](https://slurm.schedmd.com/overview.html) usage
+* **assets**: Taxonomy files for additional user-supplied genomes and protein sequences
+* **benchmark**: Results of the kraken2 and kaiju database performance benchmark (parameter sweep) with simulated metagenomic reads
+* **stats**: Overview statistics of the DB contents (number of genomes/sequences per taxonomic level)
 
 
 ### Installation and dependencies
@@ -29,48 +42,50 @@ You will also need to compile the latest version of conterminator as described [
 
 ![Illustration of the main steps in the workflow](https://github.com/chassenr/taxdb-integration/blob/master/images/taxdb_workflow.jpg).
 
-The first step in the workflow is to screen the available collection of genomes on NCBI refseq and genbank based on their assembly quality. This first filter is based on the metadata parameter [assembly_level](https://www.ncbi.nlm.nih.gov/assembly/help/). Possible choices are: ```Contig```, ```Scaffold```, ```Chromosome```, ```Complete Genome```, or ```variable```. ```Contig``` is the most relaxed setting, with which all available genomes will be considered. ```Complete Genome``` is the most stringent setting. If ```variable```, for species with ```Chromosome``` and/or ```Complete Genome```-level assemblies available ```Contig``` and ```Scaffold```-level assemblies will not be included. This constitutes a compromise between excluding incomplete and low-quality assemblies and including species with incomplete assemblies. Apart from the setting for assembly level, this workflow is only considering the latest assembly of NCBI genomes with full genome representation. User-supplied genomes are not subject to any filtering.
+Further details about the configurable parameters are included in the comments of the config files for each workflow module.
 
-While it is possible to restrict the taxonomic groups to be represented in the coarse database, it is generally recommended to build this database covering all domains of life. As a database with genomes from all available species would not be computationally feasible, the coase database will consist of a subset of the known diversity for each larger taxonomic group. Bacteria and Archaea will be represented by the GTDB representative genomes, viruses by the CehckV cluster representatives, and eukaryotes by genomes at a user-defined taxonomic resolution. For instance for higher eukaryotes (metazoa and streptophytes) each class will be represented by n genomes depending on the number of orders within that class, whereas for fungi, protists and algae this selection may be done at family level. To change these setting, it is possible to specify the taxonomic level(```rank_coarse```) in the workflow configuration for each of the main NCBI partitions (fungi, invertebrates, plants, protozoa, vertebrate_other, vertebrate_mammalian). To distinguish between lineages within each of these partitions, a seperate values can be specified for ```sublineage``` (e.g. to separate higher plants from algae). 
+#### Collect module
 
-The coarse database generation also automatically runs conterminator to detect and remove contigs in assemblies with cross-domain contamination. The default here is to compare prokaryotes, fungi, protists, highler plants, and metazoa. Viruses are not included in the decontamination. Furthermore, common vector sequences ([UniVec](https://www.ncbi.nlm.nih.gov/tools/vecscreen/univec/)) are included in the database.
+Eukaryotic reference sequences are retrieved from NCBI. The first step in the workflow is to screen the available collection of genomes on NCBI refseq and genbank based on their assembly quality. This first filter is based on the metadata parameter [assembly_level](https://www.ncbi.nlm.nih.gov/assembly/help/). Possible choices are: ```Contig```, ```Scaffold```, ```Chromosome```, ```Complete Genome```, or ```variable```. ```Contig``` is the most relaxed setting, with which all available genomes will be considered. ```Complete Genome``` is the most stringent setting. If ```variable```, for species with ```Chromosome``` and/or ```Complete Genome```-level assemblies available ```Contig``` and ```Scaffold```-level assemblies will not be included. This constitutes a compromise between excluding incomplete and low-quality assemblies and including species with incomplete assemblies. Apart from the setting for assembly level, this workflow is only considering the latest assembly of NCBI genomes with full genome representation. Furthermore, if genomes with predicted proteins are available per species, assemblies without predicted proteins are excluded from downstream processing. User-supplied genomes are not subject to any filtering. After genome download, assemblies per species are further filtered by genome size, GC-content, and N50 to remove possible outliers. The strignency of this filter is user-configurable.
 
-To combine all these genomes within a common taxonomic framework, we use the script tax_from_gtdb.py available [here](https://github.com/rrwick/Metagenomics-Index-Correction/blob/master/tax_from_gtdb.py).
+Prokaryotic and viral genomes are taken from the full GTDB and checkV databases.
 
-For the high resolution database, available genomes can further be filtered based on assembly statistics that are calculated by [statswrapper.sh](https://github.com/BioInfoTools/BBMap/blob/master/sh/statswrapper.sh) of the [bbmap suite](https://sourceforge.net/projects/bbmap/), e.g. genome size, GC content, contig N50. It is possible to set absolute as well as relative cut-offs based on the data distribution (quantiles).
+To avoid redundancy, all genomes per species are dereplicated using [derepG](https://github.com/genomewalker/derep-genomes). Please refer to the program repository for further information about parameter setting.
 
-Before the netword guided dereplication of genomes within each species, it is possible to add genomes that are not included in the aboce data sources, e.g. high quality MAGs previously assembled from the studies environment, to increase the diversity coverage of the database. Also here, it is possible to exclude lineages that should not be included in the high resolution database (e.g. Streptophyta if your target group is restricted to microbes).
+Lastly, the predicted protein sequences for the dereplicated genomes (if avaiable) are downloaded. Also here, the user has the option to provide custom files. Protein sequences are then subject to a second dereplication/clustering using [mmseqs2](https://github.com/soedinglab/MMseqs2).
 
-The remaining step in the generation of the high resolution database are similar to those for the coarse database: create a common taxonomic framework, remove contamination, and build the kraken database. As it is possible to restrict the database to only one domain or larger taxonomic group, the decontamination step can also be disabled. 
+To combine all these genomes within a common taxonomic framework, we use the script gtdb_to_taxdump.py available [here](https://github.com/nick-youngblut/gtdb_to_taxdump).
 
-For building the kraken2 database, the parameters kmer length, minimizer length, and minimizer spaces can be adjusted depending on the type of reads that you want to classify. We recommend <to be inserted after the benchmarks> for modern and ancient metagenomic reads.
 
-Further details about the configurable parameters are included in the comments of the [config file](https://github.com/chassenr/taxdb-integration/blob/master/config/config.yaml).
+#### Kraken2 module
+
+As the file size of all genomes after dereplication is still too large to be used as input for building a kraken2 database on most systems (>> 1TB), it is necessary to further subset the available genomes to a more manageable number. This can be done manually or by using the presets offered in the kraken2 module of the workflow. Thes presets include:
+* coarse: GTDB and checkV representative genomes, up to 3 (user-configurable) genomes per class and genus for higher and microbial eukaryotes, respectively. The purpose of this database is to sort metagenomic reads by domain for a second classification step with a higher resolved database. The coarse preset includes the option to remove cross-domain contamination.
+* highres_pro: Dereplicated GTDB and checkV genomes for high resolution classification of prokaryotic reads. Not recommended without prior sorting by domain.
+* highres_micro ::warning:: not available yet ::warning:: 
+* highres_plant ::warning:: not available yet ::warning::
+* highres_metazoa ::warning:: not available yet ::warning::
+* onestep ::warning:: not available yet ::warning::
+
+For building the kraken2 database, the parameters kmer length, minimizer length, and minimizer spaces can be adjusted depending on the type of reads that you want to classify. We recommend a kmer of ~31-35 and ~25 for modern and ancient metagenomic reads, respectively.
+
+
+#### Kaiju module
+
+All clustered protein sequences are converted into a kaiju database index. No further subsetting is required trim the size of the input data (~50GB).
+
+
+### DB composition
+
+![Number of genomes (sequences) per domain and taxonomic level represented in the database](https://github.com/chassenr/taxdb-integration/blob/master/images/db_stats.jpg).
+
 
 ### Next steps and ToDos:
-* Kaiju implementation (update prokaryotic annotation)
+* Improve conterminator implementation: add maximum runtime limit to avoid endless runs if no/low contamination
+* Add gene prediction for prokaryotes if not available elsewhere
+* Add 2 additional taxonomic ranks (kingdom and strain) to better represent eukaryotic taxonomy
 * Extend framework to Bracken and KrakenUniq databases
-* Systematic parameter sweep to fine-tune defaults and assess sensitivity and specificity of databse
 
-### Configuration
-To customize the workflow to your user environment, you will need to modify the [config.yaml](https://github.com/chassenr/taxdb-integration/blob/master/config/config.yaml) and [cluster.yaml](https://github.com/chassenr/taxdb-integration/blob/master/config/cluster.yaml) files. 
-
-The [cluster.yaml](https://github.com/chassenr/taxdb-integration/blob/master/config/cluster.yaml) file is specifying how the individual steps of the workflow will be distributed on your compute cluster. It defines, e.g., maximum run time and maximum number of cpus to use per node. At the moment, the custer configuration is customized for [slurm](https://slurm.schedmd.com/documentation.html) as workload manager. If you are not running the workflow on a cluster, this file will be ignored.
-
-The [config.yaml](https://github.com/chassenr/taxdb-integration/blob/master/config/config.yaml) sets the parameters for the workflow. Here you will need to modify the following values:
-* Working directory (wdir): Absolute path to this repository.
-* Results directory (rdir): Absolute path to the location where the database and all associated files will be created.
-* library_name: NCBI partitions to be included in the database (has to be one or more of ```fungi```, ```invertebrate```, ```plant```, ```protozoa```, ```vertebrate-mammalian```, ```vertebrate-other```, ```viral```).
-* download_threads: Number of parallel processes for downloading genomes.
-* derep_script: Location of script to perform genome dereplication available in the [correct index databases](https://github.com/rrwick/Metagenomics-Index-Correction) repository.
-* derep_threads: Number of parallel processes for dereplicating genomes.
-* derep_lineage: With this option it is possible to specify separate dereplication parameters for one (or more, '|' separated) sub-lineages within each NCBI parition.
-* derep_threshold_gtdb and derep_threshold_ncbi_main/derep_threshold_ncbi_sub: ANI dereplication threshold for GTDB and each NCBI partition (separated into main and sub-lineages as specified in ```derep_lineage```. For each species (see ```derep_taxlevel_ncbi_main``` and ```derep_taxlevel_ncbi_sub```), only one genome per cluster defined at this ANI threshold will be included in the database. The lower the treshold value, the more likely it is that more genomes per species will be included in the database, which may increase your classification success. This parameter will strongly affect the size of your database. We suggest values between 0.005 and 0.05 as compromise between sensitivity and database size for microbial taxa. For eukaryotic genomes, we selected an ANI distance of 0.1, but it is also possible to go as lower. For viral genomes, we select an ANI distance threshold of 0.05 (only considering complete genomes) based on the recommendations in [Roux et al. 2018](https://www.nature.com/articles/nbt.4306). For GTDB we suggest to follow the recommendations in [Méric et al. 2019](https://www.biorxiv.org/content/10.1101/712166v1) or slightly higher (0.01) to avoid too large a database.
-* derep_taxlevel_ncbi_main and derep_taxlevel_ncbi_sub: Specify the taxonomic level (1: domain, 7: species) at which the dereplication should be performed for the main and sub-lineages (see ```derep_lineage```). For higher ANI distance thresholds lower taxonomic levels are recommended, e.g. use ANI distance of 0.1 on genus level.
-* tax_script: Location of script to prepare the required taxonomy files for kraken2 and format the genomes to be compatible with ```kraken2-build```, available in [correct index databases](https://github.com/rrwick/Metagenomics-Index-Correction) repository. 
-* univec: Include UniVec (either ```UniVec``` or ```UniVec_Core```) in the database.
-* krakenbuild_threads: Number of parallel processes for building kraken2 database.
-* kmer_len, minimizer_len, minimizer_spaces: Settings for ```kraken2-build --build``` command. The current settings are slightly lower than the kraken2 defaults, which may considerably improve classification success without noticably increasing the rate of false positives (according the the benchmarks in the kraken2 paper by [Wood et al. 2019](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-019-1891-0)).
 
 ### Running the workflow
 After adapting the [config.yaml](https://github.com/chassenr/taxdb-integration/blob/master/config/config.yaml) and [cluster.yaml](https://github.com/chassenr/taxdb-integration/blob/master/config/cluster.yaml) files, the workflow can be executed with the following command from within this repository:

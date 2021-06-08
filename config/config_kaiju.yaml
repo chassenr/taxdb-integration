@@ -6,7 +6,7 @@ rdir: "/storage/hdd1/chh/TaxDB"
 threads: 1
 
 # number of threads for simple parallel processes
-parallel_threads: 64
+parallel_threads: 128
 
 # enable conterminator 
 # kingdoms: "prokaryotes,fungi,protists,plants,metazoa"

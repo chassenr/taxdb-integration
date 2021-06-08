@@ -5,3 +5,4 @@ channels:
 dependencies:
   - kraken2>=2.1.1
   - parallel
+  - seqkit

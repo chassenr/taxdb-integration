@@ -13,21 +13,17 @@ Run: snakemake -s Snakefile
 ##### set minimum snakemake version #####
 # min_version("5.1.2")
 
-configfile: "config/config_kraken2.yaml"
-
-LIBRARY_NAME = config["library_name"]
-
-wildcard_constraints:
-	library_name = '|'.join(LIBRARY_NAME)
+configfile: "config/config_stats.yaml"
 
 rule all:
 	input:
-		#kraken2_select = config["rdir"] + "/" + config["db_name"] + "/kraken2_select_accessions.txt",
-		#map = config["rdir"] + "/" + config["db_name"] + "/library/selection/prelim_map.txt",
-		hash = config["rdir"] + "/" + config["db_name"] + "/hash.k2d"
+		genome_stats = config["wdir"] + "/stats/db_stats_genomes_derep.txt",
+		kraken_stats = config["wdir"] + "/stats/db_stats_" + config["db_name"] + ".txt",
+		protein_stats = config["wdir"] + "/stats/db_stats_proteins_all.txt",
+		clustered_stats = config["wdir"] + "/stats/db_stats_proteins_clustered.txt"
 
 '''
 ##### load rules #####
 '''
-include: "rules/kraken2_module.smk"
+include: "rules/collect_db_stats.smk"
 

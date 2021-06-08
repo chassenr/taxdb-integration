@@ -10,9 +10,15 @@ MINID=$7
 
 TAXONHASH=$(echo "${TAXON}" | sha1sum | head -c 40)
 
-INFILES=$(echo "${TAXON}" | grep -F -f - ${TAXFILE} | cut -f1 | grep -F -f - <(find ${PDIR}) | tr '\n' ' ')
+ACCNOS=$(echo "${TAXON}" | sed 's/[^;]$/&;/' | grep -F -f - <(sed 's/[^;]$/&;/' ${TAXFILE}) | cut -f1 | tr '\n' ' ')
 
-mmseqs easy-cluster ${INFILES} ${TMPDIR}/${TAXONHASH} ${TMPDIR}/tmp_${TAXONHASH} -c ${COV} --cov-mode ${CMODE} --min-seq-id ${MINID} --threads 1 >${TMPDIR}/${TAXONHASH}.log 2>&1
+for i in $ACCNOS
+do
+  INFILE=$(echo "${i}" | grep -F -f - <(find ${PDIR}))
+  zcat $INFILE | sed -e "/^>/s/\s.*$//" -e "/^>/s/^>/>${i}_/"
+done >> ${TMPDIR}/in_${TAXONHASH}.faa
+
+mmseqs easy-cluster ${TMPDIR}/in_${TAXONHASH}.faa ${TMPDIR}/${TAXONHASH} ${TMPDIR}/tmp_${TAXONHASH} -c ${COV} --cov-mode ${CMODE} --min-seq-id ${MINID} --threads 1 >${TMPDIR}/${TAXONHASH}.log 2>&1
 
 cat ${TMPDIR}/${TAXONHASH}_rep_seq.fasta
 

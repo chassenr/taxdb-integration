@@ -46,6 +46,7 @@ rule clean_up_post_clustering:
 	threads: config["parallel_threads"]
 	shell:
 		"""
+		find {params.tmpdir} -type f -name 'in_*' | xargs -n 1 -P {threads} rm
 		find {params.tmpdir} -type d -name 'tmp_*' | xargs -n 1 -P {threads} rm -rf
 		find {params.tmpdir} -type f -name '*_all_seqs.fasta' | xargs -n 1 -P {threads} rm
 		find {params.tmpdir} -type f -name '*_rep_seq.fasta' | xargs -n 1 -P {threads} rm

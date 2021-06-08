@@ -5,7 +5,7 @@ rule extract_clustered_protein_accessions:
 	output:
 		acc2taxid_clustered = config["rdir"] + "/kaiju_db/kaiju_select_accession2taxid.txt"
 	params:
-		script = config["wdir"] + "/scripts/subset_prot_accession2taxid.R",
+		script = config["wdir"] + "/scripts/filter_acc2taxid.R",
 		outdir = config["rdir"] + "/kaiju_db"
 	conda:
 		config["wdir"] + "/envs/r.yaml"
@@ -13,9 +13,9 @@ rule extract_clustered_protein_accessions:
 	shell:
 		"""
 		mkdir -p {params.outdir}
-		grep '^>' {input.protein_clustered} | sed -e 's/^>//' -e 's/\s.*$//' > {params.outdir}/tmp
-		{input.acc2taxid} > {output.acc2taxid_clustered}
-		rm {params.outdir}/tmp
+		grep '^>' {input.protein_clustered} | sed -e 's/^>//' -e 's/ $//' > {params.outdir}/tmp
+		{params.script} -i {params.outdir}/tmp -a {input.acc2taxid} -o {output.acc2taxid_clustered} -c {threads}
+		# rm {params.outdir}/tmp
 		"""
 
 rule format_faa_kaiju:
@@ -50,7 +50,7 @@ rule build_kaiju_db:
 		config["rdir"] + "/logs/build_kaiju.log"
 	shell:
 		"""
-		kaiju-mkbwt -n {threads} -a ACDEFGHIKLMNPQRSTVWY -o "{params.dbdir}/proteins" {input.faa}
-		kaiju-mkfmi "{params.dbdir}/proteins"
+		kaiju-mkbwt -n {threads} -a ACDEFGHIKLMNPQRSTVWY -o "{params.dbdir}/proteins" {input.faa} &>> {log}
+		kaiju-mkfmi "{params.dbdir}/proteins" &>> {log}
 		"""
 

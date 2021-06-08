@@ -1,7 +1,6 @@
 # Basic dirs
 wdir: "/storage/hdd1/chh/Repos/taxdb-integration"
 rdir: "/storage/hdd1/chh/TaxDB"
-cdir: "/storage/hdd1/chh/TaxDB/coarse"
 
 # Default parameters
 threads: 1
@@ -49,7 +48,7 @@ checkv_link: "https://portal.nersc.gov/CheckV/checkv-db-v0.6-full.tar.gz"
 # Parameters for processing GTDB genomes
 gtdb_link: "https://data.ace.uq.edu.au/public/gtdb/data/releases/latest"
 
-# Parameters for filtering assemblies based on contig stats (only for highres)
+# Parameters for filtering assemblies based on contig stats
 filter_ncbi_fields:
   fungi: "genome_size,gc_avg,ctg_L50"
   protozoa: "genome_size,gc_avg,ctg_L50"

@@ -1,13 +1,12 @@
 # Basic dirs
 wdir: "/storage/hdd1/chh/Repos/taxdb-integration"
 rdir: "/storage/hdd1/chh/TaxDB"
-cdir: "/storage/hdd1/chh/TaxDB/coarse"
 
 # Default parameters
 threads: 1
 
 # number of threads for simple parallel processes
-parallel_threads: 64
+parallel_threads: 128
 
 # select presets for building kraken DB
 # allowed options are 
@@ -16,15 +15,16 @@ parallel_threads: 64
 #   "highres_pro" (high resolution DB with only prokaryotes and viruses)
 #   "onestep" (high resolution for prokaryotes and viruses, coarse resolution for eukaryotes)
 # kraken2_preset: ""
-# kraken2_preset: "coarse"
-kraken2_preset: "highres_pro"
+kraken2_preset: "coarse"
+# kraken2_preset: "highres_pro"
 
 # location of file with input accessions and taxids for user input
 kraken2_custom: ""
 
 # DB name (to avoid overwriting output if more than 1 DB is built)
-db_name: "kraken2_highres_pro_db_nolim"
-# db_name: "kraken2_coarse_db_nolim"
+# db_name: "kraken2_highres_pro_db_nolim"
+db_name: "kraken2_coarse_db_mem190"
+# db_name: "kraken2_highres_test"
 
 # Include UniVec databases
 univec: "UniVec_Core"
@@ -39,12 +39,12 @@ kingdoms: ""
 cmem: "450G"
 
 # Parameters for building krakendb
-masking_threads: 64
-krakenbuild_threads: 32
+masking_threads: 128
+krakenbuild_threads: 64
 kmer_len: 25
 minimizer_len: 23
 minimizer_spaces: 4
-max_dbsize: 700000000000
+max_dbsize: 190000000000
 
 # additional settings for coarse preset
 library_name:

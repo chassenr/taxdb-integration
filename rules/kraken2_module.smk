@@ -479,7 +479,7 @@ rule build_kraken2_db:
 	conda:
 		config["wdir"] + "/envs/kraken2.yaml"
 	log:
-		config["rdir"] + "/logs/build_kraken2_db.log"
+		config["rdir"] + "/logs/" + config["db_name"] + "_build_db.log"
 	shell:
 		"""
 		kraken2-build --build --threads {threads} --db {params.dbdir} --kmer-len {params.kmer_len} --minimizer-len {params.min_len} --minimizer-spaces {params.min_spaces} --max-db-size {params.max_dbsize} &>> {log}

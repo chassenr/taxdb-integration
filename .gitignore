@@ -1,5 +1,7 @@
 *.gz
 *
+!stats
+!stats/*
 !images
 !images/*
 !benchmark

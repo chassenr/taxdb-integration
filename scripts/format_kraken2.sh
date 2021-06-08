@@ -6,5 +6,5 @@ GENDIR=$2
 
 FILE=$(ls $GENDIR/$ACCNOS*)
 
-zcat $FILE | sed "/^>/s/$/\|kraken:taxid\|$TAXID/" | dustmasker -in - -outfmt fasta
+zcat $FILE | sed -e "/^>/s/\s.*$//" -e "/^>/s/^>/>${ACCNOS}_/" -e "/^>/s/$/\|kraken:taxid\|$TAXID/" | dustmasker -in - -outfmt fasta | seqkit seq -w 0 - 
 

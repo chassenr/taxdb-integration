@@ -35,9 +35,9 @@ rule all:
 		#prot_tax = config["rdir"] + "/tax_combined/protein_taxonomy_good.txt",
 		#path_list = config["rdir"] + "/proteins_clustered/taxon_list.txt",
 		#done = config["rdir"] + "/checkv/proteins/done",
-		#protein_clustered = config["rdir"] + "/proteins_clustered/proteins_clustered.faa",
-		#done = config["rdir"] + "/proteins_clustered/done",
-		acc2taxid = config["rdir"] + "/tax_combined/nucl_accession2taxid.txt"
+		protein_clustered = config["rdir"] + "/proteins_clustered/proteins_clustered.faa",
+		done = config["rdir"] + "/proteins_clustered/done",
+		#acc2taxid = config["rdir"] + "/tax_combined/prot_accession2taxid.txt"
 		
 
 '''
@@ -47,8 +47,8 @@ include: "rules/process_ncbi_genomes.smk"
 #include: "rules/process_gtdb_genomes.smk"
 include: "rules/process_checkv_genomes.smk"
 include: "rules/process_ncbi_proteins.smk"
-#include: "rules/process_gtdb_proteins.smk"
-include: "rules/process_checkv_proteins.smk"
+include: "rules/process_gtdb_proteins.smk"
+#include: "rules/process_checkv_proteins.smk"
 include: "rules/build_taxonomy.smk"
 include: "rules/cluster_proteins.smk"
 
