@@ -1,0 +1,4 @@
+superkingdom	n_phylum	n_class	n_order	n_family	n_genus	n_species	n_genomes	n_seqs
+d__Archaea	18	42	104	277	650	1672	2043	2043
+d__Bacteria	131	337	930	2323	8778	30238	39835	39835
+d__Viruses	17	38	56	147	1285	52113	57543	57543
