@@ -8,6 +8,7 @@
 !benchmark/*
 !assets
 !assets/*
+assets/TARA_AP_combined_new.txt
 !scripts
 !scripts/*
 !scripts/common
@@ -31,5 +32,3 @@ scripts/.snakemake*
 !.editorconfig
 !.travis.yml
 !.test
-!assets
-!assets/*
