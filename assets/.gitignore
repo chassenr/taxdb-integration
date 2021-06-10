@@ -1,1 +1,4 @@
-TARA_AP_combined_new.txt
+*
+!EukProt_taxonomy_parsed.txt
+!TARA_SMAGs.txt
+!.gitignore
