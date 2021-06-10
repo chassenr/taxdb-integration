@@ -7,7 +7,6 @@
 !benchmark
 !benchmark/*
 !assets
-!assets/*
 assets/TARA_AP_combined_new.txt
 !scripts
 !scripts/*
