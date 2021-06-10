@@ -22,9 +22,9 @@ wildcard_constraints:
 
 rule all:
 	input:
-		#kraken2_select = config["rdir"] + "/" + config["db_name"] + "/kraken2_select_accessions.txt",
+		kraken2_select = config["rdir"] + "/" + config["db_name"] + "/kraken2_select_accessions.txt",
 		#map = config["rdir"] + "/" + config["db_name"] + "/library/selection/prelim_map.txt",
-		hash = config["rdir"] + "/" + config["db_name"] + "/hash.k2d"
+		#hash = config["rdir"] + "/" + config["db_name"] + "/hash.k2d"
 
 '''
 ##### load rules #####

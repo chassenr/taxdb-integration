@@ -7,7 +7,7 @@ threads: 1
 
 # DB name (to avoid overwriting output if more than 1 DB is built)
 # db_name: "kraken2_highres_pro_db_nolim"
-db_name: "kraken2_coarse_db_nolim"
+db_name: "kraken2_coarse_db_sparse"
 # db_name: "kraken2_highres_test"
 
 

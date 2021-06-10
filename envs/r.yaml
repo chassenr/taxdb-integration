@@ -21,3 +21,5 @@ dependencies:
   - r-vegan
   - r-httr
   - r-furrr
+  - bioconductor-biostrings
+  - seqkit

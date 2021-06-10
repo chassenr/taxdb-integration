@@ -9,10 +9,9 @@ package.list <- c(
   "crayon",
   "optparse",
   "config",
-  "taxonomizr",
   "tidyverse",
   "data.table",
-  "purrr"
+  "Biostrings"
 )
 
 # Function to check if packages are installed
@@ -23,10 +22,10 @@ is.installed <- function(pkg){
 # If not all packages are available
 if(any(!is.installed(package.list))) {
   cat("Not all required packages are available. They will now be installed.\n")
-  
+
   # give the user the chance to abort manually
   Sys.sleep(20)
-  
+
   # then install packages
   for(i in which(!is.installed(package.list))) {
     suppressMessages(install.packages(package.list[i], repos = "http://cran.us.r-project.org"))
@@ -65,75 +64,66 @@ msg_sub <- function(X){
 # define command line options
 option_list <- list(
   make_option(
-    c("-i", "--input"), 
-    type = "character", 
+    c("-i", "--input"),
+    type = "character",
     default = NULL,
-    help = "taxonomy table", 
+    help = "faa file to be formatted",
     metavar = "character"
   ),
   make_option(
-    c("-t", "--taxdump"), 
-    type = "character", 
+    c("-t", "--taxid"),
+    type = "character",
     default = NULL,
-    help = "directory containing the kraken2 nodes.dmp and names.dmp", 
+    help = "accession2taxid for input faa",
     metavar = "character"
   ),
   make_option(
-    c("-s", "--sql"), 
-    type = "character", 
+    c("-c", "--cpus"),
+    type = "integer",
+    default = 1,
+    help = "number of cpus to use [default: 1]",
+    metavar = "number"
+  ),
+  make_option(
+    c("-o", "--output"),
+    type = "character",
     default = NULL,
-    help = "location and name of sql database that will be generated from the taxdump", 
+    help = "formatted faa output",
     metavar = "character"
   ),
   make_option(
-    c("-o", "--output"), 
-    type = "character", 
+    c("-m", "--map"),
+    type = "character",
     default = NULL,
-    help = "taxonomy table with taxid appended",
+    help = "mapping file of old to new fasta headers",
     metavar = "character"
   )
 )
 opt_parser <- OptionParser(option_list = option_list)
 opt <- parse_args(opt_parser)
 
-if (is.null(opt$input) | is.null(opt$output) | is.null(opt$taxdump) | is.null(opt$sql)) {
+if (is.null(opt$taxid) | is.null(opt$output) | is.null(opt$map) | is.null(opt$input)) {
   print_help(opt_parser)
   stop(
-    "All parameters are mandatory.\n", 
+    "You need to provide the names of the input and output faa and the name of the faa accesion mapping file.\n",
     call. = FALSE
   )
 }
 
 
-### retrieve taxid for each path in dereplicated database ####
+### format fasta headers for kaiju ####
+# prepend taxid by running number (for each taxid)
 
-# format NCBI taxdump database
-read.names.sql(
-  paste0(opt$taxdump, "/names.dmp"),
-  opt$sql
-)
-read.nodes.sql(
-  paste0(opt$taxdump, "/nodes.dmp"),
-  opt$sql
-)
+faa <- readAAStringSet(opt$input)
+acc2taxid <- fread(opt$taxid, h = F, sep = "\t", col.names = c("accnos", "taxid"), nThread = opt$cpus) %>%
+  group_by(taxid) %>%
+  mutate(id = row_number(), accnos_new = paste(id, taxid, sep = "_"))
+faa_names <- gsub(" $", "", names(faa))
+names(faa) <- acc2taxid$accnos_new[chmatch(faa_names, acc2taxid$accnos)]
+writeXStringSet(faa, opt$output)
+acc2taxid %>%
+  ungroup() %>%
+  select(accnos, accnos_new) %>%
+  fwrite(., opt$map, quote = F, sep = "\t", nThread = opt$cpus, col.names = F)
 
-# read taxonomy table
-tax_table <- fread(
-  opt$input,
-  h = F,
-  sep = "\t",
-  quote = ""
-)
 
-# map taxid
-taxid_table <- separate(tax_table, V2, into = c("domain", "phylum", "class", "order", "family", "genus", "species"), sep = ";") %>% 
-  mutate(taxid = getId(gsub("^s__", "", species), opt$sql)) %>% 
-  select(V1, taxid)
-
-# write output table
-write_delim(
-  taxid_table,
-  opt$output,
-  delim = "\t",
-  col_names = F
-)

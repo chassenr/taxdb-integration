@@ -23,15 +23,19 @@ rule format_faa_kaiju:
 		acc2taxid_clustered = config["rdir"] + "/kaiju_db/kaiju_select_accession2taxid.txt",
 		protein_clustered = config["rdir"] + "/proteins_clustered/proteins_clustered.faa"
 	output:
-		protein_formatted = config["rdir"] + "/kaiju_db/library/proteins.faa"
+		protein_formatted = config["rdir"] + "/kaiju_db/library/proteins.faa",
+		protein_accmap = config["rdir"] + "/kaiju_db/library/proteins_kaiju_accession_map.txt"
 	params:
-		script = config["wdir"] + "/scripts/format_kaiju.sh"
+		script = config["wdir"] + "/scripts/format_kaiju.R",
+		libdir = config["rdir"] + "/kaiju_db/library"
 	conda:
-		config["wdir"] + "/envs/parallel.yaml"
+		config["wdir"] + "/envs/r.yaml"
 	threads: config["parallel_threads"]
 	shell:
 		"""
-		cut -f2 {input.acc2taxid_clustered} | sort | uniq | parallel -j{threads} '{params.script} {{}} {input.acc2taxid_clustered} {input.protein_clustered}' >> {output.protein_formatted}
+		{params.script} -i {input.protein_clustered} -t {input.acc2taxid_clustered} -c {threads} -o "{params.libdir}/tmp.faa" -m {output.protein_accmap}
+		seqkit seq -w 0 -j {threads} "{params.libdir}/tmp.faa" | tr 'BZ' 'DE' | sed '/^>/! s/[^ARNDCQEGHILKMFPSTWYV]//g' > {output.protein_formatted}
+		rm "{params.libdir}/tmp.faa"
 		"""
 
 # optional: run conterminator on protein sequences: TO BE IMPLEMENTED!!!

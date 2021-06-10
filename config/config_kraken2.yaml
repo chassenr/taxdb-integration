@@ -23,12 +23,12 @@ kraken2_custom: ""
 
 # DB name (to avoid overwriting output if more than 1 DB is built)
 # db_name: "kraken2_highres_pro_db_nolim"
-db_name: "kraken2_coarse_db_mem190"
+db_name: "kraken2_coarse_db_sparse"
 # db_name: "kraken2_highres_test"
 
 # Include UniVec databases
-univec: "UniVec_Core"
-# univec: ""
+# univec: "UniVec_Core"
+univec: ""
 ncbi_server: "http://ftp.ncbi.nlm.nih.gov"
 
 # enable conterminator (only suitable for coarse and onestep presets or similar custom DB selection)
@@ -58,7 +58,7 @@ library_name:
 rank_coarse:
   fungi: "family"
   invertebrate: "class"
-  plant: "family"
+  plant: "class" # previously family
   protozoa: "family"
   vertebrate_mammalian: "class"
   vertebrate_other: "class"
@@ -66,7 +66,7 @@ rank_coarse:
 coarse_sublineage:
   fungi: ""
   invertebrate: ""
-  plant: "p__Streptophyta"
+  plant: "" # previously p__Streptophyta
   protozoa: ""
   vertebrate_mammalian: ""
   vertebrate_other: ""
@@ -82,7 +82,7 @@ rank_sublineage:
 # the rank selected here for custom genomes should be the highest of the previous selection 
 rank_custom: "class"
 
-nmax_coarse: 3
+nmax_coarse: 1 # previously 3
 
 # for quick collect of genomes used to build the DB, also import info about user supplied genomes
 # unlike in collect module, "n" is used here to indicate that no additional input should be considered
