@@ -6,8 +6,8 @@
 !images/*
 !benchmark
 !benchmark/*
-!assets
-!assets/*.txt
+#!assets
+#!assets/*.txt
 !scripts
 !scripts/*
 !scripts/common
