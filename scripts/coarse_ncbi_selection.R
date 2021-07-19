@@ -185,13 +185,13 @@ get_largest <- function(genome_data, rank_select, rank_subtax) {
 }
 
 # process main lineage
-msg("Processing main lineage...")
+msg("Processing main lineage...\n")
 rank_select <- opt$rank
 rank_subtax <- tax_ranks[which(tax_ranks == rank_select) + 1]
 
 # get number of taxa in rank below selected
 div_subtax <- c(by(genome_data_main[, rank_subtax], genome_data_main[, rank_select], function(x) length(unique(x))))
-msg(paste0("Maximum number of ", rank_subtax, " per ", rank_select, ":", max(div_subtax)))
+msg(paste0("Maximum number of ", rank_subtax, " per ", rank_select, ":", max(div_subtax), "\n"))
 
 # for now the purpose is to evenly cover diversity at next lower level
 # assuming that any taxonomy is reflecting phylogeny
@@ -200,11 +200,11 @@ msg(paste0("Maximum number of ", rank_subtax, " per ", rank_select, ":", max(div
 n_select <- floor(rescale(div_subtax, to = c(1, ifelse(max(div_subtax) > n_max, n_max, max(div_subtax)))))
 
 # number of taxa at rank
-msg(paste0("Number of taxa at ", rank_select, " level: ", length(div_subtax)))
+msg(paste0("Number of taxa at ", rank_select, " level: ", length(div_subtax), "\n"))
 # number of taxa at subrank
-msg(paste0("Number of taxa at ", rank_subtax, " level: ", sum(div_subtax)))
+msg(paste0("Number of taxa at ", rank_subtax, " level: ", sum(div_subtax), "\n"))
 # number selected
-msg(paste0("Total number of genomes selected: ", sum(n_select)))
+msg(paste0("Total number of genomes selected: ", sum(n_select), "\n"))
 # seems to be a reasonable compromise
 
 # get largest genome per subtax
@@ -226,18 +226,18 @@ rm(tmp, tmp.sub)
 
 # process sublineage
 if(opt$sublineage != "" | !is.null(opt$sublineage)) {
-  msg("Processing sublineage...")
+  msg("Processing sublineage...\n")
   rank_select <- opt$rank_sub
   rank_subtax <- tax_ranks[which(tax_ranks == rank_select) + 1]
   
   div_subtax <- c(by(genome_data_sub[, rank_subtax], genome_data_sub[, rank_select], function(x) length(unique(x))))
-  msg(paste0("Maximum number of ", rank_subtax, " per ", rank_select, ":", max(div_subtax)))
+  msg(paste0("Maximum number of ", rank_subtax, " per ", rank_select, ":", max(div_subtax), "\n"))
   
   n_select <- floor(rescale(div_subtax, to = c(1, ifelse(max(div_subtax) > n_max, n_max, max(div_subtax)))))
   
-  msg(paste0("Number of taxa at ", rank_select, " level: ", length(div_subtax)))
-  msg(paste0("Number of taxa at ", rank_subtax, " level: ", sum(div_subtax)))
-  msg(paste0("Total number of genomes selected: ", sum(n_select)))
+  msg(paste0("Number of taxa at ", rank_select, " level: ", length(div_subtax), "\n"))
+  msg(paste0("Number of taxa at ", rank_subtax, " level: ", sum(div_subtax), "\n"))
+  msg(paste0("Total number of genomes selected: ", sum(n_select), "\n"))
   
   max_genome_subtax <- get_largest(genome_data_sub, rank_select, rank_subtax)
   

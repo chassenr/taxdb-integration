@@ -6,7 +6,7 @@ rdir: "/storage/hdd1/chh/TaxDB"
 threads: 1
 
 # number of threads for simple parallel processes
-parallel_threads: 128
+parallel_threads: 160
 
 # select presets for building kraken DB
 # allowed options are 
@@ -14,8 +14,9 @@ parallel_threads: 128
 #   "coarse" (sorting DB)
 #   "highres_pro" (high resolution DB with only prokaryotes and viruses)
 #   "onestep" (high resolution for prokaryotes and viruses, coarse resolution for eukaryotes)
-# kraken2_preset: ""
-kraken2_preset: "coarse"
+#   "microeuk" (high resolution for fungi and protists, with representatives of other eukaryotic groups)
+kraken2_preset: "microeuk"
+# kraken2_preset: "coarse"
 # kraken2_preset: "highres_pro"
 
 # location of file with input accessions and taxids for user input
@@ -23,8 +24,9 @@ kraken2_custom: ""
 
 # DB name (to avoid overwriting output if more than 1 DB is built)
 # db_name: "kraken2_highres_pro_db_nolim"
-db_name: "kraken2_coarse_db_sparse"
+# db_name: "kraken2_coarse_db_sparse"
 # db_name: "kraken2_highres_test"
+db_name: "kraken2_microeuk_db"
 
 # Include UniVec databases
 # univec: "UniVec_Core"
@@ -39,13 +41,15 @@ kingdoms: ""
 cmem: "450G"
 
 # Parameters for building krakendb
-masking_threads: 128
-krakenbuild_threads: 64
+masking_threads: 160
+krakenbuild_threads: 100
 kmer_len: 25
 minimizer_len: 23
 minimizer_spaces: 4
-max_dbsize: 190000000000
+max_dbsize: 700000000000
 
+
+#######################################
 # additional settings for coarse preset
 library_name:
   - fungi
@@ -56,12 +60,12 @@ library_name:
   - vertebrate_other
 
 rank_coarse:
-  fungi: "family"
-  invertebrate: "class"
-  plant: "class" # previously family
-  protozoa: "family"
-  vertebrate_mammalian: "class"
-  vertebrate_other: "class"
+  fungi: "phylum" # "family"
+  invertebrate: "phylum" # "class"
+  plant: "phylum" # "class" # previously family
+  protozoa: "phylum" # "family"
+  vertebrate_mammalian: "phylum" # "class"
+  vertebrate_other: "phylum" # "class"
 
 coarse_sublineage:
   fungi: ""
@@ -80,9 +84,43 @@ rank_sublineage:
   vertebrate_other: "class"
 
 # the rank selected here for custom genomes should be the highest of the previous selection 
-rank_custom: "class"
+rank_custom: "phylum" # "class"
 
 nmax_coarse: 1 # previously 3
+
+
+#########################################
+# additional settings for microeuk preset
+library_micro:
+  - fungi
+  - protozoa
+
+library_macro:
+  - invertebrate
+  - plant
+  #- vertebrate_mammalian
+  - vertebrate_other
+
+rank_macro:
+  invertebrate: "phylum"
+  plant: "phylum"
+  #vertebrate_mammalian: "phylum"
+  vertebrate_other: "phylum"
+
+macro_sublineage:
+  invertebrate: ""
+  plant: ""
+  vertebrate_other: ""
+
+macro_rank_sublineage:
+  invertebrate: "phylum"
+  plant: "phylum"
+  vertebrate_other: "phylum"
+
+# number of genomes to select per level of rank
+nmax_macro: 1
+
+
 
 # for quick collect of genomes used to build the DB, also import info about user supplied genomes
 # unlike in collect module, "n" is used here to indicate that no additional input should be considered

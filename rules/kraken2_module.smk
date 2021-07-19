@@ -248,6 +248,114 @@ if config["kraken2_preset"] == "highres_pro":
 			fi
 			"""
 
+if config["kraken2_preset"] == "microeuk":
+	rule select_euk_macro:
+		input:
+			tax = config["rdir"] + "/tax_combined/{library_macro}_derep_taxonomy.txt",
+			meta = config["rdir"] + "/{library_macro}/metadata/genome_metadata.txt",
+			gen2taxid = config["rdir"] + "/tax_combined/full_genome2taxid.txt"
+		output:
+			tax_select = config["rdir"] + "/" + config["db_name"] + "/{library_macro}_kraken2_select_taxonomy.txt",
+			kraken2_select = config["rdir"] + "/" + config["db_name"] + "/{library_macro}_kraken2_select_accessions.txt"
+		params:
+			script = config["wdir"] + "/scripts/coarse_ncbi_selection.R",
+			rank = lambda wildcards: config["rank_macro"][wildcards.library_macro],
+			sublineage = lambda wildcards: config["macro_sublineage"][wildcards.library_macro],
+			rank_sublineage = lambda wildcards: config["macro_rank_sublineage"][wildcards.library_macro],
+			nmax = config["nmax_macro"]
+		conda:
+			config["wdir"] + "/envs/r.yaml"
+		log:
+			config["rdir"] + "/logs/select_microeuk_{library_macro}.log"
+		shell:
+			"""
+			{params.script} -t {input.tax} -m {input.meta} -r {params.rank} -s "{params.sublineage}" -R {params.rank_sublineage} -n {params.nmax} -o {output.tax_select} &>>{log}
+			cut -f1 {output.tax_select} | grep -F -f - {input.gen2taxid} > {output.kraken2_select}
+			"""
+
+	rule collect_euk_macro:
+		input:
+			kraken2_select = config["rdir"] + "/" + config["db_name"] + "/{library_macro}_kraken2_select_accessions.txt"
+		output:
+			linked = config["rdir"] + "/" + config["db_name"] + "/genomes/{library_macro}_done"
+		params:
+			gendir = config["rdir"] + "/derep_combined",
+			outdir = config["rdir"] + "/" + config["db_name"] + "/genomes/"
+		shell:
+			"""
+			mkdir -p {params.outdir}
+			find {params.gendir} -name '*.gz' | grep -F -f <(cut -f1 {input.kraken2_select}) | while read line
+			do
+			  ln -sf "$line" {params.outdir}
+			done
+			touch {output.linked}
+			"""
+
+	rule collect_euk_micro:
+		input:
+			tax = config["rdir"] + "/tax_combined/{library_micro}_derep_taxonomy.txt",
+			gen2taxid = config["rdir"] + "/tax_combined/full_genome2taxid.txt"
+		output:
+			kraken2_select = config["rdir"] + "/" + config["db_name"] + "/{library_micro}_kraken2_select_accessions.txt",
+			linked = config["rdir"] + "/" + config["db_name"] + "/genomes/{library_micro}_done"
+		params:
+			gendir = config["rdir"] + "/derep_combined",
+			outdir = config["rdir"] + "/" + config["db_name"] + "/genomes/"
+		shell:
+			"""
+			cut -f1 {input.tax} | grep -F -f - {input.gen2taxid} > {output.kraken2_select}
+			mkdir -p {params.outdir}
+			find {params.gendir} -name '*.gz' | grep -F -f <(cut -f1 {output.kraken2_select}) | while read line
+			do
+			  ln -sf "$line" {params.outdir}
+			done
+			touch {output.linked}
+			"""
+
+	if config["custom_ncbi_post_derep"] != "n":
+		rule add_custom_ncbi_micro:
+			input:
+				gen2taxid = config["rdir"] + "/tax_combined/full_genome2taxid.txt",
+				tax_added = config["rdir"] + "/tax_combined/euk_custom_post_derep_taxonomy.txt",
+				tax_select_macro = expand(config["rdir"] + "/" + config["db_name"] + "/{library_macro}_kraken2_select_taxonomy.txt", library_macro = LIBRARY_MACRO)
+			output:
+				kraken2_select = config["rdir"] + "/" + config["db_name"] + "/custom_euk_kraken2_select_accessions.txt",
+				linked = config["rdir"] + "/" + config["db_name"] + "/genomes/custom_done"
+			params:
+				gendir = config["rdir"] + "/derep_combined",
+				outdir = config["rdir"] + "/" + config["db_name"] + "/genomes/"
+			shell:
+				"""
+				cat {input.tax_select_macro} | cut -f2 | cut -d';' -f2 | sort | uniq | grep -v "p__Eukaryota" | grep -v -F -f - {input.tax_added} | cut -f1 | grep -F -f - {input.gen2taxid} > {output.kraken2_select}
+				mkdir -p {params.outdir}
+				find {params.gendir} -name '*.gz' | grep -F -f <(cut -f1 {output.kraken2_select}) | while read line
+				do
+				  ln -sf "$line" {params.outdir}
+				done
+				touch {output.linked}
+				"""
+
+	rule check_microeuk:
+		input:
+			kraken2_select_macro = expand(config["rdir"] + "/" + config["db_name"] + "/{library_macro}_kraken2_select_accessions.txt", library_macro = LIBRARY_MACRO),
+			kraken2_select_micro = expand(config["rdir"] + "/" + config["db_name"] + "/{library_micro}_kraken2_select_accessions.txt", library_micro = LIBRARY_MICRO),
+			macro_linked = expand(config["rdir"] + "/" + config["db_name"] + "/genomes/{library_macro}_done", library_macro = LIBRARY_MACRO),
+			micro_linked = expand(config["rdir"] + "/" + config["db_name"] + "/genomes/{library_micro}_done", library_micro = LIBRARY_MICRO),
+			custom_euk = config["rdir"] + "/" + config["db_name"] + "/custom_euk_kraken2_select_accessions.txt" if config["custom_ncbi_post_derep"] != "n" else [],
+		output:
+			kraken2_select = config["rdir"] + "/" + config["db_name"] + "/kraken2_select_accessions.txt",
+			checked = config["rdir"] + "/" + config["db_name"] + "/genomes/done"
+		params:
+			outdir = config["rdir"] + "/" + config["db_name"] + "/genomes/"
+		shell:
+			"""
+			cat {input.kraken2_select_macro} {input.kraken2_select_micro} {input.custom_euk} > {output.kraken2_select}
+			if [[ $(cat {output.kraken2_select} | wc -l) == $(find {params.outdir} -name '*.gz' | wc -l) ]]
+			then
+			  touch {output.checked}
+			fi
+			"""
+
 if config["kraken2_preset"] == "user":
 	rule collect_genomes:
 		input:

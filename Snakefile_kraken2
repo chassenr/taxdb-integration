@@ -16,15 +16,19 @@ Run: snakemake -s Snakefile
 configfile: "config/config_kraken2.yaml"
 
 LIBRARY_NAME = config["library_name"]
+LIBRARY_MACRO = config["library_macro"]
+LIBRARY_MICRO = config["library_micro"]
 
 wildcard_constraints:
-	library_name = '|'.join(LIBRARY_NAME)
+	library_name = '|'.join(LIBRARY_NAME),
+	library_macro = '|'.join(LIBRARY_MACRO),
+	library_micro = '|'.join(LIBRARY_MICRO)
 
 rule all:
 	input:
 		kraken2_select = config["rdir"] + "/" + config["db_name"] + "/kraken2_select_accessions.txt",
-		#map = config["rdir"] + "/" + config["db_name"] + "/library/selection/prelim_map.txt",
-		#hash = config["rdir"] + "/" + config["db_name"] + "/hash.k2d"
+		map = config["rdir"] + "/" + config["db_name"] + "/library/selection/prelim_map.txt",
+		hash = config["rdir"] + "/" + config["db_name"] + "/hash.k2d"
 
 '''
 ##### load rules #####
