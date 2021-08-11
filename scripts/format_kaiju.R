@@ -70,13 +70,13 @@ option_list <- list(
     help = "faa file to be formatted",
     metavar = "character"
   ),
-  make_option(
-    c("-t", "--taxid"),
-    type = "character",
-    default = NULL,
-    help = "accession2taxid for input faa",
-    metavar = "character"
-  ),
+#  make_option(
+#    c("-t", "--taxid"),
+#    type = "character",
+#    default = NULL,
+#    help = "accession2taxid for input faa",
+#    metavar = "character"
+#  ),
   make_option(
     c("-c", "--cpus"),
     type = "integer",
@@ -102,7 +102,7 @@ option_list <- list(
 opt_parser <- OptionParser(option_list = option_list)
 opt <- parse_args(opt_parser)
 
-if (is.null(opt$taxid) | is.null(opt$output) | is.null(opt$map) | is.null(opt$input)) {
+if (is.null(opt$output) | is.null(opt$map) | is.null(opt$input)) {
   print_help(opt_parser)
   stop(
     "You need to provide the names of the input and output faa and the name of the faa accesion mapping file.\n",
@@ -115,15 +115,25 @@ if (is.null(opt$taxid) | is.null(opt$output) | is.null(opt$map) | is.null(opt$in
 # prepend taxid by running number (for each taxid)
 
 faa <- readAAStringSet(opt$input)
-acc2taxid <- fread(opt$taxid, h = F, sep = "\t", col.names = c("accnos", "taxid"), nThread = opt$cpus) %>%
+# acc2taxid <- fread(opt$taxid, h = F, sep = "\t", col.names = c("accnos", "taxid"), nThread = opt$cpus) %>%
+#   group_by(taxid) %>%
+#   mutate(id = row_number(), accnos_new = paste(id, taxid, sep = "_"))
+acc2taxid <- names(faa) %>% 
+  as_tibble() %>% 
+  separate(
+    value, 
+    into = c("taxid", "accnos", "add_info"), 
+    sep = " ", 
+    extra = "merge",
+    fill = "right"
+  ) %>%
   group_by(taxid) %>%
   mutate(id = row_number(), accnos_new = paste(id, taxid, sep = "_"))
-faa_names <- gsub(" $", "", names(faa))
-names(faa) <- acc2taxid$accnos_new[chmatch(faa_names, acc2taxid$accnos)]
+names(faa) <- acc2taxid$accnos_new
 writeXStringSet(faa, opt$output)
 acc2taxid %>%
   ungroup() %>%
-  select(accnos, accnos_new) %>%
+  select(taxid, accnos, accnos_new) %>%
   fwrite(., opt$map, quote = F, sep = "\t", nThread = opt$cpus, col.names = F)
 
 

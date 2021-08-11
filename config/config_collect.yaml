@@ -26,7 +26,7 @@ library_coarse:
   - invertebrate
 
 # number of threads for simple parallel processes
-parallel_threads: 64
+parallel_threads: 128
 
 # Parameters for downloading files
 download_threads: 32
