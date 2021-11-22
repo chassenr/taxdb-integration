@@ -1,6 +1,6 @@
 # Basic dirs
 wdir: "/storage/hdd1/chh/Repos/taxdb-integration"
-rdir: "/storage/hdd1/chh/TaxDB"
+rdir: "/storage/hdd1/chh/TaxDB_v2"
 
 # Default parameters
 threads: 1
@@ -100,7 +100,7 @@ custom_ncbi_pre_derep:
   invertebrate: ""
   vertebrate_mammalian: ""
   vertebrate_other: ""
-custom_ncbi_post_derep: "/storage/hdd1/chh/Repos/taxdb-integration/assets/TARA_AP_combined_new.txt"
+custom_ncbi_post_derep: "/storage/hdd1/chh/Repos/taxdb-integration/assets/TARA_AP_combined_v2.txt"
 
 custom_gtdb_pre_derep: ""
 custom_gtdb_post_derep: ""
@@ -108,7 +108,7 @@ custom_gtdb_post_derep: ""
 custom_checkv_pre_derep: ""
 custom_checkv_post_derep: ""
 
-custom_euk_prot: "/storage/hdd1/chh/Repos/taxdb-integration/assets/EukProt_taxonomy_parsed.txt"
+custom_euk_prot: "/storage/hdd1/chh/Repos/taxdb-integration/assets/EukProt_taxonomy_v2.txt"
 custom_pro_prot: ""
 custom_vir_prot: ""
 
@@ -164,7 +164,7 @@ m_threshold_checkv: 0.01
 checkv_derep_chunks: 5
 
 # Parameters for formatting taxonomy
-gtdb_to_taxdump: "/storage/hdd1/chh/Repos/gtdb_to_taxdump/gtdb_to_taxdump.py"
+gtdb_to_taxdump: "/storage/hdd1/chh/Repos/gtdb_to_taxdump/gtdb_to_taxdump_mod.py"
 
 # threads to generate accession2taxid
 taxmap_threads: 64

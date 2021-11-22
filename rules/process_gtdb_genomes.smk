@@ -105,8 +105,8 @@ rule download_gtdb_reps:
 		tar -C {params.outdir} -xzf "{params.outdir}/gtdb_genomes_reps.tar.gz"
 		mv {params.outdir}/gtdb_genomes_reps_* "{params.outdir}/reps_genomes/"
 		rm "{params.outdir}/gtdb_genomes_reps.tar.gz"
-		awk -v FS="\\t" -v OFS="\\t" '$16 == "t"' {input.ar_meta} | cut -f1 | grep -F -f - {input.ar_tax} | sed 's/^[RG][SB]_//' > {output.gtdb_reps}
-		awk -v FS="\\t" -v OFS="\\t" '$16 == "t"' {input.bac_meta} | cut -f1 | grep -F -f - {input.bac_tax} | sed 's/^[RG][SB]_//' >> {output.gtdb_reps}
+		awk -v FS="\\t" -v OFS="\\t" '$16 == "t"' {input.ar_meta} | cut -f1 | grep -F -f - {input.ar_tax} | sed 's/^[RG][SB]_//' | sed 's/d__Archaea;/d__Archaea;l__Archaea;k__Archaea;/' > {output.gtdb_reps}
+		awk -v FS="\\t" -v OFS="\\t" '$16 == "t"' {input.bac_meta} | cut -f1 | grep -F -f - {input.bac_tax} | sed 's/^[RG][SB]_//' | sed 's/d__Bacteria;/d__Bacteria;l__Bacteria;k__Bacteria;/' >> {output.gtdb_reps}
 		"""
 
 # to add cusom assemblies, manually include genome files in the respective directories and provide the taxonomy file name in the config file
@@ -185,13 +185,15 @@ rule collect_gtdb_genomes:
 		done
 		awk -v FS="\\t" -v OFS="\\t" '{{print $2,$1}}' {input.derep_meta} | sed '1d' > {output.tax}
 		# for the species not in the dereplicated set (because there genomes could not be obtained from genbank/refseq) take at least the GTDB reps
+		# very annoyingly, GTDB has again changed their directory structure
 		cut -f1 {input.derep_meta} | sed '1d' | sort -t$'\\t' | uniq | grep -v -F -f - {input.gtdb_reps} > "{params.metadir}/tmp_reps.txt"
-		cut -f1 "{params.metadir}/tmp_reps.txt" | sed 's/$/_genomic\.fna\.gz/' | while read line
+		find {params.repdir} -type f -name '*.gz' > "{params.metadir}/tmp_files.txt"
+		cut -f1 "{params.metadir}/tmp_reps.txt" | grep -F -f - "{params.metadir}/tmp_files.txt" | while read line
 		do
-		  ln -sf "{params.repdir}/$line" {params.outdir}
+		  ln -sf $line {params.outdir}
 		done
 		cat "{params.metadir}/tmp_reps.txt" >> {output.tax}
-		rm "{params.metadir}/tmp_reps.txt"
+		rm "{params.metadir}/tmp_reps.txt" "{params.metadir}/tmp_files.txt"
 		"""
 
 if config["custom_gtdb_post_derep"]:

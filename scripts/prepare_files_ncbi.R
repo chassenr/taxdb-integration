@@ -265,7 +265,7 @@ msg(
 ### write output ###
 
 write.table(
-  summary_combined_good[, 1:22],
+  summary_combined_good[, 1:ncol(summary_combined)],
   opt$summary,
   quote = F,
   sep = "\t",
@@ -274,7 +274,7 @@ write.table(
 )
 
 write.table(
-  summary_combined_good[, 23:25],
+  summary_combined_good[, c("link_fna", "link_faa", "faa_available")],
   opt$output,
   quote = F,
   sep = "\t",

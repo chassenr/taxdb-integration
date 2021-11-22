@@ -28,13 +28,28 @@ rule download_genomes_checkv:
 		rm {params.outdir}/*.tar.gz
 		"""
 
+rule checkv_taxpath:
+	input:
+		meta_genbank = config["rdir"] + "/checkv/checkv_genbank.tsv",
+		nodes = config["rdir"] + "/ncbi_taxdump/nodes.dmp",
+		names = config["rdir"] + "/ncbi_taxdump/names.dmp"
+	output:
+		all_ranks = config["rdir"] + "/checkv/checkv_genbank_all_ranks.txt"
+	params:
+		taxdir = config["rdir"] + "/ncbi_taxdump"
+	conda:
+		config["wdir"] + "/envs/taxonkit.yaml"
+	shell:
+		"""
+		cut -f3 {input.meta_genbank} | sed '1d' | taxonkit lineage -R --data-dir {params.taxdir} | paste <(cut -f1 {input.meta_genbank} | sed '1d') - > {output.all_ranks}
+		"""
+
 rule parse_taxa_checkv:
 	input:
 		meta_genbank = config["rdir"] + "/checkv/checkv_genbank.tsv",
                 meta_circular = config["rdir"] + "/checkv/checkv_circular.tsv",
 		clusters = config["rdir"] + "/checkv/checkv_clusters.tsv",
-		nodes = config["rdir"] + "/ncbi_taxdump/nodes.dmp",
-                names = config["rdir"] + "/ncbi_taxdump/names.dmp"
+		all_ranks = config["rdir"] + "/checkv/checkv_genbank_all_ranks.txt"
 	output:
 		checkv_taxonomy = config["rdir"] + "/checkv/checkv_taxonomy.txt",
 		reps_metadata = config["rdir"] + "/checkv/checkv_reps_metadata.txt",
@@ -48,7 +63,7 @@ rule parse_taxa_checkv:
                 config["rdir"] + "/logs/parse_taxa_checkv.log"
 	shell:
 		"""
-		{params.script} -g {input.meta_genbank} -i {input.meta_circular} -c {input.clusters} -t "{params.outdir}/ncbi_taxdump" -s "{params.outdir}/ncbi_taxdump/accessionTaxa.sql" -o {output.checkv_taxonomy} -m {output.reps_metadata}
+		{params.script} -g {input.meta_genbank} -i {input.meta_circular} -c {input.clusters} -t {input.all_ranks} -o {output.checkv_taxonomy} -m {output.reps_metadata}
 		cut -f1,10 {output.reps_metadata} | sed '1d' > {output.reps_tax}
 		"""
 

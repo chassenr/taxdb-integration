@@ -130,38 +130,54 @@ rule get_taxdump:
 		rm "{params.outdir}/new_taxdump.tar.gz"
 		"""
 
-rule build_tax_sql_ncbi:
-	input:
-		nodes = config["rdir"] + "/ncbi_taxdump/nodes.dmp",
-		names = config["rdir"] + "/ncbi_taxdump/names.dmp"
-	output:
-		sql = config["rdir"] + "/ncbi_taxdump/accessionTaxa.sql"
-	params:
-		script = config["wdir"] + "/scripts/tax_makesql.R"
-	conda :
-		config["wdir"] + "/envs/r.yaml"
-	log:
-		config["rdir"] + "/logs/build_tax_sql_ncbi.log"
-	shell:
-		"""
-		{params.script} -o {input.nodes} -a {input.names} -s {output.sql}
-		"""
+#rule build_tax_sql_ncbi:
+#	input:
+#		nodes = config["rdir"] + "/ncbi_taxdump/nodes.dmp",
+#		names = config["rdir"] + "/ncbi_taxdump/names.dmp"
+#	output:
+#		sql = config["rdir"] + "/ncbi_taxdump/accessionTaxa.sql"
+#	params:
+#		script = config["wdir"] + "/scripts/tax_makesql.R"
+#	conda :
+#		config["wdir"] + "/envs/r.yaml"
+#	log:
+#		config["rdir"] + "/logs/build_tax_sql_ncbi.log"
+#	shell:
+#		"""
+#		{params.script} -o {input.nodes} -a {input.names} -s {output.sql}
+#		"""
 
 rule get_taxpath:
 	input:
-		sql = config["rdir"] + "/ncbi_taxdump/accessionTaxa.sql",
-		genomes = config["rdir"] + "/{library_name}/assembly_summary_combined.txt"
+		genomes = config["rdir"] + "/{library_name}/assembly_summary_combined.txt",
+		nodes = config["rdir"] + "/ncbi_taxdump/nodes.dmp",
+		names = config["rdir"] + "/ncbi_taxdump/names.dmp"
+	output:
+		all_ranks = config["rdir"] + "/{library_name}/assembly_taxonomy_all_ranks.txt"
+	params:
+		taxdir = config["rdir"] + "/ncbi_taxdump"
+	conda:
+		config["wdir"] + "/envs/taxonkit.yaml"
+	shell:
+		"""
+		cut -f7 {input.genomes} | taxonkit lineage -R --data-dir {params.taxdir} | paste <(cut -f1 {input.genomes}) - > {output.all_ranks}
+		"""
+
+rule format_taxpath:
+	input:
+		all_ranks = config["rdir"] + "/{library_name}/assembly_taxonomy_all_ranks.txt"
 	output:
 		taxonomy = config["rdir"] + "/{library_name}/assembly_taxonomy.txt"
 	params:
-		script = config["wdir"] + "/scripts/get_taxpath.R"
+		script = config["wdir"] + "/scripts/format_ncbi_taxpath.R",
+		library = "{library_name}"
 	conda:
 		config["wdir"] + "/envs/r.yaml"
 	log:
                 config["rdir"] + "/logs/get_taxpath_{library_name}.log"
 	shell:
 		"""
-		{params.script} -i {input.genomes} -s {input.sql} -o {output.taxonomy} &>> {log}
+		{params.script} -i {input.all_ranks} -t {params.library} -o {output.taxonomy} &>> {log}
 		"""
 
 rule filter_assemblies:
@@ -217,9 +233,9 @@ rule derep_ncbi:
 		download_complete = config["rdir"] + "/{library_name}/genomes/done",
 		taxonomy = config["rdir"] + "/{library_name}/assembly_taxonomy_added.txt"
 	output:
+		tax_select = config["rdir"] + "/{library_name}/assembly_taxonomy_select.txt",
 		derep_meta = config["rdir"] + "/{library_name}/assembly-derep-genomes_results.tsv"
 	params:
-		dir = config["rdir"] + "/{library_name}",
 		indir = config["rdir"] + "/{library_name}/genomes",
 		outdir = config["rdir"] + "/{library_name}/derep_genomes",
 		z_threshold = lambda wildcards: config["z_threshold_ncbi"][wildcards.library_name],
@@ -240,12 +256,12 @@ rule derep_ncbi:
 		# remove exlcuded lineages from taxonomy table (alternatively supply file to derep command with taxa to keep)
 		if [[ "{params.derep_lineage}" != "" ]]
 		then
-		  grep -v "{params.derep_lineage}" {input.taxonomy} > "{params.dir}/assembly_taxonomy_select.txt"
+		  grep -v "{params.derep_lineage}" {input.taxonomy} > {output.tax_select}
 		else
-		  cp {input.taxonomy} "{params.dir}/assembly_taxonomy_select.txt"
+		  cp {input.taxonomy} {output.tax_select}
 		fi
 		cd {params.outdir}
-		derepG --threads {threads} --in-dir {params.indir} --prefix ../assembly --taxa "{params.dir}/assembly_taxonomy_select.txt" --tmp ./ --db {params.derep_db} --threshold {params.z_threshold} --mash-threshold {params.m_threshold} --ani-fraglen-fraction {params.ani_fraglen} --debug --slurm-config {params.derep_slurm} --chunk-size {params.derep_chunks} --slurm-arr-size 10000 &>> {log}
+		derepG --threads {threads} --in-dir {params.indir} --prefix ../assembly --taxa {output.tax_select} --tmp ./ --db {params.derep_db} --threshold {params.z_threshold} --mash-threshold {params.m_threshold} --ani-fraglen-fraction {params.ani_fraglen} --debug --slurm-config {params.derep_slurm} --chunk-size {params.derep_chunks} --slurm-arr-size 10000 &>> {log}
 		# mv *-derep-genomes_results.tsv {output.derep_meta}
 		# do not delete redundant genomes until DB workflow is finished, work with soft links for remaining steps
 		"""

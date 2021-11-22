@@ -89,7 +89,7 @@ rule generate_genome2taxid:
 	shell:
 		"""
 		cut -f1 {input.tax_good} | taxonkit name2taxid --data-dir {params.dbdir} > "{params.dbdir}/tmp_taxid.txt"
-		cut -f2 "{params.dbdir}/tmp_taxid.txt" | taxonkit lineage -t --data-dir {params.dbdir} | cut -f3 | cut -d';' -f7 | paste "{params.dbdir}/tmp_taxid.txt" - > {output.gen2taxid}
+		cut -f2 "{params.dbdir}/tmp_taxid.txt" | taxonkit lineage -t --data-dir {params.dbdir} | cut -f3 | cut -d';' -f9 | paste "{params.dbdir}/tmp_taxid.txt" - > {output.gen2taxid}
 		rm "{params.dbdir}/tmp_taxid.txt"
 		"""
 
@@ -107,7 +107,7 @@ rule generate_nucl_accesion2taxid:
 	shell:
 		"""
 		find {params.gendir} -name '*.gz' > "{params.gendir}/../tax_combined/tmp_nucl_filelist.txt" 
-		cut -f1,2 {input.gen2taxid} | parallel -j{threads} '{params.script} {{}} "{params.gendir}/../tax_combined/tmp_nucl_filelist.txt"' >> {output.acc2taxid}
+		cut -f1,3 {input.gen2taxid} | parallel -j{threads} '{params.script} {{}} "{params.gendir}/../tax_combined/tmp_nucl_filelist.txt"' >> {output.acc2taxid}
 		rm "{params.gendir}/../tax_combined/tmp_nucl_filelist.txt"
 		"""
 
@@ -125,7 +125,7 @@ rule generate_prot_accesion2taxid:
 	shell:
 		"""
 		find {params.gendir} -name '*.gz' > "{params.gendir}/../tax_combined/tmp_prot_filelist.txt"
-		cut -f1,2 {input.gen2taxid} | parallel -j{threads} '{params.script} {{}} "{params.gendir}/../tax_combined/tmp_prot_filelist.txt"' >> {output.acc2taxid}
+		cut -f1,3 {input.gen2taxid} | parallel -j{threads} '{params.script} {{}} "{params.gendir}/../tax_combined/tmp_prot_filelist.txt"' >> {output.acc2taxid}
 		rm "{params.gendir}/../tax_combined/tmp_prot_filelist.txt"
 		"""
 

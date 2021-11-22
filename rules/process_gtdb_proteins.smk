@@ -41,18 +41,35 @@ rule gzip_gtdb_faa_reps:
 		find {params.outdir} -type f -name '*.faa' | parallel -j{threads} gzip {{}}
 		"""
 
-# then download the missing from ncbi
-rule download_proteins_gtdb:
+# link those faa which are available via gtdb reps
+rule gtdb_add_protein_reps:
 	input:
 		gtdb_faa_zipped = config["rdir"] + "/gtdb/reps_proteins/zipped",
-		gtdb_links = config["rdir"] + "/gtdb/metadata/gtdb_download_info.txt",
 		tax = config["rdir"] + "/tax_combined/gtdb_derep_taxonomy.txt"
 	output:
-		tax_prot = config["rdir"] + "/gtdb/metadata/gtdb_protein_taxonomy.txt",
-		done = config["rdir"] + "/gtdb/proteins/done"
+		faa_reps = config["rdir"] + "/gtdb/metadata/gtdb_faa_from_reps.accnos"
 	params:
 		outdir = config["rdir"] + "/gtdb/proteins",
 		repdir = config["rdir"] + "/gtdb/reps_proteins"
+	shell:
+		"""
+		find {params.repdir} -type f -name '*.gz' | xargs -n 1 basename | cut -d'_' -f1,2 | grep -F -f <(cut -f1 {input.tax}) > {output.faa_reps}
+		sed 's/$/_protein\.faa\.gz/' {output.faa_reps} | while read line
+		do
+		  ln -sf "{params.repdir}/$line" {params.outdir}
+		done
+		"""
+
+# download the missing from ncbi
+rule download_proteins_gtdb:
+	input:
+		faa_reps = config["rdir"] + "/gtdb/metadata/gtdb_faa_from_reps.accnos",
+		gtdb_links = config["rdir"] + "/gtdb/metadata/gtdb_download_info.txt",
+		tax = config["rdir"] + "/tax_combined/gtdb_derep_taxonomy.txt"
+	output:
+		faa_ncbi = config["rdir"] + "/gtdb/metadata/gtdb_faa_from_ncbi.accnos"
+	params:
+		outdir = config["rdir"] + "/gtdb/proteins"
 	conda:
 		config["wdir"] + "/envs/download.yaml"
 	threads: config["download_threads"]
@@ -60,29 +77,38 @@ rule download_proteins_gtdb:
 		config["rdir"] + "/logs/download_proteins_gtdb.log"
 	shell:
 		"""
-		find {params.repdir} -type f -name '*.gz' | xargs -n 1 basename | cut -d'_' -f1,2 > "{params.repdir}/tmp"
-		mkdir -p {params.outdir}
-		awk -v FS="\\t" -v OFS="\\t" '$11 == "TRUE"' {input.gtdb_links} | grep -F -f <(cut -f1 {input.tax}) | grep -v -F -f "{params.repdir}/tmp" > "{params.outdir}/tmp"
-		cut -f8,10 "{params.outdir}/tmp" | awk -v FS="\\t" -v OFS="\\t" '{{print $1"\\n out="$2}}' > "{params.outdir}/links"
+		cut -f1 {input.tax} | grep -v -F -f {input.faa_reps} | grep -F -f - {input.gtdb_links} | awk -v FS="\\t" -v OFS="\\t" '$11 == "TRUE"' | cut -f6 > {output.faa_ncbi}
+		grep -F -f {output.faa_ncbi} {input.gtdb_links} | cut -f8,10 | awk -v FS="\\t" -v OFS="\\t" '{{print $1"\\n out="$2}}' > "{params.outdir}/links"
 		aria2c -i "{params.outdir}/links" -c -l "{params.outdir}/links.log" --dir {params.outdir} --max-tries=20 --retry-wait=5 --max-connection-per-server=1 --max-concurrent-downloads={threads} &>> {log}
-		# We need to verify all files are there
-		cut -f10 "{params.outdir}/tmp" | sort > "{params.outdir}/tmp1"
-		find {params.outdir} -type f -name '*.gz' | xargs -n 1 basename | sort > "{params.outdir}/tmp2"
-		if diff "{params.outdir}/tmp1" "{params.outdir}/tmp2"
+		rm "{params.outdir}/links" "{params.outdir}/links.log"
+		"""
+
+# if no faa gtdb reps or download, predict with prodigal
+rule predict_faa_gtdb:
+	input:
+		faa_reps = config["rdir"] + "/gtdb/metadata/gtdb_faa_from_reps.accnos",
+		faa_ncbi = config["rdir"] + "/gtdb/metadata/gtdb_faa_from_ncbi.accnos",
+		tax = config["rdir"] + "/tax_combined/gtdb_derep_taxonomy.txt",
+		gtdb_links = config["rdir"] + "/gtdb/metadata/gtdb_download_info.txt"
+	output:
+		tax_prot = config["rdir"] + "/gtdb/metadata/gtdb_protein_taxonomy.txt"
+	params:
+		outdir = config["rdir"] + "/gtdb/proteins",
+		cdsdir = config["rdir"] + "/gtdb/cds_proteins",
+		gendir = config["rdir"] + "/gtdb/genomes"
+	conda:
+		config["wdir"] + "/envs/prodigal.yaml"
+	threads: config["parallel_threads"]
+	log:
+		config["rdir"] + "/logs/predict_proteins_gtdb.log"
+	shell:
+		"""
+		cat {input.faa_ncbi} {input.faa_reps} | grep -v -F -f - {input.tax} | cut -f1 | grep -F -f - {input.gtdb_links} | cut -f4 | sed 's/_genomic\.fna\.gz//' | parallel -j{threads} 'prodigal -i <(gunzip -c {params.gendir}/{{}}_genomic.fna.gz) -o {params.cdsdir}/{{}}.gff -a {params.proteins}/{{}}_protein.faa -f gff'
+		find {params.outdir} -type f -name '*.faa' | parallel -j{threads} 'gzip {{}}'
+		if [[ $(cat {input.tax} | wc -l ) == $(find {params.outdir} -name '*.gz' | wc -l ) ]]
 		then
-		  cut -f6,7 "{params.outdir}/tmp" > {output.tax_prot}
-		  grep -F -f "{params.repdir}/tmp" {input.tax} > "{params.repdir}/tmp_tax" 
-		  cut -f1 "{params.repdir}/tmp_tax" | sed 's/$/_protein\.faa\.gz/' | while read line
-		  do
-		    ln -sf "{params.repdir}/$line" {params.outdir}
-		  done
-		  cat "{params.repdir}/tmp_tax" >> {output.tax_prot}
+		  cp {input.tax} {output.tax_prot}
 		fi
-		if [[ $(cat {output.tax_prot} | wc -l) == $(find {params.outdir} -name '*.gz' | wc -l) ]]
-		then
-		  touch {output.done}
-		fi
-		rm "{params.outdir}/links" "{params.outdir}/links.log" "{params.outdir}/tmp1" "{params.outdir}/tmp2" "{params.outdir}/tmp" "{params.repdir}/tmp" "{params.repdir}/tmp_tax"
 		"""
 
 rule custom_gtdb_proteins_pre_derep:
@@ -110,34 +136,11 @@ rule custom_gtdb_proteins_pre_derep:
 		fi
 		"""
 
-rule gtdb_add_protein_reps:
-	input:
-		gtdb_faa_done = config["rdir"] + "/gtdb/proteins/done",
-		tax_prot_added = config["rdir"] + "/gtdb/metadata/gtdb_protein_taxonomy_added.txt",
-		gtdb_reps = config["rdir"] + "/gtdb/metadata/gtdb_reps_tax.txt"
-	output:
-		tax_prot = config["rdir"] + "/tax_combined/gtdb_protein_taxonomy.txt"
-	params:
-		metadir = config["rdir"] + "/gtdb/metadata",
-		repdir = config["rdir"] + "/gtdb/reps_proteins",
-		outdir = config["rdir"] + "/gtdb/proteins/"
-	shell:
-		"""
-		find {params.repdir} -type f -name '*.gz' | xargs -n 1 basename | cut -d'_' -f1,2 > "{params.repdir}/tmp"
-		cut -f2 {input.tax_prot_added} | sort -t$'\\t' | uniq | grep -v -F -f - {input.gtdb_reps} | grep -F -f "{params.repdir}/tmp" > "{params.metadir}/tmp_reps_prot.txt"
-		cut -f1 "{params.metadir}/tmp_reps_prot.txt" | sed 's/$/_protein\.faa\.gz/' | while read line
-		do
-		  ln -sf "{params.repdir}/$line" {params.outdir}
-		done
-		cat {input.tax_prot_added} "{params.metadir}/tmp_reps_prot.txt" > {output.tax_prot}
-                rm "{params.metadir}/tmp_reps_prot.txt"
-		"""
-
 rule collect_gtdb_proteins:
 	input:
-		tax_prot = config["rdir"] + "/tax_combined/gtdb_protein_taxonomy.txt"
+		tax_prot = config["rdir"] + "/gtdb/metadata/gtdb_protein_taxonomy.txt"
 	output:
-		linked = config["rdir"] + "/gtdb/proteins/linked"
+		tax_prot = config["rdir"] + "/tax_combined/gtdb_protein_taxonomy.txt"
 	params:
 		pdir = config["rdir"] + "/gtdb/proteins",
 		outdir = config["rdir"] + "/proteins_all/"
@@ -148,7 +151,7 @@ rule collect_gtdb_proteins:
 		do
 		  ln -sf "$line" {params.outdir}
 		done
-		touch {output.linked}
+		cp {input.tax_prot} {output.tax_prot}
 		"""
 
 if config["custom_pro_prot"]:

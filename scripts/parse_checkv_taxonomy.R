@@ -11,9 +11,7 @@ package.list <- c(
   "config",
   "tidyverse",
   "data.table",
-  "purrr",
-  "taxonomizr",
-  "rentrez"
+  "purrr"
 )
 
 # Function to check if packages are installed
@@ -87,17 +85,10 @@ option_list <- list(
     metavar = "character"
   ),
   make_option(
-    c("-t", "--taxdump"), 
+    c("-t", "--tax_genbank"), 
     type = "character", 
     default = NULL,
-    help = "directory containing NCBI nodes.dmp and names.dmp", 
-    metavar = "character"
-  ),
-  make_option(
-    c("-s", "--sql"), 
-    type = "character", 
-    default = NULL,
-    help = "location and name of sql database that will be generated from the taxdump", 
+    help = "ncbi taxonomic paths for genbank genomes", 
     metavar = "character"
   ),
   make_option(
@@ -119,26 +110,11 @@ opt_parser <- OptionParser(option_list = option_list)
 opt <- parse_args(opt_parser)
 
 if (is.null(opt$img) | is.null(opt$genbank) | is.null(opt$clusters) | is.null(opt$output) | 
-    is.null(opt$meta) | is.null(opt$sql) | is.null(opt$taxdump)) {
+    is.null(opt$meta) | is.null(opt$tax_genbank)) {
   print_help(opt_parser)
   stop(
     "All parameters are mandatory.\n", 
     call. = FALSE
-  )
-}
-
-
-### read NCBI taxonomy info ####
-
-# format NCBI taxdump database
-if(!file.exists(opt$sql)) {
-  read.names.sql(
-    paste0(opt$taxdump, "/names.dmp"),
-    opt$sql
-  )
-  read.nodes.sql(
-    paste0(opt$taxdump, "/nodes.dmp"),
-    opt$sql
   )
 }
 
@@ -152,11 +128,9 @@ img <- fread(
   sep = "\t",
   quote = ""
 ) %>% 
-  mutate(path = "d__Viruses;p__Viruses;c__Viruses;o__Viruses;f__Viruses;g__Viruses;s__Viruses unclassified")
+  mutate(path = "d__Viruses;l__Viruses;k__Viruses;p__Viruses;c__Viruses;o__Viruses;f__Viruses;g__Viruses;s__Viruses unclassified")
 
 # genbank contigs
-# as lineage provided by checkV does not contain rank information
-# retrieve info using taxonomizr
 genbank <- fread(
   opt$genbank,
   h = T,
@@ -164,41 +138,45 @@ genbank <- fread(
   quote = ""
 )
 
-# map taxid
-taxpath <- getTaxonomy(genbank$ncbi_id, opt$sql) %>% 
-  as_tibble() %>% 
-  mutate(accnos = genbank$checkv_id)
+# taxonomy of genbank viruses
+genbank_tax <- fread(
+  opt$tax_genbank,
+  h = F,
+  sep = "\t",
+  quote = "",
+  col.names = c("checkv_id", "ncbi_id", "path", "ranks")
+) %>%
+  as_tibble()
 
-# if no taxonomic path found (i.e. deleted or merged taxids that were not updated in the assembly summary file),
-# retrieve correct taxid, and repeat getTaxonomy command
-if(anyNA(taxpath$superkingdom)) {
-  taxpath_new <- genbank %>% 
-    filter(is.na(taxpath$superkingdom)) %>% 
-    pull(1) %>% 
-    map_dfr(., function(X) {
-      out_search <- entrez_search(db = "assembly", term = X)
-      out_links <- entrez_link(dbfrom = "assembly", id = out_search$ids[1], db = "all")
-      taxid_new <- out_links$links$assembly_taxonomy[1]
-      getTaxonomy(taxid_new, opt$sql) %>% 
-        as_tibble() %>% 
-        mutate(accnos = X)
-    }) %>% 
-    rows_update(taxpath, ., by = "accnos", copy = T) %>%
-    # in the unlikely case that there are still NAs, remove those genomes from list
-    # this can happen if entrez_fetch is unable to retrieve the updated record for taxid
-    filter(!is.na(superkingdom))
-} else {
-  taxpath_new <- taxpath
-}
+# select ranks to keep
+keep_ranks <- c("superkingdom", "lineage", "kingdom", "phylum", "class", "order", "family", "genus", "species")
+
+# retain taxonomic names between superkingdom and phylum
+tax_keep_ranks <- map_dfr(
+  1:nrow(genbank_tax),
+  function(x) {
+    tmp_tax <- strsplit(genbank_tax$path[x], ";", fixed = T)[[1]]
+    tmp_rank <- strsplit(genbank_tax$ranks[x], ";", fixed = T)[[1]]
+    # we can assume that the path always starts with superkingdom
+    if(tmp_rank[2] == "clade") {
+      tmp_rank[2] <- "lineage"
+    }
+    tmp <- matrix(c(genbank_tax$checkv_id[x], tmp_tax[match(keep_ranks, tmp_rank)]), nrow = 1, ncol = length(keep_ranks) + 1)
+    colnames(tmp) <- c("checkv_id", keep_ranks)
+    tmp <- as_tibble(tmp)
+  }
+)
 
 # parse taxonomic path
 # qiime format:
-# e.g. d__Archaea;p__Halobacterota;c__Methanosarcinia;o__Methanosarcinales;f__Methanosarcinaceae;g__Methanosarcina;s__Methanosarcina mazei
+# e.g. d__;k__;p__;c__;o__;f__;g__;s__
 # repeat taxon name if na for intermediate ranks
-genbank_parsed <- taxpath_new %>% 
+genbank_parsed <- tax_keep_ranks %>% 
   mutate(
     superkingdom = paste0("d__", superkingdom),
-    phylum = paste0("p__", ifelse(is.na(phylum), gsub("d__", "", superkingdom), phylum)),
+    lineage = paste0("l__", ifelse(is.na(lineage), gsub("d__", "", superkingdom), lineage)),
+    kingdom = paste0("k__", ifelse(is.na(kingdom), gsub("l__", "", lineage), kingdom)),
+    phylum = paste0("p__", ifelse(is.na(phylum), gsub("k__", "", kingdom), phylum)),
     class = paste0("c__", ifelse(is.na(class), gsub("p__", "", phylum), class)),
     order = paste0("o__", ifelse(is.na(order), gsub("c__", "", class), order)),
     family = paste0("f__", ifelse(is.na(family), gsub("o__", "", order), family)),
@@ -214,11 +192,10 @@ genbank_parsed <- taxpath_new %>%
       species
     )
   ) %>% 
-  # mutate( root = "root", .before = superkingdom) %>% 
-  unite("path", -accnos, sep = ";") %>% 
-  relocate(accnos, .before = path) %>% 
-  filter(!is.na(taxpath_new$superkingdom)) %>% 
-  right_join(genbank, ., by = c("checkv_id" = "accnos"))
+  unite("path", -checkv_id, sep = ";") %>% 
+  relocate(checkv_id, .before = path) %>% 
+  filter(!is.na(tax_keep_ranks$superkingdom)) %>% 
+  right_join(genbank, ., by = c("checkv_id" = "checkv_id"))
 
 # combine taxonomy for img and genbank genomes
 full_tax <- bind_rows(
@@ -234,49 +211,19 @@ clusters <- fread(
   quote = ""
 ) %>% 
   mutate(tmp_id = ifelse(genbank_rep == "NULL", circular_rep, genbank_rep)) %>% 
-  left_join(., full_tax, by = c("tmp_id" = "checkv_id")) 
-
-clusters_long <- data.frame(
-  accnos = unlist(strsplit(clusters$genome_ids, ",", fixed = T)),
-  reps = rep(clusters$tmp_id, sapply(strsplit(clusters$genome_ids, ",", fixed = T), length)),
-  stringsAsFactors = F
-)
-
-# extract taxonomic path from cluster members if not available for representative
-clusters_new <- clusters %>% 
-  filter(is.na(clusters$path)) %>% 
-  pull(tmp_id) %>% 
-  map_dfr(., function(X) {
-    tmp <- clusters_long %>% 
-      filter(reps == X) %>% 
-      pull(1)
-    tmp_path <- sort(
-      table(
-        genbank_parsed %>% 
-          filter(checkv_id %in% tmp) %>% 
-          pull(2)
-      ),
-      decreasing = T
-    )[1]
-    data.frame(
-      tmp_id = X,
-      path = tmp_path
-    )
-  }) %>% 
-  rows_update(clusters, ., by = "tmp_id", copy = T) %>% 
-  filter(!is.na(clusters$path)) %>% 
+  left_join(., full_tax, by = c("tmp_id" = "checkv_id")) %>%
   mutate(path_new = paste0(path, "___", rep_genome))
-# choose better naming strategy for clusters?
 
+# map taxonomy of cluster reps to all genomes
 full_tax_parsed <- data.frame(
-  accnos = unlist(strsplit(clusters_new$genome_ids, ",", fixed = T)),
-  path = rep(clusters_new$path_new, sapply(strsplit(clusters_new$genome_ids, ",", fixed = T), length)),
+  accnos = unlist(strsplit(clusters$genome_ids, ",", fixed = T)),
+  path = rep(clusters$path_new, sapply(strsplit(clusters$genome_ids, ",", fixed = T), length)),
   stringsAsFactors = F
 )
 
 # write output tables
 write_delim(
-  clusters_new,
+  clusters,
   opt$meta,
   delim = "\t",
   col_names = T

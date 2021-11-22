@@ -320,7 +320,7 @@ gtdb_links <- bind_rows(
 ) %>% 
   filter(!is.na(link))
 
-msg(paste("Generating", comma(nrow(gtdb_links %>% filter(!grepl("UBA", gtdb_genome)))), "links for download..."))
+msg(paste("Generating", comma(nrow(gtdb_links %>% filter(!grepl("UBA", gtdb_genome)))), "links for download...\n"))
 
 
 ### Create necessary files For downloading fasta files ####
@@ -340,6 +340,9 @@ out_file_links <- gtdb_links %>%
     filename_faa = paste0(basename(link), "_protein.faa.gz"),
     download_link_faa = paste(link, filename_faa, sep = "/"),
     outfile_faa = paste0(gsub("GB_|RS_", "", gtdb_genome), "_protein.faa.gz"),
+    # adding artificial taxlevels for kingdom and lineage to make taxonomy compatible with euks
+    tax_string = gsub("d__Bacteria;", "d__Bacteria;l__Bacteria;k__Bacteria;", tax_string),
+    tax_string = gsub("d__Archaea;", "d__Archaea;l__Archaea;k__Archaea;", tax_string),
     faa_available = !future_map_lgl(
       download_link_faa,
       http_error

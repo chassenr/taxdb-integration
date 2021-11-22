@@ -104,7 +104,7 @@ taxpath <- fread(
   separate(
     path,
     sep = ";",
-    into = c("superkingdom", "phylum", "class", "order", "family", "genus", "species")
+    into = c("superkingdom", "lineage", "kingdom", "phylum", "class", "order", "family", "genus", "species")
   )
 
 # add index for duplicated tax names within NCBI taxonomy
@@ -122,7 +122,7 @@ for(j in 3:ncol(taxpath_df)) {
   }
 } 
 
-# add index for duplicated tax names in GTDB by modifying NCBI path and format path
+# add mapping between old and new taxpaths
 taxpath_out <- taxpath_df %>%
   select(accnos) %>% 
   mutate(
