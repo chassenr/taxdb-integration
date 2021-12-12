@@ -17,6 +17,7 @@ configfile: "config/config_stats.yaml"
 
 rule all:
 	input:
+		#tmp_taxid = config["rdir"] + "/tmp/tmp_proteins_clustered_paths.txt",
 		genome_stats = config["wdir"] + "/stats/db_stats_genomes_derep.txt",
 		kraken_stats = config["wdir"] + "/stats/db_stats_" + config["db_name"] + ".txt",
 		protein_stats = config["wdir"] + "/stats/db_stats_proteins_all.txt",

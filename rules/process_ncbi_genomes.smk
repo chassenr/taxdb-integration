@@ -64,54 +64,6 @@ rule calculate_contig_stats:
 		rm "{params.genome_dir}/../metadata/bb_out.tmp"
 		"""
 
-#rule download_assembly_stats:
-#	input:
-#		url = config["rdir"] + "/{library_coarse}/assembly_url_genomic.txt"
-#	output:
-#		stats_url = config["rdir"] + "/{library_coarse}/assembly_url_contig_stats.txt",
-#		download_complete = config["rdir"] + "/{library_coarse}/contig_stats/done"
-#	params:
-#		outdir = config["rdir"] + "/{library_coarse}/contig_stats"
-#	threads: config["download_threads"]
-#	conda:
-#		config["wdir"] + "/envs/download.yaml"
-#	log:
-#		config["rdir"] + "/logs/download_assembly_stats_{library_coarse}.log"
-#	shell:
-#		"""
-#		sed 's/_genomic\.fna\.gz/_assembly_stats\.txt/' {input.url} > {output.stats_url}
-#		aria2c -i {output.stats_url} -c -l "{params.outdir}/links.log" --dir {params.outdir} --max-tries=20 --retry-wait=5 --max-connection-per-server=1 --max-concurrent-downloads={threads} &>> {log}
-#		# We need to verify all files are there
-#		cat {output.stats_url} | xargs -n 1 basename | sort > "{params.outdir}/tmp1"
-#		find {params.outdir} -type f -name '*.txt' | xargs -n 1 basename | sort > "{params.outdir}/tmp2"
-#		if diff "{params.outdir}/tmp1" "{params.outdir}/tmp2"
-#		then
-#		  touch "{params.outdir}/done"
-#		fi
-#		rm "{params.outdir}/links.log" "{params.outdir}/tmp1" "{params.outdir}/tmp2"
-#		"""
-
-#rule parse_assembly_metadata:
-#	input:
-#		download_contig_stats = config["rdir"] + "/{library_coarse}/contig_stats/done",
-#		summary = config["rdir"] + "/{library_coarse}/assembly_summary_combined.txt"
-#	output:
-#		metadata = config["rdir"] + "/{library_coarse}/metadata/genome_metadata.txt"
-#	params:
-#		outdir = config["rdir"] + "/{library_coarse}/metadata",
-#		stats_dir = config["rdir"] + "/{library_coarse}/contig_stats",
-#		script = config["wdir"] + "/scripts/parse_assembly_metadata.R"
-#	log:
-#		config["rdir"] + "/logs/parse_assembly_metadata_{library_coarse}.log"
-#	shell:
-#		"""
-#		grep "total-length" {params.stats_dir}/*.txt | grep ":all" | sed 's/^.*\///' | sed -E 's/(GC[AF]_[0-9]+\.[0-9]+)_.*_assembly_stats\.txt:/\\1\\t/' > "{params.outdir}/contig_stats.tmp"
-#		echo -e "accession\\tgenome_size" > {output.metadata}
-#		cut -f1,7 "{params.outdir}/contig_stats.tmp" >> {output.metadata}
-#		rm "{params.outdir}/contig_stats.tmp"
-#		# optional: delete contig_stats directory again (not implemented at the moment).
-#		"""
-
 rule get_taxdump:
 	output:
 		nodes = config["rdir"] + "/ncbi_taxdump/nodes.dmp",
@@ -129,23 +81,6 @@ rule get_taxdump:
 		tar -xzvf "{params.outdir}/new_taxdump.tar.gz" --directory "{params.outdir}/ncbi_taxdump/" &>> {log}
 		rm "{params.outdir}/new_taxdump.tar.gz"
 		"""
-
-#rule build_tax_sql_ncbi:
-#	input:
-#		nodes = config["rdir"] + "/ncbi_taxdump/nodes.dmp",
-#		names = config["rdir"] + "/ncbi_taxdump/names.dmp"
-#	output:
-#		sql = config["rdir"] + "/ncbi_taxdump/accessionTaxa.sql"
-#	params:
-#		script = config["wdir"] + "/scripts/tax_makesql.R"
-#	conda :
-#		config["wdir"] + "/envs/r.yaml"
-#	log:
-#		config["rdir"] + "/logs/build_tax_sql_ncbi.log"
-#	shell:
-#		"""
-#		{params.script} -o {input.nodes} -a {input.names} -s {output.sql}
-#		"""
 
 rule get_taxpath:
 	input:

@@ -9,7 +9,6 @@ package.list <- c(
   "crayon",
   "optparse",
   "config",
-  "taxonomizr",
   "tidyverse",
   "data.table",
   "purrr"
@@ -72,27 +71,27 @@ option_list <- list(
     metavar = "character"
   ),
   make_option(
-    c("-s", "--sql"), 
-    type = "character", 
-    default = NULL,
-    help = "location and name of sql database for the DB taxdump", 
-    metavar = "character"
-  ),
-  make_option(
     c("-o", "--output"), 
     type = "character", 
     default = NULL,
     help = "Summary stats of DB content per taxonomic level",
     metavar = "character"
+  ),
+  make_option(
+    c("-c", "--cpus"),
+    type = "integer",
+    default = 1,
+    help = "number of cpus to use [default: 1]",
+    metavar = "number"
   )
 )
 opt_parser <- OptionParser(option_list = option_list)
 opt <- parse_args(opt_parser)
 
-if (is.null(opt$taxid) | is.null(opt$output) | is.null(opt$sql)) {
+if (is.null(opt$taxid) | is.null(opt$output)) {
   print_help(opt_parser)
   stop(
-    "You need to provide the assembly summary table, the taxdump sql database, and the name of the output file.\n", 
+    "All parameters are mandatory.\n", 
     call. = FALSE
   )
 }
@@ -103,34 +102,62 @@ if (is.null(opt$taxid) | is.null(opt$output) | is.null(opt$sql)) {
 # read accessions and taxids
 acc2taxid <- fread(
   opt$taxid,
-  h = F,
+  h = T,
   sep = "\t",
-  quote = ""
-)
-if(ncol(acc2taxid) == 2) {
-  colnames(acc2taxid) <- c("accnos", "taxid")
+  quote = "",
+  nThread = opt$cpus
+) %>%
+  separate(
+    col = "path",
+    into = c("domain", "lineage", "kingdom", "phylum", "class", "order", "family", "genus", "species"),
+    sep = ";",
+    remove = FALSE
+  ) %>%
+  group_by(domain)
+
+if("genome" %in% colnames(acc2taxid)) {
+  if("sequence" %in% colnames(acc2taxid)) {
+    db_stats <- acc2taxid %>%
+      summarise(
+        n_lineage = n_distinct(lineage),
+	n_kingdom = n_distinct(kingdom),
+	n_phylum = n_distinct(phylum),
+        n_class = n_distinct(class),
+        n_order = n_distinct(order),
+        n_family = n_distinct(family),
+        n_genus = n_distinct(genus),
+        n_species = n_distinct(species),
+        n_genomes = n_distinct(genome),
+        n_seqs = n()
+      )
+  } else {
+    db_stats <- acc2taxid %>%
+      summarise(
+        n_lineage = n_distinct(lineage),
+        n_kingdom = n_distinct(kingdom),
+        n_phylum = n_distinct(phylum),
+        n_class = n_distinct(class),
+        n_order = n_distinct(order),
+        n_family = n_distinct(family),
+        n_genus = n_distinct(genus),
+        n_species = n_distinct(species),
+        n_genomes = n()
+      )
+  }
 } else {
-  colnames(acc2taxid) <- c("accnos", "seq", "taxid")
-}
-
-# map taxid
-taxpath <- getTaxonomy(acc2taxid$taxid, opt$sql) %>% 
-  as_tibble() %>%
-  mutate(genome = acc2taxid$accnos) %>%
-  group_by(superkingdom)
-
-# calculate genome stats
-db_stats <- taxpath %>%
-  summarise(
-    n_phylum = n_distinct(phylum),
-    n_class = n_distinct(class),
-    n_order = n_distinct(order),
-    n_family = n_distinct(family),
-    n_genus = n_distinct(genus),
-    n_species = n_distinct(species),
-    n_genomes = n_distinct(genome),
-    n_seqs = n()
-  )
+  db_stats <- acc2taxid %>%
+    summarise(
+      n_lineage = n_distinct(lineage),
+      n_kingdom = n_distinct(kingdom),
+      n_phylum = n_distinct(phylum),
+      n_class = n_distinct(class),
+      n_order = n_distinct(order),
+      n_family = n_distinct(family),
+      n_genus = n_distinct(genus),
+      n_species = n_distinct(species),
+      n_seqs = n()
+    )
+}	
 
 # write output table
 write_delim(

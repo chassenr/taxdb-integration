@@ -131,7 +131,7 @@ if (is.null(opt$tax) | is.null(opt$meta) |
 # (protzoa and fungi would otherwise be severely under-represented in terms of bp)
 
 # possible taxonomic ranks
-tax_ranks <- c("domain", "phylum", "class", "order", "family", "genus", "species")
+tax_ranks <- c("domain", "lineage", "kingdom", "phylum", "class", "order", "family", "genus", "species")
 
 # maximum number of genomes per level of selected rank
 n_max = opt$n_max # set scaling factor (user defined)
@@ -147,11 +147,11 @@ rownames(genome_data) <- genome_data$accession
 rm(tmp)
 
 # separate into main and sublineage
-if(opt$sublineage != "" | !is.null(opt$sublineage)) {
+if(is.null(opt$sublineage) | opt$sublineage == "") {
+  genome_data_main <- genome_data
+} else {
   genome_data_main <- genome_data[!grepl(opt$sublineage, genome_data$path), ]
   genome_data_sub <- genome_data[grepl(opt$sublineage, genome_data$path), ]
-} else {
-  genome_data_main <- genome_data
 }
 
 # get largest genome per subtax (refseq if available)
@@ -225,7 +225,9 @@ genome_select_main <- genome_data_main[genome_select, c("accession", "path")]
 rm(tmp, tmp.sub)
 
 # process sublineage
-if(opt$sublineage != "" | !is.null(opt$sublineage)) {
+if(opt$sublineage == "" | is.null(opt$sublineage)) {
+  genome_select_final <- genome_select_main
+} else {
   msg("Processing sublineage...\n")
   rank_select <- opt$rank_sub
   rank_subtax <- tax_ranks[which(tax_ranks == rank_select) + 1]
@@ -251,8 +253,6 @@ if(opt$sublineage != "" | !is.null(opt$sublineage)) {
   rm(tmp, tmp.sub)
   
   genome_select_final <- rbind(genome_select_main, genome_select_sub)
-} else {
-  genome_select_final <- genome_select_main
 }
 
 # write output files

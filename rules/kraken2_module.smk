@@ -212,6 +212,136 @@ if config["kraken2_preset"] == "coarse":
                         fi
 			"""
 
+if config["kraken2_preset"] == "onestep":
+	rule select_euk_onestep:
+		input:
+			tax = config["rdir"] + "/tax_combined/{library_name}_derep_taxonomy.txt",
+			meta = config["rdir"] + "/{library_name}/metadata/genome_metadata.txt",
+			gen2taxid = config["rdir"] + "/tax_combined/full_genome2taxid.txt"
+		output:
+			tax_select = config["rdir"] + "/" + config["db_name"] + "/{library_name}_kraken2_select_taxonomy.txt",
+			kraken2_select = config["rdir"] + "/" + config["db_name"] + "/{library_name}_kraken2_select_accessions.txt"
+		params:
+			script = config["wdir"] + "/scripts/coarse_ncbi_selection.R",
+			rank = lambda wildcards: config["rank_coarse"][wildcards.library_name],
+			sublineage = lambda wildcards: config["coarse_sublineage"][wildcards.library_name],
+			rank_sublineage = lambda wildcards: config["rank_sublineage"][wildcards.library_name],
+			nmax = config["nmax_coarse"]
+		conda:
+			config["wdir"] + "/envs/r.yaml"
+		log:
+			config["rdir"] + "/logs/select_onestep_{library_name}.log"
+		shell:
+			"""
+			{params.script} -t {input.tax} -m {input.meta} -r {params.rank} -s "{params.sublineage}" -R {params.rank_sublineage} -n {params.nmax} -o {output.tax_select} &>>{log}
+			cut -f1 {output.tax_select} | grep -F -f - {input.gen2taxid} > {output.kraken2_select}
+			"""
+
+	rule collect_euk_onestep:
+		input:
+			kraken2_select = config["rdir"] + "/" + config["db_name"] + "/{library_name}_kraken2_select_accessions.txt"
+		output:
+			linked = config["rdir"] + "/" + config["db_name"] + "/genomes/{library_name}_done"
+		params:
+			gendir = config["rdir"] + "/derep_combined",
+			outdir = config["rdir"] + "/" + config["db_name"] + "/genomes/"
+		shell:
+			"""
+			mkdir -p {params.outdir}
+			find {params.gendir} -name '*.gz' | grep -F -f <(cut -f1 {input.kraken2_select}) | while read line
+			do
+			  ln -sf "$line" {params.outdir}
+			done
+			touch {output.linked}
+			"""
+
+	if config["custom_ncbi_post_derep"] != "n":
+		rule add_custom_ncbi_onestep:
+			input:
+				tax_select = expand(config["rdir"] + "/" + config["db_name"] + "/{library_name}_kraken2_select_taxonomy.txt", library_name = LIBRARY_NAME),
+				gen2taxid = config["rdir"] + "/tax_combined/full_genome2taxid.txt",
+				tax_added = config["rdir"] + "/tax_combined/euk_custom_post_derep_taxonomy.txt"
+			output:
+				custom_select = config["rdir"] + "/" + config["db_name"] + "/custom_euk_kraken2_select_taxonomy.txt",
+				kraken2_select = config["rdir"] + "/" + config["db_name"] + "/custom_euk_kraken2_select_accessions.txt"
+			params:
+				script = config["wdir"] + "/scripts/coarse_selection_custom.R",
+				rank = config["rank_custom"],
+				nmax = config["nmax_coarse"],
+				dbdir = config["rdir"] + "/" + config["db_name"],
+				add = config["custom_ncbi_post_derep"],
+				gendir = config["rdir"] + "/derep_combined",
+				outdir = config["rdir"] + "/" + config["db_name"] + "/genomes/"
+			conda:
+				config["wdir"] + "/envs/r.yaml"
+			log:
+				config["rdir"] + "/logs/select_onestep_custom_ncbi.log"
+			shell:
+				"""
+				cat {input.tax_select} > "{params.dbdir}/tmp_ncbi_kraken2_select_taxonomy.txt"
+				{params.script} -t "{params.dbdir}/tmp_ncbi_kraken2_select_taxonomy.txt" -c {params.add} -r {params.rank} -n {params.nmax} -o {output.custom_select} &>>{log}
+				mkdir -p {params.outdir}
+				find {params.gendir} -name '*.gz' | grep -F -f <(cut -f1 {output.custom_select}) | while read line
+				do
+				  ln -sf "$line" {params.outdir}
+				done
+				cut -f1 {output.custom_select} | grep -F -f - {input.gen2taxid} > {output.kraken2_select}
+				rm "{params.dbdir}/tmp_ncbi_kraken2_select_taxonomy.txt"
+				"""
+
+	rule select_genomes_onestep_pro:
+		input:
+			gtdb = config["rdir"] + "/tax_combined/gtdb_derep_taxonomy.txt",
+			checkv = config["rdir"] + "/tax_combined/checkv_derep_taxonomy.txt",
+			added_nuc_gtdb = config["rdir"] + "/tax_combined/pro_custom_post_derep_taxonomy.txt" if config["custom_gtdb_post_derep"] != "n" else [],
+			added_nuc_checkv = config["rdir"] + "/tax_combined/vir_custom_post_derep_taxonomy.txt" if config["custom_checkv_post_derep"] != "n" else [],
+			gen2taxid = config["rdir"] + "/tax_combined/full_genome2taxid.txt"
+		output:
+			kraken2_select = config["rdir"] + "/" + config["db_name"] + "/pro_kraken2_select_accessions.txt"
+		shell:
+			"""
+			cat {input.gtdb} {input.checkv} {input.added_nuc_gtdb} {input.added_nuc_checkv} | cut -f1 | grep -F -f - {input.gen2taxid} > {output.kraken2_select}
+			"""
+
+	rule collect_genomes_onestep_pro:
+		input:
+			kraken2_select = config["rdir"] + "/" + config["db_name"] + "/pro_kraken2_select_accessions.txt"
+		output:
+			linked = config["rdir"] + "/" + config["db_name"] + "/genomes/pro_done"
+		params:
+			gendir = config["rdir"] + "/derep_combined",
+			outdir = config["rdir"] + "/" + config["db_name"] + "/genomes/"
+		shell:
+			"""
+			mkdir -p {params.outdir}
+			find {params.gendir} -name '*.gz' | grep -F -f <(cut -f1 {input.kraken2_select}) | while read line
+			do
+			  ln -sf "$line" {params.outdir}
+			done
+			touch {output.linked}
+			"""
+
+	rule check_onestep:
+		input:
+			kraken2_select_pro = config["rdir"] + "/" + config["db_name"] + "/pro_kraken2_select_accessions.txt",
+			pro_linked = config["rdir"] + "/" + config["db_name"] + "/genomes/pro_done",
+			kraken2_select_euk = expand(config["rdir"] + "/" + config["db_name"] + "/{library_name}_kraken2_select_accessions.txt", library_name = LIBRARY_NAME),
+			euk_linked = expand(config["rdir"] + "/" + config["db_name"] + "/genomes/{library_name}_done", library_name = LIBRARY_NAME),
+			custom_euk = config["rdir"] + "/" + config["db_name"] + "/custom_euk_kraken2_select_accessions.txt" if config["custom_ncbi_post_derep"] != "n" else []
+		output:
+			kraken2_select = config["rdir"] + "/" + config["db_name"] + "/kraken2_select_accessions.txt",
+			checked = config["rdir"] + "/" + config["db_name"] + "/genomes/done"
+		params:
+			outdir = config["rdir"] + "/" + config["db_name"] + "/genomes/"
+		shell:
+			"""
+			cat {input.kraken2_select_pro} {input.kraken2_select_euk} {input.custom_euk} > {output.kraken2_select}
+			if [[ $(cat {output.kraken2_select} | wc -l) == $(find {params.outdir} -name '*.gz' | wc -l) ]]
+			then
+			  touch {output.checked}
+			fi
+			"""
+
 if config["kraken2_preset"] == "highres_pro":
 	rule select_genomes_highres_pro:
 		input:

@@ -110,7 +110,7 @@ if (is.null(opt$tax) | is.null(opt$custom) |
 ### select additional genomes from custom genomes, if their classes (specified rank) aren't already represented in previous selection ####
 
 # possible taxonomic ranks
-tax_ranks <- c("domain", "phylum", "class", "order", "family", "genus", "species")
+tax_ranks <- c("domain", "lineage", "kingdom", "phylum", "class", "order", "family", "genus", "species")
 
 # maximum number of genomes per level of selected rank
 n_max = opt$n_max # set scaling factor (user defined)

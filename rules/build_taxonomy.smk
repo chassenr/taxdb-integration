@@ -63,7 +63,6 @@ rule full_protein_taxonomy:
 		gtdb_pro = config["rdir"] + "/tax_combined/gtdb_protein_taxonomy.txt",
 		custom_vir = config["rdir"] + "/tax_combined/vir_custom_protein_taxonomy.txt" if config["custom_vir_prot"] else [],
 		checkv_vir = config["rdir"] + "/tax_combined/checkv_protein_taxonomy.txt",
-		gtdb_linked = config["rdir"] + "/gtdb/proteins/linked",
 		ncbi_linked = expand(config["rdir"] + "/{library_name}/proteins/linked", library_name = LIBRARY_NAME)
 	output:
 		tax = config["rdir"] + "/tax_combined/protein_taxonomy_good.txt",
@@ -122,6 +121,7 @@ rule generate_prot_accesion2taxid:
 		gendir = config["rdir"] + "/proteins_all"
 	conda:
 		config["wdir"] + "/envs/parallel.yaml"
+	threads: config["taxmap_threads"]
 	shell:
 		"""
 		find {params.gendir} -name '*.gz' > "{params.gendir}/../tax_combined/tmp_prot_filelist.txt"

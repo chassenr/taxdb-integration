@@ -1,6 +1,6 @@
 # Basic dirs
 wdir: "/storage/hdd1/chh/Repos/taxdb-integration"
-rdir: "/storage/hdd1/chh/TaxDB"
+rdir: "/storage/hdd1/chh/TaxDB_v2"
 
 # Default parameters
 threads: 1
@@ -16,5 +16,5 @@ kingdoms: ""
 cmem: "450G"
 
 # number of threads for building kaiju database index
-kaiju_threads: 32
+kaiju_threads: 64
 

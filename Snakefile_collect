@@ -25,25 +25,33 @@ rule all:
 		#ar_tax = config["rdir"] + "/gtdb/metadata/ar_tax.tsv",
 		#gtdb_links = config["rdir"] + "/gtdb/metadata/gtdb_download_info.txt",
 		#tax_gtdb = config["rdir"] + "/gtdb/metadata/gtdb_taxonomy.txt",
-		download_complete_ncbi = config["rdir"] + "/gtdb/genomes/done",
-		gtdb_reps = config["rdir"] + "/gtdb/metadata/gtdb_reps_tax.txt",
+		#download_complete_ncbi = config["rdir"] + "/gtdb/genomes/done",
+		#gtdb_reps = config["rdir"] + "/gtdb/metadata/gtdb_reps_tax.txt",
 		#summary = expand(config["rdir"] + "/{library_name}/assembly_summary_combined.txt", library_name = LIBRARY_NAME),
 		#taxonomy = expand(config["rdir"] + "/{library_name}/assembly_taxonomy.txt", library_name = LIBRARY_NAME),
 		#download_complete = expand(config["rdir"] + "/{library_name}/genomes/done", library_name = LIBRARY_NAME),
 		#tax_filt = expand(config["rdir"] + "/{library_name}/assembly_taxonomy_filtered.txt", library_name = LIBRARY_NAME),
-		derep_meta = expand(config["rdir"] + "/{library_name}/assembly-derep-genomes_results.tsv", library_name = LIBRARY_NAME),
+		#derep_meta = expand(config["rdir"] + "/{library_name}/assembly-derep-genomes_results.tsv", library_name = LIBRARY_NAME),
 		#checkv_taxonomy = config["rdir"] + "/checkv/checkv_taxonomy.txt",
 		#tax_combined = config["rdir"] + "/tax_combined/full_taxonomy_combined.txt",
 		#names = config["rdir"] + "/DB_taxonomy/names.dmp",
-		#gen2taxid = config["rdir"] + "/tax_combined/full_genome2taxid.txt",
-		tax_checkv = config["rdir"] + "/tax_combined/checkv_derep_taxonomy.txt",
-		tax_gtdb = config["rdir"] + "/tax_combined/gtdb_derep_taxonomy.txt"
-		#prot_tax = config["rdir"] + "/tax_combined/protein_taxonomy_good.txt",
+		gen2taxid = config["rdir"] + "/tax_combined/full_genome2taxid.txt",
+		#tax_checkv = config["rdir"] + "/tax_combined/checkv_derep_taxonomy.txt",
+		#tax_gtdb = config["rdir"] + "/tax_combined/gtdb_derep_taxonomy.txt",
+		#tax_ncbi = expand(config["rdir"] + "/tax_combined/{library_name}_derep_taxonomy.txt", library_name = LIBRARY_NAME),
+		#tax = config["rdir"] + "/tax_combined/euk_custom_post_derep_taxonomy.txt",
+		tax_prot_added = config["rdir"] + "/tax_combined/checkv_protein_taxonomy.txt",
+		prot_added = config["rdir"] + "/tax_combined/euk_custom_protein_taxonomy.txt",
+		linked = expand(config["rdir"] + "/{library_name}/proteins/linked", library_name = LIBRARY_NAME),
+		tax_combined = config["rdir"] + "/tax_combined/full_taxonomy_combined.txt",
+		tax_good = config["rdir"] + "/tax_combined/full_taxonomy_good.txt",
+		prot_tax = config["rdir"] + "/tax_combined/protein_taxonomy_good.txt",
 		#path_list = config["rdir"] + "/proteins_clustered/taxon_list.txt",
 		#done = config["rdir"] + "/checkv/proteins/done",
-		#protein_clustered = config["rdir"] + "/proteins_clustered/proteins_clustered.faa",
-		#done = config["rdir"] + "/proteins_clustered/done",
-		#acc2taxid = config["rdir"] + "/tax_combined/prot_accession2taxid.txt"
+		protein_clustered = config["rdir"] + "/proteins_clustered/proteins_clustered.faa",
+		done = config["rdir"] + "/proteins_clustered/done",
+		nucl_acc2taxid = config["rdir"] + "/tax_combined/nucl_accession2taxid.txt",
+		prot_acc2taxid = config["rdir"] + "/tax_combined/prot_accession2taxid.txt"
 		
 
 '''
@@ -52,9 +60,9 @@ rule all:
 include: "rules/process_ncbi_genomes.smk"
 include: "rules/process_gtdb_genomes.smk"
 include: "rules/process_checkv_genomes.smk"
-#include: "rules/process_ncbi_proteins.smk"
-#include: "rules/process_gtdb_proteins.smk"
-#include: "rules/process_checkv_proteins.smk"
+include: "rules/process_ncbi_proteins.smk"
+include: "rules/process_gtdb_proteins.smk"
+include: "rules/process_checkv_proteins.smk"
 include: "rules/build_taxonomy.smk"
-#include: "rules/cluster_proteins.smk"
+include: "rules/cluster_proteins.smk"
 

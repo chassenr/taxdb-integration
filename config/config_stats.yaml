@@ -1,13 +1,14 @@
 # Basic dirs
 wdir: "/storage/hdd1/chh/Repos/taxdb-integration"
-rdir: "/storage/hdd1/chh/TaxDB"
+rdir: "/storage/hdd1/chh/TaxDB_v2"
 
 # Default parameters
 threads: 1
+fread_threads: 64
 
 # DB name (to avoid overwriting output if more than 1 DB is built)
 # db_name: "kraken2_highres_pro_db_nolim"
-db_name: "kraken2_coarse_db_sparse"
+# db_name: "kraken2_coarse_db_sparse"
 # db_name: "kraken2_highres_test"
-
+db_name: "kraken2_onestep_db"
 

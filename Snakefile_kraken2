@@ -26,8 +26,10 @@ wildcard_constraints:
 
 rule all:
 	input:
-		kraken2_select = config["rdir"] + "/" + config["db_name"] + "/kraken2_select_accessions.txt",
-		map = config["rdir"] + "/" + config["db_name"] + "/library/selection/prelim_map.txt",
+		#kraken2_select = config["rdir"] + "/" + config["db_name"] + "/kraken2_select_accessions.txt",
+		#checked = config["rdir"] + "/" + config["db_name"] + "/genomes/done",
+		#library = config["rdir"] + "/" + config["db_name"] + "/tmp/library.fna",
+		#map = config["rdir"] + "/" + config["db_name"] + "/library/selection/prelim_map.txt",
 		hash = config["rdir"] + "/" + config["db_name"] + "/hash.k2d"
 
 '''

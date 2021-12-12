@@ -13,16 +13,16 @@ rule download_gtdb_faa_reps:
 		config["rdir"] + "/logs/download_faa_reps_gtdb.log"
 	shell:
 		"""
-		aria2c -c -l "{params.outdir}/faa_reps_links.log" -d {params.outdir}/../ --max-tries=20 --retry-wait=5 -x {threads} -j {threads} -s {threads} "{params.gtdb_link}/genomic_files_reps/gtdb_proteins_aa_reps.tar.gz" &>> {log}
 		mkdir -p {params.outdir}
-		tar -xzf "{params.outdir}/../gtdb_protein_aa_reps.tar.gz" -C {params.outdir} --strip-components 2
+		aria2c -c -l "{params.outdir}/faa_reps_links.log" -d {params.outdir}/../ --max-tries=20 --retry-wait=5 -x {threads} -j {threads} -s {threads} "{params.gtdb_link}/genomic_files_reps/gtdb_proteins_aa_reps.tar.gz" &>> {log}
+		tar -xzf "{params.outdir}/../gtdb_proteins_aa_reps.tar.gz" -C {params.outdir} --strip-components 2
 		cd {params.outdir}
-		ls -1 | while read line
+		find ./ -type f -name "*.faa" | xargs -n 1 basename | while read line
 		do
 		  newfile=$(echo $line | sed 's/^[RG][SB]_//')
 		  mv $line $newfile
 		done
-		rm "{params.outdir}/../gtdb_protein_aa_reps.tar.gz"
+		rm "{params.outdir}/../gtdb_proteins_aa_reps.tar.gz"
 		touch {output.gtdb_faa_done}
 		"""
 
@@ -39,6 +39,7 @@ rule gzip_gtdb_faa_reps:
 	shell:
 		"""
 		find {params.outdir} -type f -name '*.faa' | parallel -j{threads} gzip {{}}
+		touch {output.gtdb_faa_zipped}
 		"""
 
 # link those faa which are available via gtdb reps
@@ -53,6 +54,7 @@ rule gtdb_add_protein_reps:
 		repdir = config["rdir"] + "/gtdb/reps_proteins"
 	shell:
 		"""
+		mkdir -p {params.outdir}
 		find {params.repdir} -type f -name '*.gz' | xargs -n 1 basename | cut -d'_' -f1,2 | grep -F -f <(cut -f1 {input.tax}) > {output.faa_reps}
 		sed 's/$/_protein\.faa\.gz/' {output.faa_reps} | while read line
 		do
@@ -95,7 +97,8 @@ rule predict_faa_gtdb:
 	params:
 		outdir = config["rdir"] + "/gtdb/proteins",
 		cdsdir = config["rdir"] + "/gtdb/cds_proteins",
-		gendir = config["rdir"] + "/gtdb/genomes"
+		gendir = config["rdir"] + "/gtdb/genomes",
+		tmpdir = config["rdir"] + "/gtdb/tmp"
 	conda:
 		config["wdir"] + "/envs/prodigal.yaml"
 	threads: config["parallel_threads"]
@@ -103,10 +106,16 @@ rule predict_faa_gtdb:
 		config["rdir"] + "/logs/predict_proteins_gtdb.log"
 	shell:
 		"""
-		cat {input.faa_ncbi} {input.faa_reps} | grep -v -F -f - {input.tax} | cut -f1 | grep -F -f - {input.gtdb_links} | cut -f4 | sed 's/_genomic\.fna\.gz//' | parallel -j{threads} 'prodigal -i <(gunzip -c {params.gendir}/{{}}_genomic.fna.gz) -o {params.cdsdir}/{{}}.gff -a {params.proteins}/{{}}_protein.faa -f gff'
+		mkdir -p {params.tmpdir}
+		mkdir -p {params.cdsdir}
+		cat {input.faa_ncbi} {input.faa_reps} | grep -v -F -f - {input.tax} | cut -f1 | grep -F -f - {input.gtdb_links} | cut -f4 | sed 's/_genomic\.fna\.gz//' | parallel -j{threads} 'zcat {params.gendir}/{{}}_genomic.fna.gz > {params.tmpdir}/{{}}_genomic.fna'
+		cd {params.tmpdir}
+		ls -1 | sed 's/_genomic\.fna//' | parallel -j{threads} 'prodigal -i {{}}_genomic.fna -o {params.cdsdir}/{{}}.gff -a {params.outdir}/{{}}_protein.faa -f gff'
+		cd
 		find {params.outdir} -type f -name '*.faa' | parallel -j{threads} 'gzip {{}}'
 		if [[ $(cat {input.tax} | wc -l ) == $(find {params.outdir} -name '*.gz' | wc -l ) ]]
 		then
+		  rm -rf {params.tmpdir}
 		  cp {input.tax} {output.tax_prot}
 		fi
 		"""
@@ -138,7 +147,7 @@ rule custom_gtdb_proteins_pre_derep:
 
 rule collect_gtdb_proteins:
 	input:
-		tax_prot = config["rdir"] + "/gtdb/metadata/gtdb_protein_taxonomy.txt"
+		tax_prot = config["rdir"] + "/gtdb/metadata/gtdb_protein_taxonomy_added.txt"
 	output:
 		tax_prot = config["rdir"] + "/tax_combined/gtdb_protein_taxonomy.txt"
 	params:
