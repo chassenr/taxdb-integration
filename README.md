@@ -82,8 +82,6 @@ All clustered protein sequences are converted into a kaiju database index. No fu
 
 ### Next steps and ToDos:
 * Improve conterminator implementation: add maximum runtime limit to avoid endless runs if no/low contamination
-* Add gene prediction for prokaryotes if not available elsewhere
-* Add 2 additional taxonomic ranks (kingdom and strain) to better represent eukaryotic taxonomy
 * Extend framework to Bracken and KrakenUniq databases
 
 
