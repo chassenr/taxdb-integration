@@ -55,6 +55,7 @@ To avoid redundancy, all genomes per species are dereplicated using [derepG](htt
 Lastly, the predicted protein sequences for the dereplicated genomes (if avaiable) are downloaded. Also here, the user has the option to provide custom files. Protein sequences are then subject to a second dereplication/clustering using [mmseqs2](https://github.com/soedinglab/MMseqs2).
 
 To combine all these genomes within a common taxonomic framework, we use the script gtdb_to_taxdump.py available [here](https://github.com/nick-youngblut/gtdb_to_taxdump).
+We modified this script to include 2 additional taxonomic ranks (lineage and kingdom) to better represent the high-level taxonomy of eukaryotes available via the ambiguous rank clade and kingdom on NCBI. 
 
 
 #### Kraken2 module
@@ -65,7 +66,7 @@ As the file size of all genomes after dereplication is still too large to be use
 * highres_micro :warning: not available yet :warning:
 * highres_plant :warning: not available yet :warning:
 * highres_metazoa :warning: not available yet :warning:
-* onestep :warning: not available yet :warning:
+* onestep: Dereplicated GTDB and checkV genomes, plus up to 3 (user-configurable) genomes per class and family for higher and microbial eukaryotes, respectively, for high resolution classification of prokaryotic reads in one go (CAUTION: DB size exceeding 350GB).
 
 For building the kraken2 database, the parameters kmer length, minimizer length, and minimizer spaces can be adjusted depending on the type of reads that you want to classify. We recommend a kmer of ~31-35 and ~25 for modern and ancient metagenomic reads, respectively.
 
@@ -82,8 +83,6 @@ All clustered protein sequences are converted into a kaiju database index. No fu
 
 ### Next steps and ToDos:
 * Improve conterminator implementation: add maximum runtime limit to avoid endless runs if no/low contamination
-* Add gene prediction for prokaryotes if not available elsewhere
-* Add 2 additional taxonomic ranks (kingdom and strain) to better represent eukaryotic taxonomy
 * Extend framework to Bracken and KrakenUniq databases
 
 
