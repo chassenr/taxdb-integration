@@ -15,24 +15,24 @@ parallel_threads: 128
 #   "highres_pro" (high resolution DB with only prokaryotes and viruses)
 #   "onestep" (high resolution for prokaryotes and viruses, coarse resolution for eukaryotes)
 #   "microeuk" (high resolution for fungi and protists, with representatives of other eukaryotic groups)
-# kraken2_preset: "microeuk"
+kraken2_preset: "microeuk"
 # kraken2_preset: "coarse"
 # kraken2_preset: "highres_pro"
-kraken2_preset: "onestep"
+# kraken2_preset: "onestep"
 
 # location of file with input accessions and taxids for user input
 kraken2_custom: ""
 
 # DB name (to avoid overwriting output if more than 1 DB is built)
-# db_name: "kraken2_highres_pro_db_nolim"
-# db_name: "kraken2_coarse_db_sparse"
+# db_name: "kraken2_highres_pro_db"
+# db_name: "kraken2_coarse_db"
 # db_name: "kraken2_highres_test"
-# db_name: "kraken2_microeuk_db"
-db_name: "kraken2_onestep_db"
+db_name: "kraken2_microeuk_db"
+# db_name: "kraken2_onestep_db"
 
 # Include UniVec databases
-univec: "UniVec_Core"
-# univec: ""
+# univec: "UniVec_Core"
+univec: ""
 ncbi_server: "http://ftp.ncbi.nlm.nih.gov"
 
 # enable conterminator (only suitable for coarse and onestep presets or similar custom DB selection)
@@ -45,9 +45,9 @@ cmem: "450G"
 # Parameters for building krakendb
 masking_threads: 128
 krakenbuild_threads: 128
-kmer_len: 31
-minimizer_len: 27
-minimizer_spaces: 6
+kmer_len: 25
+minimizer_len: 23
+minimizer_spaces: 4
 max_dbsize: 700000000000
 
 
@@ -121,7 +121,7 @@ macro_rank_sublineage:
   vertebrate_other: "phylum"
 
 # number of genomes to select per level of rank
-nmax_macro: 1
+nmax_macro: 3
 
 
 
