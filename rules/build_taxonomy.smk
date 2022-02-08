@@ -88,7 +88,7 @@ rule generate_genome2taxid:
 	shell:
 		"""
 		cut -f1 {input.tax_good} | taxonkit name2taxid --data-dir {params.dbdir} > "{params.dbdir}/tmp_taxid.txt"
-		cut -f2 "{params.dbdir}/tmp_taxid.txt" | taxonkit lineage -t --data-dir {params.dbdir} | cut -f3 | cut -d';' -f9 | paste "{params.dbdir}/tmp_taxid.txt" - > {output.gen2taxid}
+		cut -f2 "{params.dbdir}/tmp_taxid.txt" | taxonkit lineage -t --data-dir {params.dbdir} | cut -f3 | sed -E 's/.*;([0-9]+);[0-9]+$/\\1/' | paste "{params.dbdir}/tmp_taxid.txt" - > {output.gen2taxid}
 		rm "{params.dbdir}/tmp_taxid.txt"
 		"""
 
