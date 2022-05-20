@@ -16,5 +16,5 @@ kingdoms: ""
 cmem: "450G"
 
 # number of threads for building kaiju database index
-kaiju_threads: 64
+kaiju_threads: 128
 

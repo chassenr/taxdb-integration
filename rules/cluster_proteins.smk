@@ -59,3 +59,6 @@ rule clean_up_post_clustering:
 		touch {output.done} 
 		"""
 
+# for whatever reason mmseqs2 introduces weird line endings, e.g. EP00736_Rmarinus@m.4815
+# use clustered protein file with caution
+

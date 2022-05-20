@@ -34,7 +34,7 @@ rule all:
 		#derep_meta = expand(config["rdir"] + "/{library_name}/assembly-derep-genomes_results.tsv", library_name = LIBRARY_NAME),
 		#checkv_taxonomy = config["rdir"] + "/checkv/checkv_taxonomy.txt",
 		#tax_combined = config["rdir"] + "/tax_combined/full_taxonomy_combined.txt",
-		#names = config["rdir"] + "/DB_taxonomy/names.dmp",
+		names = config["rdir"] + "/DB_taxonomy/names.dmp",
 		gen2taxid = config["rdir"] + "/tax_combined/full_genome2taxid.txt",
 		#tax_checkv = config["rdir"] + "/tax_combined/checkv_derep_taxonomy.txt",
 		#tax_gtdb = config["rdir"] + "/tax_combined/gtdb_derep_taxonomy.txt",
@@ -50,8 +50,8 @@ rule all:
 		#done = config["rdir"] + "/checkv/proteins/done",
 		protein_clustered = config["rdir"] + "/proteins_clustered/proteins_clustered.faa",
 		done = config["rdir"] + "/proteins_clustered/done",
-		nucl_acc2taxid = config["rdir"] + "/tax_combined/nucl_accession2taxid.txt",
-		prot_acc2taxid = config["rdir"] + "/tax_combined/prot_accession2taxid.txt"
+		#nucl_acc2taxid = config["rdir"] + "/tax_combined/nucl_accession2taxid.txt",
+		#prot_acc2taxid = config["rdir"] + "/tax_combined/prot_accession2taxid.txt"
 		
 
 '''

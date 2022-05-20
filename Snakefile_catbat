@@ -1,0 +1,28 @@
+import glob
+import pandas as pd
+
+"""
+Author: Christiane Hassenrueck, Antonio Fernandez-Guerra
+Acknowledgements: Chiara Vanni
+Affiliation: MARUM - Center for Marine Environmental Sciences University of Bremen
+Aim: Create high resolution taxonomic database for all domains of life using GTDB and NCBI taxonomy
+Run: snakemake -s Snakefile
+"""
+
+# from snakemake.utils import validate, min_version
+##### set minimum snakemake version #####
+# min_version("5.1.2")
+
+configfile: "config/config_catbat.yaml"
+
+rule all:
+	input:
+		acc2taxid = config["rdir"] + "/CAT_db/CAT_taxonomy/prot.accession2taxid.FULL.gz",
+		faa_gz = config["rdir"] + "/CAT_db/CAT_database/nr.gz",
+		done = config["rdir"] + "/CAT_db/done"
+
+'''
+##### load rules #####
+'''
+include: "rules/catbat_module.smk"
+

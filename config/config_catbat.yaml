@@ -1,0 +1,10 @@
+# Basic dirs
+wdir: "/storage/hdd1/chh/Repos/taxdb-integration"
+rdir: "/storage/hdd1/chh/TaxDB_v2"
+
+# Default parameters
+threads: 1
+
+# number of threads for building CAT database
+parallel_threads: 128
+
