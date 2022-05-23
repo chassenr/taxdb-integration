@@ -22,6 +22,15 @@ wildcard_constraints:
 
 rule all:
 	input:
+		#plas_fna = config["rdir"] + "/organelle/plastid.fna.gz",
+		#mito_fna = config["rdir"] + "/organelle/mitochondria.fna.gz",
+		#plas_prot = config["rdir"] + "/organelle/proteins/done_plas",
+		#mito_prot = config["rdir"] + "/organelle/proteins/done_mito",
+		#plas_nucl = config["rdir"] + "/organelle/genomes/done_plas",
+		#mito_nucl = config["rdir"] + "/organelle/genomes/done_mito",
+		#tax_mito = config["rdir"] + "/organelle/mitochondria_taxonomy_nucl.txt",
+		#tax_plas = config["rdir"] + "/organelle/plastid_taxonomy_nucl.txt",
+		tax = config["rdir"] + "/tax_combined/organelle_taxonomy.txt",
 		#ar_tax = config["rdir"] + "/gtdb/metadata/ar_tax.tsv",
 		#gtdb_links = config["rdir"] + "/gtdb/metadata/gtdb_download_info.txt",
 		#tax_gtdb = config["rdir"] + "/gtdb/metadata/gtdb_taxonomy.txt",
@@ -34,22 +43,22 @@ rule all:
 		#derep_meta = expand(config["rdir"] + "/{library_name}/assembly-derep-genomes_results.tsv", library_name = LIBRARY_NAME),
 		#checkv_taxonomy = config["rdir"] + "/checkv/checkv_taxonomy.txt",
 		#tax_combined = config["rdir"] + "/tax_combined/full_taxonomy_combined.txt",
-		names = config["rdir"] + "/DB_taxonomy/names.dmp",
-		gen2taxid = config["rdir"] + "/tax_combined/full_genome2taxid.txt",
+		#names = config["rdir"] + "/DB_taxonomy/names.dmp",
+		#gen2taxid = config["rdir"] + "/tax_combined/full_genome2taxid.txt",
 		#tax_checkv = config["rdir"] + "/tax_combined/checkv_derep_taxonomy.txt",
 		#tax_gtdb = config["rdir"] + "/tax_combined/gtdb_derep_taxonomy.txt",
 		#tax_ncbi = expand(config["rdir"] + "/tax_combined/{library_name}_derep_taxonomy.txt", library_name = LIBRARY_NAME),
 		#tax = config["rdir"] + "/tax_combined/euk_custom_post_derep_taxonomy.txt",
-		tax_prot_added = config["rdir"] + "/tax_combined/checkv_protein_taxonomy.txt",
-		prot_added = config["rdir"] + "/tax_combined/euk_custom_protein_taxonomy.txt",
-		linked = expand(config["rdir"] + "/{library_name}/proteins/linked", library_name = LIBRARY_NAME),
-		tax_combined = config["rdir"] + "/tax_combined/full_taxonomy_combined.txt",
-		tax_good = config["rdir"] + "/tax_combined/full_taxonomy_good.txt",
-		prot_tax = config["rdir"] + "/tax_combined/protein_taxonomy_good.txt",
+		#tax_prot_added = config["rdir"] + "/tax_combined/checkv_protein_taxonomy.txt",
+		#prot_added = config["rdir"] + "/tax_combined/euk_custom_protein_taxonomy.txt",
+		#linked = expand(config["rdir"] + "/{library_name}/proteins/linked", library_name = LIBRARY_NAME),
+		#tax_combined = config["rdir"] + "/tax_combined/full_taxonomy_combined.txt",
+		#tax_good = config["rdir"] + "/tax_combined/full_taxonomy_good.txt",
+		#prot_tax = config["rdir"] + "/tax_combined/protein_taxonomy_good.txt",
 		#path_list = config["rdir"] + "/proteins_clustered/taxon_list.txt",
 		#done = config["rdir"] + "/checkv/proteins/done",
-		protein_clustered = config["rdir"] + "/proteins_clustered/proteins_clustered.faa",
-		done = config["rdir"] + "/proteins_clustered/done",
+		#protein_clustered = config["rdir"] + "/proteins_clustered/proteins_clustered.faa",
+		#done = config["rdir"] + "/proteins_clustered/done",
 		#nucl_acc2taxid = config["rdir"] + "/tax_combined/nucl_accession2taxid.txt",
 		#prot_acc2taxid = config["rdir"] + "/tax_combined/prot_accession2taxid.txt"
 		
@@ -63,6 +72,7 @@ include: "rules/process_checkv_genomes.smk"
 include: "rules/process_ncbi_proteins.smk"
 include: "rules/process_gtdb_proteins.smk"
 include: "rules/process_checkv_proteins.smk"
+include: "rules/process_ncbi_organelles.smk"
 include: "rules/build_taxonomy.smk"
 include: "rules/cluster_proteins.smk"
 
