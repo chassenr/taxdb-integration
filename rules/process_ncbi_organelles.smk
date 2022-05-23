@@ -103,7 +103,7 @@ rule taxpath_refseq_plastid:
 		config["wdir"] + "/envs/r.yaml"
 	shell:
 		"""
-		{params.script} -n {input.names_nucl} -r {input.ranks_nucl} -p {input.ranks_prot} -o {output.tax_nucl} -P {output.tax_prot}
+		{params.script} -n {input.names_nucl} -r {input.ranks_nucl} -p {input.ranks_prot} -t "plas" -o {output.tax_nucl} -P {output.tax_prot}
 		"""
 
 rule split_plastid_nucl:
@@ -198,7 +198,7 @@ rule taxpath_refseq_mitochondria:
 		config["wdir"] + "/envs/r.yaml"
 	shell:
 		"""
-		{params.script} -n {input.names_nucl} -r {input.ranks_nucl} -p {input.ranks_prot} -o {output.tax_nucl} -P {output.tax_prot}
+		{params.script} -n {input.names_nucl} -r {input.ranks_nucl} -p {input.ranks_prot} -t "mito" -o {output.tax_nucl} -P {output.tax_prot}
 		"""
 
 rule split_mitochondria_nucl:
@@ -264,23 +264,22 @@ rule collect_refseq_organelles:
 		"""
 		mkdir -p {params.gdir}
 		mkdir -p {params.pdir}
-		cut -f1 {input.tax_mito_nucl} | sed 's/$/_mito/' | while read line
+		cut -f1 {input.tax_mito_nucl} | while read line
 		do
 		  ln -sf {params.library_dir}/genomes/$line.fa.gz {params.gdir}
 		done
-		cut -f1 {input.tax_plas_nucl} | sed 's/$/_plas/' | while read line
+		cut -f1 {input.tax_plas_nucl} | while read line
 		do
 		  ln -sf {params.library_dir}/genomes/$line.fa.gz {params.gdir}
 		done
-		cut -f1 {input.tax_mito_prot} | sed 's/$/_mito/' | while read line
+		cut -f1 {input.tax_mito_prot} | while read line
 		do
 		  ln -sf {params.library_dir}/proteins/$line.faa.gz {params.pdir}
 		done
-		cut -f1 {input.tax_plas_prot} | sed 's/$/_plas/' | while read line
+		cut -f1 {input.tax_plas_prot} | while read line
 		do
 		  ln -sf {params.library_dir}/proteins/$line.faa.gz {params.pdir}
 		done
-		cat {input.tax_mito_nucl} {input.tax_mito_prot} | sed 's/\t/_mito\t/' > {output.tax}
-		cat {input.tax_plas_nucl} {input.tax_plas_prot} | sed 's/\t/_plas\t/' >> {output.tax}
+		cat {input.tax_mito_nucl} {input.tax_mito_prot} {input.tax_plas_nucl} {input.tax_plas_prot} > {output.tax}
 		"""
 		

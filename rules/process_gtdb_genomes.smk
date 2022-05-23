@@ -14,14 +14,14 @@ rule get_gtdb_metadata:
 	shell:
 		"""
 		mkdir -p {params.outdir}
-		wget -O {output.ar_tax} "{params.gtdb_link}/ar122_taxonomy.tsv" &>> {log}
+		wget -O {output.ar_tax} "{params.gtdb_link}/ar53_taxonomy.tsv" &>> {log}
 		wget -O {output.bac_tax} "{params.gtdb_link}/bac120_taxonomy.tsv" &>> {log}
-		wget -O "{params.outdir}/tmp_ar.tar.gz" "{params.gtdb_link}/ar122_metadata.tar.gz" &>> {log}
+		wget -O "{params.outdir}/tmp_ar.tar.gz" "{params.gtdb_link}/ar53_metadata.tar.gz" &>> {log}
 		wget -O "{params.outdir}/tmp_bac.tar.gz" "{params.gtdb_link}/bac120_metadata.tar.gz" &>> {log}
 		tar -xzf "{params.outdir}/tmp_ar.tar.gz" -C {params.outdir}
 		tar -xzf "{params.outdir}/tmp_bac.tar.gz" -C {params.outdir}
 		rm "{params.outdir}/tmp_ar.tar.gz" "{params.outdir}/tmp_bac.tar.gz"
-		mv {params.outdir}/ar122_metadata* {output.ar_meta}
+		mv {params.outdir}/ar53_metadata* {output.ar_meta}
 		mv {params.outdir}/bac120_metadata* {output.bac_meta}
 		wget -O "{params.outdir}/assembly_summary_refseq.txt" http://ftp.ncbi.nlm.nih.gov/genomes/refseq/assembly_summary_refseq.txt &>> {log}
 		wget -O "{params.outdir}/assembly_summary_genbank.txt" http://ftp.ncbi.nlm.nih.gov/genomes/genbank/assembly_summary_genbank.txt &>> {log}

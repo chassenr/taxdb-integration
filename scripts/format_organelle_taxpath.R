@@ -85,6 +85,13 @@ option_list <- list(
     metavar = "character"
   ),
   make_option(
+    c("-t", "--organelle"),
+    type = "character",
+    default = NULL,
+    help = "mito or plas",
+    metavar = "character"
+  ),
+  make_option(
     c("-o", "--output_nucl"), 
     type = "character", 
     default = NULL,
@@ -103,7 +110,7 @@ opt_parser <- OptionParser(option_list = option_list)
 opt <- parse_args(opt_parser)
 
 if (is.null(opt$names) | is.null(opt$ranks) | is.null(opt$protein) |
-    is.null(opt$output_nucl) | is.null(opt$output_prot)) {
+    is.null(opt$organelle) | is.null(opt$output_nucl) | is.null(opt$output_prot)) {
   print_help(opt_parser)
   stop(
     "You need to provide the assembly summary table and the name of the output file.\n", 
@@ -208,6 +215,7 @@ nucl_names <- read.table(
 )
 nucl_names$path <- taxpath_parsed[nucl_names$scientific_name, "path"]
 nucl_names <- nucl_names[!is.na(nucl_names$path), ]
+nucl_names$accnos_mod <- paste(nucl_names$accnos, opt$organelle, sep = "_")
 
 # read  scientific name to taxpath and ranks map (protein)
 # accession for faa files is based on scientific name with non-alphanum replaced by '_'
@@ -289,11 +297,11 @@ protein_parsed <- tax_keep_ranks %>%
   unite("path", -scientific_name, sep = ";") %>%
   relocate(scientific_name, .before = path) %>%
   filter(!is.na(tax_keep_ranks$superkingdom)) %>% 
-  mutate(accnos = gsub("[^[:alnum:]]", "_", scientific_name))
+  mutate(accnos = paste(gsub("[^[:alnum:]]", "_", scientific_name), opt$organelle, sep = "_"))
 
 # write output
 write.table(
-  nucl_names[, c(1, 3)],
+  nucl_names[, c(4, 3)],
   opt$output_nucl,
   sep = "\t",
   col.names = F,

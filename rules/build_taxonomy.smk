@@ -7,6 +7,7 @@ rule check_taxpath:
 		# add all reps also for checkv
 		checkv_reps = config["rdir"] + "/checkv/checkv_reps_taxonomy.txt",
 		ncbi = expand(config["rdir"] + "/tax_combined/{library_name}_derep_taxonomy.txt", library_name = LIBRARY_NAME),
+		organelle = config["rdir"] + "/tax_combined/organelle_taxonomy.txt",
 		added_nuc_ncbi = config["rdir"] + "/tax_combined/euk_custom_post_derep_taxonomy.txt" if config["custom_ncbi_post_derep"] else [],
 		added_nuc_gtdb = config["rdir"] + "/tax_combined/pro_custom_post_derep_taxonomy.txt" if config["custom_gtdb_post_derep"] else [],
 		added_nuc_checkv = config["rdir"] + "/tax_combined/vir_custom_post_derep_taxonomy.txt" if config["custom_checkv_post_derep"] else [],
@@ -24,7 +25,7 @@ rule check_taxpath:
 		config["rdir"] + "/logs/fix_ncbi_taxpath.log"
 	shell:
 		"""
-		cat {input.gtdb} {input.gtdb_reps} {input.checkv} {input.checkv_reps} {input.ncbi} {input.added_nuc_ncbi} {input.added_nuc_gtdb} {input.added_nuc_checkv} > "{params.outdir}/tmp"
+		cat {input.gtdb} {input.gtdb_reps} {input.checkv} {input.checkv_reps} {input.ncbi} {input.organelle} {input.added_nuc_ncbi} {input.added_nuc_gtdb} {input.added_nuc_checkv} > "{params.outdir}/tmp"
 		cat {input.added_prot_ncbi} {input.added_prot_gtdb} {input.added_prot_checkv} | cut -f1,2 >> "{params.outdir}/tmp"
 		{params.script} -i "{params.outdir}/tmp" -o "{output.tax_combined}" &>> {log}
 		rm "{params.outdir}/tmp"
@@ -59,6 +60,8 @@ rule full_protein_taxonomy:
 		tax_good = config["rdir"] + "/tax_combined/full_taxonomy_good.txt",
 		custom_euk = config["rdir"] + "/tax_combined/euk_custom_protein_taxonomy.txt" if config["custom_euk_prot"] else [],
 		ncbi_euk = expand(config["rdir"] + "/tax_combined/{library_name}_protein_taxonomy.txt", library_name = LIBRARY_NAME),
+		plastid = config["rdir"] + "/organelle/plastid_taxonomy_prot.txt",
+		mitochondria = config["rdir"] + "/organelle/mitochondria_taxonomy_prot.txt",
 		custom_pro = config["rdir"] + "/tax_combined/pro_custom_protein_taxonomy.txt" if config["custom_pro_prot"] else [],
 		gtdb_pro = config["rdir"] + "/tax_combined/gtdb_protein_taxonomy.txt",
 		custom_vir = config["rdir"] + "/tax_combined/vir_custom_protein_taxonomy.txt" if config["custom_vir_prot"] else [],
@@ -69,8 +72,8 @@ rule full_protein_taxonomy:
 		done = config["rdir"] + "/proteins_all/done_tax"
 	shell:
 		"""
-		cat {input.custom_euk} {input.ncbi_euk} {input.custom_pro} {input.gtdb_pro} {input.custom_vir} {input.checkv_vir} | cut -f1 | grep -F -f - {input.tax_good} > {output.tax}
-		if [[ $(cat {output.tax} | wc -l) == $(cat {input.custom_euk} {input.ncbi_euk} {input.custom_pro} {input.gtdb_pro} {input.custom_vir} {input.checkv_vir} | wc -l) ]]
+		cat {input.custom_euk} {input.ncbi_euk} {input.plastid} {input.mitochondria} {input.custom_pro} {input.gtdb_pro} {input.custom_vir} {input.checkv_vir} | cut -f1 | grep -F -f - {input.tax_good} > {output.tax}
+		if [[ $(cat {output.tax} | wc -l) == $(cat {input.custom_euk} {input.ncbi_euk} {input.plastid} {input.mitochondria} {input.custom_pro} {input.gtdb_pro} {input.custom_vir} {input.checkv_vir} | wc -l) ]]
 		then
 		  touch {output.done}
 		fi
