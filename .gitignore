@@ -1,5 +1,7 @@
 *.gz
 *
+!assets/
+!assets/*
 !stats
 !stats/*
 !images
