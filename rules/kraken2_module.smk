@@ -75,6 +75,31 @@ if config["kraken2_preset"] == "coarse":
 				rm "{params.dbdir}/tmp_ncbi_kraken2_select_taxonomy.txt"
 				"""
 
+	rule collect_organelle_coarse:
+		input:
+			tax_mito = config["rdir"] + "/organelle/mitochondria_taxonomy_nucl.txt",
+			tax_plas = config["rdir"] + "/organelle/plastid_taxonomy_nucl.txt",
+			gen2taxid = config["rdir"] + "/tax_combined/full_genome2taxid.txt"
+		output:
+			kraken2_select = config["rdir"] + "/" + config["db_name"] + "/organelle_kraken2_select_accessions.txt",
+			linked = config["rdir"] + "/" + config["db_name"] + "/genomes/organelle_done"
+		params:
+			gendir = config["rdir"] + "/derep_combined",
+			outdir = config["rdir"] + "/" + config["db_name"] + "/genomes/"
+		shell:
+			"""
+			cat {input.tax_mito} {input.tax_plas} | cut -f1 | grep -F -f - {input.gen2taxid} > {output.kraken2_select}
+			mkdir -p {params.outdir}
+			find {params.gendir} -name '*.gz' | grep -F -f <(cut -f1 {input.kraken2_select}) | while read line
+			do
+			  ln -sf "$line" {params.outdir}
+			done
+			if [[ $(cat {input.kraken2_select} | wc -l) == $(find {params.outdir} -name '*.gz' | wc -l) ]]
+			then
+			  touch {output.linked}
+			fi
+			"""
+
 	rule collect_gtdb_coarse:
 		input:
 			gtdb_reps = config["rdir"] + "/gtdb/metadata/gtdb_reps_tax.txt",
@@ -195,6 +220,7 @@ if config["kraken2_preset"] == "coarse":
 			kraken2_select_gtdb = config["rdir"] + "/" + config["db_name"] + "/gtdb_kraken2_select_accessions.txt",
 			kraken2_select_euk = expand(config["rdir"] + "/" + config["db_name"] + "/{library_name}_kraken2_select_accessions.txt", library_name = LIBRARY_NAME),
 			euk_linked = expand(config["rdir"] + "/" + config["db_name"] + "/genomes/{library_name}_done", library_name = LIBRARY_NAME),
+			kraken2_select_organelle = config["rdir"] + "/" + config["db_name"] + "/organelle_kraken2_select_accessions.txt",
 			custom_euk = config["rdir"] + "/" + config["db_name"] + "/custom_euk_kraken2_select_accessions.txt" if config["custom_ncbi_post_derep"] != "n" else [],
 			custom_pro = config["rdir"] + "/" + config["db_name"] + "/custom_pro_kraken2_select_accessions.txt" if config["custom_gtdb_post_derep"] != "n" else [],
 			custom_vir = config["rdir"] + "/" + config["db_name"] + "/custom_vir_kraken2_select_accessions.txt" if config["custom_checkv_post_derep"] != "n" else []
@@ -205,7 +231,7 @@ if config["kraken2_preset"] == "coarse":
 			outdir = config["rdir"] + "/" + config["db_name"] + "/genomes/"
 		shell:
 			"""
-			cat {input.kraken2_select_checkv} {input.kraken2_select_gtdb} {input.kraken2_select_euk} {input.custom_euk} {input.custom_pro} {input.custom_vir} > {output.kraken2_select}
+			cat {input.kraken2_select_checkv} {input.kraken2_select_gtdb} {input.kraken2_select_euk} {input.kraken2_select_organelle} {input.custom_euk} {input.custom_pro} {input.custom_vir} > {output.kraken2_select}
 			if [[ $(cat {output.kraken2_select} | wc -l) == $(find {params.outdir} -name '*.gz' | wc -l) ]]
                         then
                           touch {output.checked}
@@ -253,6 +279,31 @@ if config["kraken2_preset"] == "onestep":
 			  ln -sf "$line" {params.outdir}
 			done
 			touch {output.linked}
+			"""
+
+	rule collect_organelle_onestep:
+		input:
+			tax_mito = config["rdir"] + "/organelle/mitochondria_taxonomy_nucl.txt",
+			tax_plas = config["rdir"] + "/organelle/plastid_taxonomy_nucl.txt",
+			gen2taxid = config["rdir"] + "/tax_combined/full_genome2taxid.txt"
+		output:
+			kraken2_select = config["rdir"] + "/" + config["db_name"] + "/organelle_kraken2_select_accessions.txt",
+			linked = config["rdir"] + "/" + config["db_name"] + "/genomes/organelle_done"
+		params:
+			gendir = config["rdir"] + "/derep_combined",
+			outdir = config["rdir"] + "/" + config["db_name"] + "/genomes/"
+		shell:
+			"""
+			cat {input.tax_mito} {input.tax_plas} | cut -f1 | grep -F -f - {input.gen2taxid} > {output.kraken2_select}
+			mkdir -p {params.outdir}
+			find {params.gendir} -name '*.gz' | grep -F -f <(cut -f1 {input.kraken2_select}) | while read line
+			do
+			  ln -sf "$line" {params.outdir}
+			done
+			if [[ $(cat {input.kraken2_select} | wc -l) == $(find {params.outdir} -name '*.gz' | wc -l) ]]
+			then
+			  touch {output.linked}
+			fi
 			"""
 
 	if config["custom_ncbi_post_derep"] != "n":
@@ -327,6 +378,7 @@ if config["kraken2_preset"] == "onestep":
 			pro_linked = config["rdir"] + "/" + config["db_name"] + "/genomes/pro_done",
 			kraken2_select_euk = expand(config["rdir"] + "/" + config["db_name"] + "/{library_name}_kraken2_select_accessions.txt", library_name = LIBRARY_NAME),
 			euk_linked = expand(config["rdir"] + "/" + config["db_name"] + "/genomes/{library_name}_done", library_name = LIBRARY_NAME),
+			kraken2_select_organelle = config["rdir"] + "/" + config["db_name"] + "/organelle_kraken2_select_accessions.txt",
 			custom_euk = config["rdir"] + "/" + config["db_name"] + "/custom_euk_kraken2_select_accessions.txt" if config["custom_ncbi_post_derep"] != "n" else []
 		output:
 			kraken2_select = config["rdir"] + "/" + config["db_name"] + "/kraken2_select_accessions.txt",
@@ -335,7 +387,7 @@ if config["kraken2_preset"] == "onestep":
 			outdir = config["rdir"] + "/" + config["db_name"] + "/genomes/"
 		shell:
 			"""
-			cat {input.kraken2_select_pro} {input.kraken2_select_euk} {input.custom_euk} > {output.kraken2_select}
+			cat {input.kraken2_select_pro} {input.kraken2_select_euk} {input.kraken2_select_organelle} {input.custom_euk} > {output.kraken2_select}
 			if [[ $(cat {output.kraken2_select} | wc -l) == $(find {params.outdir} -name '*.gz' | wc -l) ]]
 			then
 			  touch {output.checked}
@@ -442,6 +494,31 @@ if config["kraken2_preset"] == "microeuk":
 			touch {output.linked}
 			"""
 
+	rule collect_organelle_onestep:
+		input:
+			tax_mito = config["rdir"] + "/organelle/mitochondria_taxonomy_nucl.txt",
+			tax_plas = config["rdir"] + "/organelle/plastid_taxonomy_nucl.txt",
+			gen2taxid = config["rdir"] + "/tax_combined/full_genome2taxid.txt"
+		output:
+			kraken2_select = config["rdir"] + "/" + config["db_name"] + "/organelle_kraken2_select_accessions.txt",
+			linked = config["rdir"] + "/" + config["db_name"] + "/genomes/organelle_done"
+		params:
+			gendir = config["rdir"] + "/derep_combined",
+			outdir = config["rdir"] + "/" + config["db_name"] + "/genomes/"
+		shell:
+			"""
+			cat {input.tax_mito} {input.tax_plas} | cut -f1 | grep -F -f - {input.gen2taxid} > {output.kraken2_select}
+			mkdir -p {params.outdir}
+			find {params.gendir} -name '*.gz' | grep -F -f <(cut -f1 {input.kraken2_select}) | while read line
+			do
+			  ln -sf "$line" {params.outdir}
+			done
+			if [[ $(cat {input.kraken2_select} | wc -l) == $(find {params.outdir} -name '*.gz' | wc -l) ]]
+			then
+			  touch {output.linked}
+			fi
+			"""
+
 	if config["custom_ncbi_post_derep"] != "n":
 		rule add_custom_ncbi_micro:
 			input:
@@ -469,6 +546,7 @@ if config["kraken2_preset"] == "microeuk":
 		input:
 			kraken2_select_macro = expand(config["rdir"] + "/" + config["db_name"] + "/{library_macro}_kraken2_select_accessions.txt", library_macro = LIBRARY_MACRO),
 			kraken2_select_micro = expand(config["rdir"] + "/" + config["db_name"] + "/{library_micro}_kraken2_select_accessions.txt", library_micro = LIBRARY_MICRO),
+			kraken2_select_organelle = config["rdir"] + "/" + config["db_name"] + "/organelle_kraken2_select_accessions.txt",
 			macro_linked = expand(config["rdir"] + "/" + config["db_name"] + "/genomes/{library_macro}_done", library_macro = LIBRARY_MACRO),
 			micro_linked = expand(config["rdir"] + "/" + config["db_name"] + "/genomes/{library_micro}_done", library_micro = LIBRARY_MICRO),
 			custom_euk = config["rdir"] + "/" + config["db_name"] + "/custom_euk_kraken2_select_accessions.txt" if config["custom_ncbi_post_derep"] != "n" else [],
@@ -479,7 +557,7 @@ if config["kraken2_preset"] == "microeuk":
 			outdir = config["rdir"] + "/" + config["db_name"] + "/genomes/"
 		shell:
 			"""
-			cat {input.kraken2_select_macro} {input.kraken2_select_micro} {input.custom_euk} > {output.kraken2_select}
+			cat {input.kraken2_select_macro} {input.kraken2_select_micro} {input.kraken2_select_organelle} {input.custom_euk} > {output.kraken2_select}
 			if [[ $(cat {output.kraken2_select} | wc -l) == $(find {params.outdir} -name '*.gz' | wc -l) ]]
 			then
 			  touch {output.checked}
