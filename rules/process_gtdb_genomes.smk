@@ -199,7 +199,7 @@ rule collect_gtdb_genomes:
 if config["custom_gtdb_post_derep"]:
 	rule add_custom_gtdb_post_derep:
 		output:
-			tax_added = config["rdir"] + "/tax_combined/pro_custom_post_derep_taxonomy.txt"
+			tax = config["rdir"] + "/tax_combined/pro_custom_post_derep_taxonomy.txt"
 		params:
 			add = config["custom_gtdb_post_derep"],
 			outdir = config["rdir"] + "/derep_combined/"

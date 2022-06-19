@@ -25,8 +25,7 @@ rule check_taxpath:
 		config["rdir"] + "/logs/fix_ncbi_taxpath.log"
 	shell:
 		"""
-		cat {input.gtdb} {input.gtdb_reps} {input.checkv} {input.checkv_reps} {input.ncbi} {input.organelle} {input.added_nuc_ncbi} {input.added_nuc_gtdb} {input.added_nuc_checkv} > "{params.outdir}/tmp"
-		cat {input.added_prot_ncbi} {input.added_prot_gtdb} {input.added_prot_checkv} | cut -f1,2 >> "{params.outdir}/tmp"
+		cat {input.gtdb} {input.gtdb_reps} {input.checkv} {input.checkv_reps} {input.ncbi} {input.organelle} {input.added_nuc_ncbi} {input.added_nuc_gtdb} {input.added_nuc_checkv} <(cat {input.added_prot_ncbi} {input.added_prot_gtdb} {input.added_prot_checkv} | cut -f1,2) | sort -u > "{params.outdir}/tmp"
 		{params.script} -i "{params.outdir}/tmp" -o "{output.tax_combined}" &>> {log}
 		rm "{params.outdir}/tmp"
 		"""

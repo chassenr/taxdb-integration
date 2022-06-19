@@ -173,7 +173,7 @@ rule collect_checkv_genomes:
 if config["custom_checkv_post_derep"]:
 	rule add_custom_checkv_post_derep:
 		output:
-			tax_added = config["rdir"] + "/tax_combined/vir_custom_post_derep_taxonomy.txt"
+			tax = config["rdir"] + "/tax_combined/vir_custom_post_derep_taxonomy.txt"
 		params:
 			add = config["custom_checkv_post_derep"],
 			outdir = config["rdir"] + "/derep_combined/"
