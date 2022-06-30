@@ -35,7 +35,7 @@ You will need python 3 (e.g. via [anaconda](https://docs.anaconda.com/anaconda/i
 git clone https://github.com/chassenr/taxdb-integration.git
 ```
 
-You will also need to compile the latest version of conterminator as described [here](https://github.com/martin-steinegger/conterminator#optional-install-by-compilation). 
+You may also need to compile the latest version of conterminator as described [here](https://github.com/martin-steinegger/conterminator#optional-install-by-compilation). However, conterminator is disabled at the moment by default.
 
 
 ### Workflow description and configuration
@@ -63,7 +63,7 @@ We modified this script to include 2 additional taxonomic ranks (lineage and kin
 As the file size of all genomes after dereplication is still too large to be used as input for building a kraken2 database on most systems (>> 1TB), it is necessary to further subset the available genomes to a more manageable number. This can be done manually or by using the presets offered in the kraken2 module of the workflow. Thes presets include:
 * coarse: GTDB and checkV representative genomes, up to 3 (user-configurable) genomes per class and genus for higher and microbial eukaryotes, respectively. The purpose of this database is to sort metagenomic reads by domain for a second classification step with a higher resolved database. The coarse preset includes the option to remove cross-domain contamination.
 * highres_pro: Dereplicated GTDB and checkV genomes for high resolution classification of prokaryotic reads. Not recommended without prior sorting by domain.
-* highres_micro :warning: not available yet :warning:
+* microeuk: Dereplicated (high resolution) protozoa and fungi with representatives of higher plants and metazoa (3 per phylum). All user-supplied taxa are included, which are not represented in the afore-mentioned macro-eukaryotic lineages.
 * highres_plant :warning: not available yet :warning:
 * highres_metazoa :warning: not available yet :warning:
 * onestep: Dereplicated GTDB and checkV genomes, plus up to 3 (user-configurable) genomes per class and family for higher and microbial eukaryotes, respectively, for high resolution classification of prokaryotic reads in one go (CAUTION: DB size exceeding 350GB).
@@ -73,7 +73,12 @@ For building the kraken2 database, the parameters kmer length, minimizer length,
 
 #### Kaiju module
 
-All clustered protein sequences are converted into a kaiju database index. No further subsetting is required trim the size of the input data (~50GB).
+All clustered protein sequences are converted into a kaiju database index. No further subsetting is required trim the size of the input data (~130GB).
+
+
+#### CAT/BAT module
+
+All clustered protein sequences are converted into a diamond database. The taxonomy is formatted to be compatible with the use of [CAT/BAT](https://github.com/dutilh/CAT).
 
 
 ### DB composition
@@ -91,6 +96,8 @@ After adapting the workflow and cluster files, the workflow can be executed with
 ```
 snakemake --use-conda -j 100 --cluster-config config/cluster.yaml --cluster "sbatch --export=ALL -t {cluster.time} --ntasks-per-node {cluster.ntasks_per_node} --nodes {cluster.nodes} --cpus-per-task {cluster.cpus_per_task} --partition {cluster.partition} --job-name {rulename}.{jobid}"
 ```
+:warning: Snakemake has changed the way the cluster configuration is provided in the command. This workflow has not yet been updated to the latest version of snakemake. It has been tested for snakemake 6.13.1.
+
 If you are not working on a cluster, only run: ```snakemake --use-conda -j 100```. You will need to adjust the maximum number of available threads to your system.
 
 ### Trouble-shooting

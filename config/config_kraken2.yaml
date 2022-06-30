@@ -1,6 +1,6 @@
 # Basic dirs
 wdir: "/storage/hdd1/chh/Repos/taxdb-integration"
-rdir: "/storage/hdd1/chh/TaxDB_v2"
+rdir: "/storage/hdd1/chh/TaxDB_v3"
 
 # Default parameters
 threads: 1
@@ -15,10 +15,10 @@ parallel_threads: 128
 #   "highres_pro" (high resolution DB with only prokaryotes and viruses)
 #   "onestep" (high resolution for prokaryotes and viruses, coarse resolution for eukaryotes)
 #   "microeuk" (high resolution for fungi and protists, with representatives of other eukaryotic groups)
-kraken2_preset: "microeuk"
+# kraken2_preset: "microeuk"
 # kraken2_preset: "coarse"
 # kraken2_preset: "highres_pro"
-# kraken2_preset: "onestep"
+kraken2_preset: "onestep"
 
 # location of file with input accessions and taxids for user input
 kraken2_custom: ""
@@ -27,12 +27,12 @@ kraken2_custom: ""
 # db_name: "kraken2_highres_pro_db"
 # db_name: "kraken2_coarse_db"
 # db_name: "kraken2_highres_test"
-db_name: "kraken2_microeuk_db"
-# db_name: "kraken2_onestep_db"
+# db_name: "kraken2_microeuk_db"
+db_name: "kraken2_onestep_db_k31"
 
 # Include UniVec databases
-# univec: "UniVec_Core"
-univec: ""
+univec: "UniVec_Core"
+# univec: ""
 ncbi_server: "http://ftp.ncbi.nlm.nih.gov"
 
 # enable conterminator (only suitable for coarse and onestep presets or similar custom DB selection)
@@ -45,9 +45,9 @@ cmem: "450G"
 # Parameters for building krakendb
 masking_threads: 128
 krakenbuild_threads: 128
-kmer_len: 25
-minimizer_len: 23
-minimizer_spaces: 4
+kmer_len: 31
+minimizer_len: 27
+minimizer_spaces: 6
 max_dbsize: 700000000000
 
 
@@ -135,11 +135,11 @@ custom_ncbi_pre_derep:
   invertebrate: "n"
   vertebrate_mammalian: "n"
   vertebrate_other: "n"
-custom_ncbi_post_derep: "/storage/hdd1/chh/Repos/taxdb-integration/assets/TARA_AP_combined_v2.txt"
+custom_ncbi_post_derep: "/storage/hdd1/chh/Repos/taxdb-integration/assets/euk_custom_nucl.txt"
 
 custom_gtdb_pre_derep: "n"
-custom_gtdb_post_derep: "n"
+custom_gtdb_post_derep: "/storage/hdd1/chh/Repos/taxdb-integration/assets/pro_custom_nucl.txt"
 
 custom_checkv_pre_derep: "n"
-custom_checkv_post_derep: "n"
+custom_checkv_post_derep: "/storage/hdd1/chh/Repos/taxdb-integration/assets/vir_custom_nucl.txt"
 

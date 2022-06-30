@@ -296,14 +296,11 @@ if config["kraken2_preset"] == "onestep":
 			"""
 			cat {input.tax_mito} {input.tax_plas} | cut -f1 | grep -F -f - {input.gen2taxid} > {output.kraken2_select}
 			mkdir -p {params.outdir}
-			find {params.gendir} -name '*.gz' | grep -F -f <(cut -f1 {input.kraken2_select}) | while read line
+			find {params.gendir} -name '*.gz' | grep -F -f <(cut -f1 {output.kraken2_select}) | while read line
 			do
 			  ln -sf "$line" {params.outdir}
 			done
-			if [[ $(cat {input.kraken2_select} | wc -l) == $(find {params.outdir} -name '*.gz' | wc -l) ]]
-			then
-			  touch {output.linked}
-			fi
+			touch {output.linked}
 			"""
 
 	if config["custom_ncbi_post_derep"] != "n":
@@ -801,6 +798,9 @@ rule build_kraken2_db:
 		config["rdir"] + "/logs/" + config["db_name"] + "_build_db.log"
 	shell:
 		"""
+		echo "kmer: {params.kmer_len}" &>> {log}
+		echo "minimizer length: {params.min_len}" &>> {log}
+		echo "minimizer spaces: {params.min_spaces}" &>> {log}
 		kraken2-build --build --threads {threads} --db {params.dbdir} --kmer-len {params.kmer_len} --minimizer-len {params.min_len} --minimizer-spaces {params.min_spaces} --max-db-size {params.max_dbsize} &>> {log}
 	"""
 

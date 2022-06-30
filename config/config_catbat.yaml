@@ -1,6 +1,6 @@
 # Basic dirs
 wdir: "/storage/hdd1/chh/Repos/taxdb-integration"
-rdir: "/storage/hdd1/chh/TaxDB_v2"
+rdir: "/storage/hdd1/chh/TaxDB_v3"
 
 # Default parameters
 threads: 1
