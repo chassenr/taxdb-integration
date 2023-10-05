@@ -1,3 +1,6 @@
+## :warning: This repository is not maintained anymore. Because of github enforcing 2FA, the repository moved to a less restrictive platform at: https://git.io-warnemuende.de/hassenru/taxdb-integration
+
+
 # Overview
 Current metagenomic reference databases are often either limited in their taxonomic representation, restricted to a sepcific domain of life, biased towards model taxa, prone to contamination, or too large to handle computationally. This workflow aims to address these limitations by providing a flexible, user-configurable pipeline to generate cross-domain databases that allow for the classification of metagenomic reads at a high specificity and sensitivity. 
 To allow a flexible selection of genomes (nucleotide and protein sequences) for a variety of classification tools, the workflow is structured into modules.
